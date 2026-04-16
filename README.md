@@ -16,6 +16,9 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 - Player controller with buttons for acceleration, braking, and lane switching, providing an interactive racing experience.
 - High-speed communication between the microcontroller and the Raspberry Pi for seamless data exchange and control.
 - Simulation with Python for debugging, testing, and visualization of the program logic and physics.
+- Modular track design with interchangeable modules for different track layouts and configurations.
+- Track modules with individual driving profiles to simulate different track conditions.
+- Settings for customizing the racing experience.
 
 ## Classes
 
