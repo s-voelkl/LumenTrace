@@ -11,6 +11,9 @@
 from machine import UART, Pin
 from time import sleep
 
+# adc
+adc_controller = machine.ADC(26)
+
 # UART0 initialisieren
 uart0 = UART(0, baudrate=9600, tx=Pin(0), rx=Pin(1), bits=8, parity=None, stop=1)
 print('UART0:', uart0)
@@ -21,20 +24,20 @@ uart1 = UART(1, baudrate=9600, tx=Pin(8), rx=Pin(9), bits=8, parity=None, stop=1
 print('UART1:', uart1)
 print()
 
-# Daten zum Senden
-txData = 'Hallo Welt'
-
 # Hauptprogramm
 while True:
+    gas_wert = adc_controller.read_u16()
+    
     # Daten senden
-    print('Daten senden:', txData)
-    uart0.write(txData)
-    sleep(1)
+    print('Gaswert:', gas_wert)
+    uart0.write(str(gas_wert).encode('utf-8'))
+    sleep(0.001)
+    
     # Daten empfangen und ausgeben
     rxData = uart1.readline()
     try:
         print('Daten empfangen:', rxData.decode('utf-8'))
     except (AttributeError):
         print('Verbindung prüfen')
-    sleep(1)
+    sleep(0.001)
     print()
