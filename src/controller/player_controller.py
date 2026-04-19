@@ -1,3 +1,7 @@
+from src.logger.multi_logger import get_logger
+logger = get_logger()
+
+
 class PlayerController:
     '''Virtual player controller with multiple inputs (e.g. forward, backward, left, right, special_1, special_2).
     These inputs get updated by the signal receiver based on the received UART signal 
@@ -42,12 +46,10 @@ class PlayerController:
         # mapping of keys (e.g. adc_0) to internal names (e.g. forward_press)
         internal_name = self.INPUT_MAPPING.get(input_name)
         if internal_name and value is not None and value != getattr(self, f"__{internal_name}"):
-            # TODO: log info for received signal update
             setattr(self, f"__{internal_name}", value)
-            print(f"Info: Received signal update for controller {self.__controller_id}: {input_name} -> {internal_name}")
+            logger.log(f"Received signal update for controller {self.__controller_id}: {input_name} -> {internal_name} with value {value}")
         else:
-            # TODO: log warning for unmapped input name
-            print(f"Warning: Received unmapped input name '{input_name}' for controller {self.__controller_id}.")
+            logger.log(f"Warning: Received unmapped input name '{input_name}' for controller {self.__controller_id}.")
             
     # Getters
     @property

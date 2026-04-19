@@ -6,6 +6,10 @@ from controller.player_controller import PlayerController
 from typing import List
 import serial
 import RPi.GPIO as GPIO
+from src.logger.multi_logger import get_logger
+
+logger = get_logger()
+
 
 class SignalReceiver:
     '''Handles the incoming UART-signal of the transmitter for further processing.'''
@@ -68,15 +72,12 @@ class SignalReceiver:
                             controller_id = controller_data.get('controller_id')
                             if controller_id is not None:
                                 self.__update_controller(controller_id, controller_data)
-                                # TODO: log info
-                                print(f"Updated controller {controller_id} with data: {controller_data}")
+                                logger.log(f"Updated controller {controller_id} with data: {controller_data}")
 
             except json.JSONDecodeError as e:
-                print("JSON decode error:", e)
-                # TODO: log error
+                logger.log(f"JSON decode error: {e}")
         else:
-            # TODO: log info
-            print("No valid JSON object found in received data.")
+            logger.log("No valid JSON object found in received data.")
             
         time.sleep(wait_s)
     
