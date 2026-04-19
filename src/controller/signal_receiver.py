@@ -2,30 +2,29 @@ import json
 import re
 import time
 
-from controller.controller import Controller
+from controller.player_controller import PlayerController
 from typing import List
 import serial
 import RPi.GPIO as GPIO
 
 class SignalReceiver:
     '''Handles the incoming UART-signal of the transmitter for further processing.'''
-    
     __BAUD_RATE = 115200
-    
-    def __init__(self, 
-        baud_rate=__BAUD_RATE, 
-        bits=serial.EIGHTBITS, 
-        parity=serial.PARITY_NONE, 
+
+    def __init__(self,
+        baud_rate=__BAUD_RATE,
+        bits=serial.EIGHTBITS,
+        parity=serial.PARITY_NONE,
         stop=serial.STOPBITS_ONE,
         port='/dev/ttyS0',  # Default UART port on GPIO 14/15
         rx_pin=15,
         controllers=None):
-        
-        self.__controllers: List[Controller] = controllers if controllers is not None else []
-        
+
+        self.__controllers: List[PlayerController] = controllers if controllers is not None else []
+
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(rx_pin, GPIO.IN)  # RX pin
-        
+
         self.serial = serial.Serial(
             port=port,  # Default UART port on GPIO 14/15
             baudrate=baud_rate,
@@ -43,7 +42,7 @@ class SignalReceiver:
         Args:
             wait_s (float): The time to wait between receiving signals, in seconds. Default is 0.1 seconds.
         '''
-        
+
         # receive uart signal and decode it
         received_data = self.serial.read()              #read serial port
         data_left = self.serial.inWaiting()             #check for remaining byte
@@ -63,7 +62,7 @@ class SignalReceiver:
                 if data != self.data:
                     self.data = data
                     controllers_list = data.get('controllers')
-                    
+
                     if controllers_list is not None:
                         for controller_data in controllers_list:
                             controller_id = controller_data.get('controller_id')
@@ -89,7 +88,7 @@ class SignalReceiver:
             data (dict): A dictionary containing the input names and their corresponding values.
         '''
         for controller in self.__controllers:
-            if controller.id == controller_id:
+            if controller.controller_id == controller_id:
                 for input_name, value in data.items():
                     controller.update_input(input_name, value)
                 break

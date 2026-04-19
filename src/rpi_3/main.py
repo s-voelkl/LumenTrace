@@ -1,5 +1,10 @@
+from src.logger.multi_logger import get_logger
+logger = get_logger()
+
 def main():
-    print("RPI 3 says Hello, World!")
+    logger.log("Raspberry Pi 3: Main script running.")
+
 
 if __name__ == "__main__":
     main()
+    

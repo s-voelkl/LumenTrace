@@ -4,3 +4,4 @@ pyserial
 machine
 setuptools
 wheel
+paho-mqtt

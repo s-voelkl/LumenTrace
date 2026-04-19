@@ -1,17 +1,19 @@
-class Controller:
+class PlayerController:
     '''Virtual player controller with multiple inputs (e.g. forward, backward, left, right, special_1, special_2).
     These inputs get updated by the signal receiver based on the received UART signal 
     of the original physical controller via the signal transmitter. 
 
     Returns:
-        Controller: A virtual player controller.
+        PlayerController: A virtual player controller.
     '''
     
     INPUT_MAPPING: dict[str, str] = {
         "adc_0": "forward_press",
         "adc_1": "backward_press",
         "adc_2": "left_press",
-        "adc_3": "right_press"
+        "adc_3": "right_press",
+        "adc_4": "special_1",
+        "adc_5": "special_2"
     }
     
     def __init__(self, controller_id: int):
