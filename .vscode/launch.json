@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: RPI 3 (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.rpi_3.main",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: RPI Pico (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.rpi_pico.main",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}
