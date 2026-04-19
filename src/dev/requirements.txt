@@ -1,3 +1,6 @@
 pytest
 pyserial
-RPi.GPIO
+# RPi.GPIO
+machine
+setuptools
+wheel

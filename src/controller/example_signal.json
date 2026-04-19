@@ -1,0 +1,14 @@
+{
+  "controllers": [
+    {
+      "controller_id": 1,
+      "adc_0": 0,
+      "adc_1": 1
+    },
+    {
+      "controller_id": 2,
+      "adc_0": 1,
+      "adc_1": 0
+    }
+  ]
+}
