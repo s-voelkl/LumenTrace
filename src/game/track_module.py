@@ -1,7 +1,7 @@
-# class TrackModule
-# attr: length (float), List of Lines
+from .line import Line
+
 class TrackModule:
-    def __init__(self, length: float = 0, lines: list[int] = []):
+    def __init__(self, length: float = 0, lines: list[Line] = []):
         self.__length = length if length >= 0 else 0
         self.__lines = lines if lines else []
 
@@ -11,5 +11,5 @@ class TrackModule:
         return self.__length
 
     @property
-    def lines(self) -> list[int]:
+    def lines(self) -> list[Line]:
         return self.__lines

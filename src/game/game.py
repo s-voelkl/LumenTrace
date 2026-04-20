@@ -1,20 +1,23 @@
+from src.controller.signal_receiver import SignalReceiver
 from .player import Player
 from .settings import Settings
 from .track_module import TrackModule
 from logger.multi_logger import get_logger
 
 logger = get_logger()
-
+    
 class Game:    
     def __init__(self,
         players: list[Player],
         settings: Settings,
-        track_modules: list[TrackModule]):
+        track_modules: list[TrackModule],
+        signal_receiver: SignalReceiver):
         self.__players = players if players else []
         self.__settings = settings
         self.__track_modules = track_modules if track_modules else []
         self.__length = sum([tm.length for tm in track_modules]) if track_modules else 0
-        
+        self.__signal_receiver = signal_receiver
+
         logger.log_json({
             "event": "game_initialized",
             "players": [player.name for player in self.__players],
@@ -29,23 +32,64 @@ class Game:
         # TODO: start the game loop (multithreaded?)
         
         
-    def __fetch_data(self):
-        # fetch current data from the player inputs (player controllers)
-        for player in self.__players:
-            pass
-        # TODO: fetch player inputs
-        
-    def __display(self):
+    def fetch_data(self):
+        self.__signal_receiver.receive_signal()
+
+    def display(self):
         # display current game state to lcd, led, log, ...
         # TODO: implement display logic
-        self.__log()
+        self.log()
         pass
     
-    def __log(self):
-        # log current game state per cycle
-        # TODO: log every possible metric (e.g. player positions, controller inputs, ...)
-        pass
-    
+    def log(self):
+        
+        
+        logger.log_json({
+            "event": "game_state",
+            "players": [{
+                "name": player.name,
+                "wins": player.wins,
+                "losses": player.losses,
+                "vehicle": {
+                    "position": player.vehicle.position,
+                    "lane": player.vehicle.lane,
+                    "speed": player.vehicle.speed,
+                    "acceleration": player.vehicle.acceleration,
+                    "round": player.vehicle.round,
+                    "style": player.vehicle.style
+                },
+                "controller": {
+                    "forward_press": player.controller.forward_press,
+                    "backward_press": player.controller.backward_press,
+                    "left_press": player.controller.left_press,
+                    "right_press": player.controller.right_press,
+                    "special_1": player.controller.special_1,
+                    "special_2": player.controller.special_2
+                },                    
+            } for player in self.__players],
+            "track_modules": [{
+                "length": tm.length,
+                "lines": [{
+                    "length": line.length,
+                    "lane_id": line.lane_id,
+                    "driving_profile": {
+                        "max_speed": line.profile.max_speed,
+                        "min_speed": line.profile.min_speed,
+                        "max_acceleration": line.profile.max_acceleration,
+                        "max_deceleration": line.profile.max_deceleration,
+                        "lane_change_allowed": line.profile.lane_change_allowed
+                    }
+                } for line in tm.lines]
+            } for tm in self.__track_modules],
+            "settings": {
+                "max_speed": self.settings.max_speed,
+            },
+            "length": self.length,
+            "signal_receiver": { 
+                "data": self.__signal_receiver.data.items()
+            }
+        })
+                        
     # Getters
     @property
     def players(self) -> list[Player]:
