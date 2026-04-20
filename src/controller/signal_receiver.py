@@ -1,6 +1,5 @@
 import json
 import re
-import time
 
 from controller.player_controller import PlayerController
 from typing import List
@@ -38,8 +37,49 @@ class SignalReceiver:
             timeout=1
         )
         self.data: dict = {}
+        
+    def receive_signal(self):
+        '''
+        Receives the UART signal, decodes it, and updates the corresponding controllers.
+        See controller/example_signal.json for the expected format of the received signal.
+        '''
 
-    def receive_signal(self, wait_s: float = 0.1):
+        try:
+            # blocks until new line or timeout
+            line = self.serial.readline()
+
+            if not line:
+                # timeout reached
+                return
+
+            decoded_line = line.decode("utf-8").strip()
+
+            if not decoded_line:
+                return
+
+            # JSON parse
+            data = json.loads(decoded_line)
+
+            # only update controllers if data changed
+            if data != self.data:
+                self.data = data
+
+                controllers_list = data.get("controllers", [])
+                for controller_data in controllers_list:
+                    controller_id = controller_data.get("controller_id")
+                    if controller_id is not None:
+                        self.__update_controller(controller_id, controller_data)
+                        logger.log(
+                            f"Updated controller {controller_id} with data: {controller_data}"
+                        )
+
+        except json.JSONDecodeError as e:
+            logger.log(f"JSON decode error: {e}")
+
+        except Exception as e:
+            logger.log(f"Receiver error: {e}")
+
+    def receive_signal_old(self):
         '''Receives the UART signal, decodes it, and updates the corresponding controllers.
         See controller/example_signal.json for the expected format of the received signal.
         
@@ -78,9 +118,7 @@ class SignalReceiver:
                 logger.log(f"JSON decode error: {e}")
         else:
             logger.log("No valid JSON object found in received data.")
-            
-        time.sleep(wait_s)
-    
+                
     def __update_controller(self, controller_id: int, data: dict):
         '''Updates the corresponding controller with the received signal.
 

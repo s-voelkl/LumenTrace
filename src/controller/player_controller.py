@@ -20,13 +20,18 @@ class PlayerController:
         "adc_5": "special_2"
     }
     
-    def __init__(self, controller_id: int):
+    # static controller count to generate default controller ids
+    __controller_count = 0
+    
+    def __init__(self):
         '''Initializes the controller with a unique identifier and an empty dictionary for inputs.
 
         Args:
             controller_id (int): The unique identifier for the controller.
         '''
-        self.__controller_id = controller_id
+        self.__controller_count += 1
+        self.__controller_id = self.__controller_count
+
         self.__forward_press: float = 0
         self.__backward_press: float = 0
         self.__left_press: float = 0
@@ -34,6 +39,9 @@ class PlayerController:
         self.__special_1: float = 0
         self.__special_2: float = 0
 
+
+    def __del__(self):
+        PlayerController.__controller_count -= 1
         
     def update_input(self, input_name: str, value):
         '''Updates the corresponding input value based on the received signal.

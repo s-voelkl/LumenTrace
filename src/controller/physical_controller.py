@@ -9,8 +9,11 @@ class PhysicalController:
         controller_id (int): The unique identifier for the controller.
         adc_pins (list[int]): A list of GPIO pin numbers for the ADC pins.
     '''
+    
+    # static controller count to generate default controller ids
+    __controller_count = 0
 
-    def __init__(self, controller_id: int, adc_pins: list[int]):
+    def __init__(self, adc_pins: list[int]):
         '''Initializes the physical controller with a unique identifier and a list of ADC pins.
 
         Args:
@@ -19,12 +22,17 @@ class PhysicalController:
                 E.g., [26, 27] for ADC0 and ADC1 on Raspberry Pi Pico.
         '''
         
-        self.controller_id = controller_id
+        self.__controller_count += 1
+        self.controller_id = self.__controller_count
         self.adc_controllers: list[ma.ADC] = []
         
         # multiple pins allowed per controller, e.g. for multiple sensors
         for pin in adc_pins:
             self.adc_controllers.append(ma.ADC(pin))
+            
+    def __del__(self):
+        # decrement controller count when a controller instance is deleted
+        PhysicalController.__controller_count -= 1
                     
     def read_values(self) -> dict[str, int]:
         """Read all ADC values from the controller's pins.

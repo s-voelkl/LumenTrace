@@ -55,5 +55,5 @@ class SignalTransmitter:
         data = {"controllers": controllers_data}
         
         # send via UART as JSON string
-        self.serial.write(json.dumps(data).encode('utf-8'))
+        self.serial.write((json.dumps(data) + "\n").encode())
         time.sleep(sleep_s)
