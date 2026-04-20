@@ -33,7 +33,7 @@ class SignalTransmitter:
             bits=bits, parity=parity, stop=stop)
         self.controllers: list[PhysicalController] = controllers if controllers is not None else []
 
-    def __transmit_signal(self, sleep_s: float = 0.05):
+    def transmit_signal(self, sleep_s: float = 0.05):
         '''Transmits the current values of the physical controllers as a JSON object via UART.
         Even if no change in the values of the physical controllers is detected, 
         the current values will be transmitted at regular intervals.
