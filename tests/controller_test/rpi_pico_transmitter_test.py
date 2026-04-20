@@ -18,4 +18,4 @@ def test_signal_transmitter_transmit_signal():
     transmitter = SignalTransmitter(controllers=[physical_controller_1])
 
     while True:
-        transmitter.__transmit_signal(0.01)
+        transmitter.transmit_signal(0.01)
