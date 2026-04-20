@@ -1,6 +1,5 @@
 from src.controller.signal_receiver import SignalReceiver
 from src.controller.player_controller import PlayerController
-import json
 
 def test_signal_receiver_initialization():
     controller_1 = PlayerController(controller_id=1)
