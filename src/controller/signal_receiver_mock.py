@@ -20,7 +20,7 @@ class SignalReceiverMock(SignalReceiverInterface):
         data = {"controller_id": controller.controller_id}
 
         for adc_index, input_name in enumerate(controller.INPUT_MAPPING.keys()):
-            data[f"adc_{adc_index}"] = getattr(controller, input_name)
+            data[f"adc_{adc_index}"] = getattr(controller, controller.INPUT_MAPPING[input_name])
 
         return data
 

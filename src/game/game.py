@@ -1,3 +1,7 @@
+import threading
+import time
+from collections.abc import Callable
+
 from src.controller.signal_receiver_interface import SignalReceiverInterface
 from .lane import Lane
 from .player import Player
@@ -20,6 +24,8 @@ class Game:
         self.__length = sum([tm.length for tm in track_modules]) if track_modules else 0
         self.__signal_receiver = signal_receiver
         self.__lanes = lanes if lanes else []
+        self.__stop_event = threading.Event()
+        self.__threads: list[threading.Thread] = []
 
         logger.log_json({
             "event": "game_initialized",
@@ -28,25 +34,78 @@ class Game:
             "track_length": self.__length
         })
         
-    def start_game(self):
+    def start_game(
+        self,
+        fetch_interval_s: float = 0.01,
+        display_interval_s: float = 0.02,
+        game_tick_interval_s: float = 0.02,
+    ):
         logger.log_json({
             "event": "game_started",
         })
-        # multithreaded game loop for the folling methods: 
-        # - fetch data, this automatically updates the player controller with relevant data
-        # - display, this displays the current game state to the lcd, led, log, ...
-        # - main game loop, every 0.02 seconds.
-        
-        
-        
-        
+
+        # Each worker owns one responsibility so timing stays predictable and easy to review.
+        self.__stop_event.clear()
+        self.__threads = [
+            threading.Thread(
+                target=self.__run_periodic_loop,
+                name="GameFetchThread",
+                args=(self.fetch_data, fetch_interval_s),
+                daemon=False,
+            ),
+            threading.Thread(
+                target=self.__run_periodic_loop,
+                name="GameDisplayThread",
+                args=(self.display, display_interval_s),
+                daemon=False,
+            ),
+            threading.Thread(
+                target=self.__run_periodic_loop,
+                name="GameTickThread",
+                args=(self.__game_loop, game_tick_interval_s),
+                daemon=False,
+            ),
+        ]
+
+        for thread in self.__threads:
+            thread.start()
+
+        try:
+            for thread in self.__threads:
+                thread.join()
+        except KeyboardInterrupt:
+            self.stop_game()
+            for thread in self.__threads:
+                thread.join()
+
+    def stop_game(self):
+        self.__stop_event.set()
+
+    def __run_periodic_loop(self, action: Callable[[], None], interval_s: float) -> None:
+        # Use a monotonic clock so the loop keeps its cadence even if wall time changes.
+        next_run = time.perf_counter()
+        while not self.__stop_event.is_set():
+            next_run += interval_s
+            action()
+
+            remaining_s = next_run - time.perf_counter()
+            if remaining_s > 0:
+                self.__stop_event.wait(remaining_s)
+            else:
+                # If the action took longer than the requested cadence, continue immediately.
+                next_run = time.perf_counter()
+
     def fetch_data(self):
         self.__signal_receiver.receive_signal()
 
     def display(self):
-        # display current game state to lcd, led, log, ...
+        # Display current game state to lcd, led, log, ...
         # TODO: implement display logic
         self.log_fully()
+        pass
+
+    def __game_loop(self):
+        # Keep the game tick on a fixed cadence so future physics and scoring logic can be added here.
         pass
     
     def log_fully(self):       

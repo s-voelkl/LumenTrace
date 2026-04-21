@@ -29,8 +29,8 @@ class PlayerController:
         Args:
             controller_id (int): The unique identifier for the controller.
         '''
-        self.__controller_count += 1
-        self.__controller_id = self.__controller_count
+        PlayerController.__controller_count += 1
+        self.__controller_id = PlayerController.__controller_count
 
         self.__forward_press: float = 0
         self.__backward_press: float = 0
@@ -53,9 +53,9 @@ class PlayerController:
         
         # mapping of keys (e.g. adc_0) to internal names (e.g. forward_press)
         internal_name = self.INPUT_MAPPING.get(input_name)
-        if internal_name and value is not None and value != getattr(self, f"__{internal_name}"):
-            setattr(self, f"__{internal_name}", value)
-            logger.log(f"Received signal update for controller {self.__controller_id}: {input_name} -> {internal_name} with value {value}")
+        if internal_name and value is not None:
+            setattr(self, f"_{type(self).__name__}__{internal_name}", value)
+            # logger.log(f"Received signal update for controller {self.__controller_id}: {input_name} -> {internal_name} with value {value}")
         else:
             logger.log(f"Warning: Received unmapped input name '{input_name}' for controller {self.__controller_id}.")
             

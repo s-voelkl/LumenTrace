@@ -111,13 +111,7 @@ def simple_game_setup():
     )
     
     # start game
-    game.start_game()
-    
-    while True:
-        game.fetch_data()
-        game.display()
-    
-    # start multithreading for game loop, display, fetch data.
+    game.start_game(fetch_interval_s=1, display_interval_s=1, game_tick_interval_s=2)
     
 
 def main():
