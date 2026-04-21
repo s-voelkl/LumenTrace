@@ -2,13 +2,10 @@
 from src.controller.player_controller import PlayerController
 from src.controller.signal_receiver_mock import SignalReceiverMock
 from src.game import *
-from src.game.settings import *
 from src.game.lane import Lane
 from src.game.track_module import TrackType
 
 # test for basic game setup
-
-settings = get_settings(max_speed=101.0)
 
 def test_game_setup():
     # player
@@ -69,8 +66,7 @@ def test_game_setup():
     assert track_module_1.track_type == TrackType.STRAIGHT
     
     # game
-    settings = get_settings()
-    assert settings is not None
+    settings = Settings(max_speed=max_speed)
     assert settings.max_speed == max_speed
     
     game: Game = Game(

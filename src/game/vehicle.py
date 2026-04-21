@@ -1,6 +1,3 @@
-# vehicle class 
-# attr: position (float), lane (int), speed (float), acceleration (float), round (int), VehicleStyle
-
 from src.game.lane import Lane
 
 class Vehicle:

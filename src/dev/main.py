@@ -8,12 +8,13 @@ from src.game.vehicle import Vehicle
 from src.game.track_module import TrackModule, TrackType
 from src.game.line import Line
 from src.game.driving_profile import DrivingProfile
-from src.game.settings import *
-
-logger = get_logger()
-settings = get_settings(max_speed=100.0)
+from src.game.settings import Settings
 
 def simple_game_setup():
+    # settings
+    max_speed = 100.0
+    settings = Settings(max_speed=max_speed)
+    
     # lanes
     lane_1 = Lane()
     lane_2 = Lane()
@@ -99,11 +100,14 @@ def simple_game_setup():
         )
     ]
     
+    # settings
+    settings = Settings(max_speed=max_speed)
+    
     # game
     game = Game(
         players=[player_1, player_2],
         track_modules=track_modules,
-        settings=settings, # type: ignore
+        settings=settings, 
         signal_receiver=signal_receiver,
         lanes=[lane_1, lane_2]
     )

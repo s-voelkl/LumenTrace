@@ -106,7 +106,9 @@ class Game:
 
     def __game_loop(self):
         # Keep the game tick on a fixed cadence so future physics and scoring logic can be added here.
-        pass
+        
+        for vehicle in [player.vehicle for player in self.__players]:
+            vehicle.accelerate(self.__settings.max_speed)
     
     def log_fully(self):       
         logger.log_json({
