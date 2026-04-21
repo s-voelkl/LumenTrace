@@ -1,46 +1,117 @@
 from src.controller.signal_receiver_mock import SignalReceiverMock
+from src.game.lane import Lane
 from src.logger.multi_logger import get_logger
 from src.game.game import Game
 from src.controller.player_controller import PlayerController
 from src.game.player import Player
 from src.game.vehicle import Vehicle
-from src.game.track_module import TrackModule
+from src.game.track_module import TrackModule, TrackType
 from src.game.line import Line
 from src.game.driving_profile import DrivingProfile
 from src.game.settings import Settings
 
 logger = get_logger()
 
-def main():
-    # player
-    player_controller_1 = PlayerController()
-    vehicle_1 = Vehicle()
+def simple_game_setup():
+    # lanes
+    lane_1 = Lane()
+    lane_2 = Lane()
+
+    # players
     player_1 = Player(
-        controller=player_controller_1,
-        vehicle=vehicle_1
+        controller=PlayerController(),
+        vehicle=Vehicle(lane=lane_1)
+    )
+    player_2 = Player(
+        controller=PlayerController(),
+        vehicle=Vehicle(lane=lane_2)
     )
     
     # signal receiver
-    signal_receiver_1 = SignalReceiverMock(controllers=[player_controller_1])
+    signal_receiver = SignalReceiverMock(controllers=[player_1.controller, player_2.controller])
     
-    # track
-    max_speed = 100
-    line_1 = Line(driving_profile=DrivingProfile(max_speed=max_speed), length=50, lane_id=0)
-    line_2 = Line(driving_profile=DrivingProfile(max_speed=max_speed * 0.9), length=45, lane_id=1)
-    track_module_1 = TrackModule(length=100, lines=[line_1, line_2])
+    # track with 5 modules and different driving profiles
+    track_modules: list[TrackModule] = [
+        TrackModule(
+            track_type=TrackType.STRAIGHT,
+            length=50,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=100),
+                    lane=lane_1,
+                    length=50,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=90),
+                    lane=lane_2,
+                    length=50
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.CURVE_LEFT,
+            length=30,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=65, max_acceleration=7),
+                    lane=lane_1,
+                    length=28,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=75, max_acceleration=8),
+                    lane=lane_2,
+                    length=32
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.CURVE_RIGHT,
+            length=50,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=85, max_acceleration=9),
+                    lane=lane_1,
+                    length=55,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=75, max_acceleration=8),
+                    lane=lane_2,
+                    length=45
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.LOOPING,
+            length=80,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(min_speed=70),
+                    lane=lane_1,
+                    length=80,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(min_speed=70),
+                    lane=lane_2,
+                    length=80
+                ),
+            ],
+        )
+    ]
+
+    # settings
+    settings = Settings(max_speed=100)
     
     # game
-    settings = Settings(max_speed=max_speed)
-    game: Game = Game(
-        players=[player_1],
+    game = Game(
+        players=[player_1, player_2],
+        track_modules=track_modules,
         settings=settings,
-        track_modules=[track_module_1],
-        signal_receiver=signal_receiver_1
+        signal_receiver=signal_receiver,
+        lanes=[lane_1, lane_2]
     )
-    
-    # start game
-    game.start_game()
-    game.log()
+
+def main():
+    simple_game_setup()
 
 if __name__ == "__main__":
     print("Running on dev pc.")

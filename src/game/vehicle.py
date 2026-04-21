@@ -1,11 +1,13 @@
 # vehicle class 
 # attr: position (float), lane (int), speed (float), acceleration (float), round (int), VehicleStyle
 
+from src.game.lane import Lane
+
 class Vehicle:
-    def __init__(self, position: float = 0, lane: int = 0, speed: float = 0, acceleration: float = 0, 
+    def __init__(self, lane: Lane, position: float = 0, speed: float = 0, acceleration: float = 0, 
             round: int = 0, style: list[int] = []):
+        self.__lane = lane 
         self.__position = position if position >= 0 else 0
-        self.__lane = lane if lane >= 0 else 0
         self.__speed = speed if speed >= 0 else 0
         self.__acceleration = acceleration if acceleration >= 0 else 0
         self.__round = round if round >= 0 else 0
@@ -17,7 +19,7 @@ class Vehicle:
         return self.__position
 
     @property
-    def lane(self) -> int:
+    def lane(self) -> Lane:
         return self.__lane
 
     @property

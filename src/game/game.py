@@ -1,4 +1,5 @@
 from src.controller.signal_receiver_interface import SignalReceiverInterface
+from .lane import Lane
 from .player import Player
 from .settings import Settings
 from .track_module import TrackModule
@@ -11,12 +12,14 @@ class Game:
         players: list[Player],
         settings: Settings,
         track_modules: list[TrackModule],
-        signal_receiver: SignalReceiverInterface):
+        signal_receiver: SignalReceiverInterface,
+        lanes: list[Lane]):
         self.__players = players if players else []
         self.__settings = settings
         self.__track_modules = track_modules if track_modules else []
         self.__length = sum([tm.length for tm in track_modules]) if track_modules else 0
         self.__signal_receiver = signal_receiver
+        self.__lanes = lanes if lanes else []
 
         logger.log_json({
             "event": "game_initialized",
@@ -41,18 +44,19 @@ class Game:
         self.log()
         pass
     
-    def log(self):
-        
-        
+    def log(self):       
         logger.log_json({
             "event": "game_state",
+            "lanes": [{
+                "lane_id": lane.lane_id
+            } for lane in self.__lanes],
             "players": [{
                 "name": player.name,
                 "wins": player.wins,
                 "losses": player.losses,
                 "vehicle": {
                     "position": player.vehicle.position,
-                    "lane": player.vehicle.lane,
+                    "lane": player.vehicle.lane.lane_id,
                     "speed": player.vehicle.speed,
                     "acceleration": player.vehicle.acceleration,
                     "round": player.vehicle.round,
@@ -71,7 +75,7 @@ class Game:
                 "length": tm.length,
                 "lines": [{
                     "length": line.length,
-                    "lane_id": line.lane_id,
+                    "lane_id": line.lane.lane_id,
                     "driving_profile": {
                         "max_speed": line.driving_profile.max_speed,
                         "min_speed": line.driving_profile.min_speed,
@@ -110,3 +114,7 @@ class Game:
     @property
     def signal_receiver(self) -> SignalReceiverInterface:
         return self.__signal_receiver
+    
+    @property
+    def lanes(self) -> list[Lane]:
+        return self.__lanes

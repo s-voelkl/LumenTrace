@@ -3,7 +3,7 @@
 
 class DrivingProfile:
     def __init__(self, max_speed: float = 100.0, min_speed: float = -100.0, max_acceleration: float = 10.0, 
-            min_acceleration: float = -10.0, lane_change_allowed: bool = True):
+            min_acceleration: float = -10.0, lane_change_allowed: bool = False):
         self.__max_speed = max_speed if max_speed > 0 else 100.0
         self.__min_speed = min_speed 
         self.__max_acceleration = max_acceleration if max_acceleration >= 0 else 10.0
