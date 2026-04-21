@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.2.1",
   "configurations": [
     {
       "name": "Python: RPI 3 (module)",
@@ -15,6 +15,24 @@
       "type": "debugpy",
       "request": "launch",
       "module": "src.rpi_pico.main",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Development (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.dev.main",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Test (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tests.test_main",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true
