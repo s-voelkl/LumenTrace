@@ -3,6 +3,7 @@ from src.controller.player_controller import PlayerController
 from src.controller.signal_receiver_mock import SignalReceiverMock
 from src.game import *
 from src.game.lane import Lane
+from src.game.track_module import TrackType
 
 # test for basic game setup
 
@@ -59,9 +60,10 @@ def test_game_setup():
     assert line_2.length == line_2_length
     
     track_module_1_length = 50
-    track_module_1 = TrackModule(length=track_module_1_length, lines=[line_1, line_2])
+    track_module_1 = TrackModule(length=track_module_1_length, lines=[line_1, line_2], track_type=TrackType.STRAIGHT)
     assert track_module_1.length == track_module_1_length
     assert track_module_1.lines == [line_1, line_2]
+    assert track_module_1.track_type == TrackType.STRAIGHT
     
     # game
     settings = Settings(max_speed=max_speed)

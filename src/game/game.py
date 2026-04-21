@@ -32,7 +32,12 @@ class Game:
         logger.log_json({
             "event": "game_started",
         })
-        # TODO: start the game loop (multithreaded?)
+        # multithreaded game loop for the folling methods: 
+        # - fetch data, this automatically updates the player controller with relevant data
+        # - display, this displays the current game state to the lcd, led, log, ...
+        # - main game loop, every 0.02 seconds.
+        
+        
         
         
     def fetch_data(self):
@@ -41,10 +46,10 @@ class Game:
     def display(self):
         # display current game state to lcd, led, log, ...
         # TODO: implement display logic
-        self.log()
+        self.log_fully()
         pass
     
-    def log(self):       
+    def log_fully(self):       
         logger.log_json({
             "event": "game_state",
             "lanes": [{
@@ -72,6 +77,7 @@ class Game:
                 },                    
             } for player in self.__players],
             "track_modules": [{
+                "track_type": tm.track_type.value,
                 "length": tm.length,
                 "lines": [{
                     "length": line.length,

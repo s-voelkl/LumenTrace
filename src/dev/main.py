@@ -109,6 +109,16 @@ def simple_game_setup():
         signal_receiver=signal_receiver,
         lanes=[lane_1, lane_2]
     )
+    
+    # start game
+    game.start_game()
+    
+    while True:
+        game.fetch_data()
+        game.display()
+    
+    # start multithreading for game loop, display, fetch data.
+    
 
 def main():
     simple_game_setup()
