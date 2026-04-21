@@ -7,3 +7,12 @@ class Settings:
     @property
     def max_speed(self) -> float:
         return self.__max_speed
+    
+settings: Settings | None = None
+
+def get_settings(max_speed: float = 100.0):
+    '''Initializes the global settings object with the provided parameters.'''
+    global settings
+    if settings is None:
+        settings = Settings(max_speed)
+    return settings

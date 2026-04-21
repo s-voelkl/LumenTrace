@@ -2,10 +2,13 @@
 from src.controller.player_controller import PlayerController
 from src.controller.signal_receiver_mock import SignalReceiverMock
 from src.game import *
+from src.game.settings import *
 from src.game.lane import Lane
 from src.game.track_module import TrackType
 
 # test for basic game setup
+
+settings = get_settings(max_speed=101.0)
 
 def test_game_setup():
     # player
@@ -40,10 +43,10 @@ def test_game_setup():
     assert signal_receiver_1.controllers == [player_controller_1]   
      
     # track
-    max_speed = 100
-    driving_profile_1 = DrivingProfile(max_speed=max_speed)
+    max_speed = 101
+    driving_profile_1 = DrivingProfile(max_speed=max_speed, min_speed=-max_speed)
     assert driving_profile_1.lane_change_allowed == False
-    assert driving_profile_1.min_speed == -100
+    assert driving_profile_1.min_speed == -max_speed
     assert driving_profile_1.max_speed == max_speed
     assert driving_profile_1.max_acceleration == 10
     assert driving_profile_1.min_acceleration == -10
@@ -66,7 +69,8 @@ def test_game_setup():
     assert track_module_1.track_type == TrackType.STRAIGHT
     
     # game
-    settings = Settings(max_speed=max_speed)
+    settings = get_settings()
+    assert settings is not None
     assert settings.max_speed == max_speed
     
     game: Game = Game(
