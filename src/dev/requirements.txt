@@ -5,3 +5,4 @@ machine
 setuptools
 wheel
 paho-mqtt
+pytest-cov
