@@ -1,7 +1,7 @@
+from src.controller.signal_receiver_mock import SignalReceiverMock
 from src.logger.multi_logger import get_logger
 from src.game.game import Game
 from src.controller.player_controller import PlayerController
-from src.controller.signal_receiver import SignalReceiver
 from src.game.player import Player
 from src.game.vehicle import Vehicle
 from src.game.track_module import TrackModule
@@ -21,7 +21,7 @@ def main():
     )
     
     # signal receiver
-    signal_receiver_1 = SignalReceiver(controllers=[player_controller_1])
+    signal_receiver_1 = SignalReceiverMock(controllers=[player_controller_1])
     
     # track
     max_speed = 100

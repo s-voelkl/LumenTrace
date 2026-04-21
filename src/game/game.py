@@ -1,8 +1,8 @@
-from src.controller.signal_receiver import SignalReceiver
+from src.controller.signal_receiver_interface import SignalReceiverInterface
 from .player import Player
 from .settings import Settings
 from .track_module import TrackModule
-from logger.multi_logger import get_logger
+from src.logger.multi_logger import get_logger
 
 logger = get_logger()
     
@@ -11,7 +11,7 @@ class Game:
         players: list[Player],
         settings: Settings,
         track_modules: list[TrackModule],
-        signal_receiver: SignalReceiver):
+        signal_receiver: SignalReceiverInterface):
         self.__players = players if players else []
         self.__settings = settings
         self.__track_modules = track_modules if track_modules else []
@@ -73,11 +73,11 @@ class Game:
                     "length": line.length,
                     "lane_id": line.lane_id,
                     "driving_profile": {
-                        "max_speed": line.profile.max_speed,
-                        "min_speed": line.profile.min_speed,
-                        "max_acceleration": line.profile.max_acceleration,
-                        "max_deceleration": line.profile.max_deceleration,
-                        "lane_change_allowed": line.profile.lane_change_allowed
+                        "max_speed": line.driving_profile.max_speed,
+                        "min_speed": line.driving_profile.min_speed,
+                        "max_acceleration": line.driving_profile.max_acceleration,
+                        "min_acceleration": line.driving_profile.min_acceleration,
+                        "lane_change_allowed": line.driving_profile.lane_change_allowed
                     }
                 } for line in tm.lines]
             } for tm in self.__track_modules],
@@ -86,7 +86,7 @@ class Game:
             },
             "length": self.length,
             "signal_receiver": { 
-                "data": self.__signal_receiver.data.items()
+                "data": dict(self.__signal_receiver.get_data())
             }
         })
                         
@@ -106,3 +106,7 @@ class Game:
     @property
     def length(self) -> float:
         return self.__length
+    
+    @property
+    def signal_receiver(self) -> SignalReceiverInterface:
+        return self.__signal_receiver

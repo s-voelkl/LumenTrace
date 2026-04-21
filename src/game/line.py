@@ -1,10 +1,10 @@
 from .driving_profile import DrivingProfile
 
-class Line:
+class Line:    
     def __init__(self, driving_profile: DrivingProfile, length: float = 0, lane_id: int = 0):
         self.__length = length if length >= 0 else 0
         self.__lane_id = lane_id if lane_id >= 0 else 0
-        self.__profile = driving_profile
+        self.__driving_profile = driving_profile
 
     # Getters
     @property
@@ -16,5 +16,5 @@ class Line:
         return self.__lane_id
 
     @property
-    def profile(self) -> DrivingProfile:
-        return self.__profile
+    def driving_profile(self) -> DrivingProfile:
+        return self.__driving_profile

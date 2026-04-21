@@ -1,16 +1,17 @@
 import json
 import re
 
-from controller.player_controller import PlayerController
+from .player_controller import PlayerController
 from typing import List
 import serial
 import RPi.GPIO as GPIO
+from .signal_receiver_interface import SignalReceiverInterface
 from src.logger.multi_logger import get_logger
 
 logger = get_logger()
 
 
-class SignalReceiver:
+class SignalReceiver(SignalReceiverInterface):
     '''Handles the incoming UART-signal of the transmitter for further processing.'''
     __BAUD_RATE = 115200
 
@@ -36,7 +37,7 @@ class SignalReceiver:
             bytesize=bits,
             timeout=1
         )
-        self.data: dict = {}
+        self.__data: dict = {}
         
     def receive_signal(self):
         '''
@@ -58,13 +59,13 @@ class SignalReceiver:
                 return
 
             # JSON parse
-            data = json.loads(decoded_line)
+            incoming_data = json.loads(decoded_line)
 
             # only update controllers if data changed
-            if data != self.data:
-                self.data = data
+            if incoming_data != self.__data:
+                self.__data = incoming_data
 
-                controllers_list = data.get("controllers", [])
+                controllers_list = incoming_data.get("controllers", [])
                 for controller_data in controllers_list:
                     controller_id = controller_data.get("controller_id")
                     if controller_id is not None:
@@ -103,8 +104,8 @@ class SignalReceiver:
                 data = json.loads(json_matches[-1])
 
                 # update controllers if data changed.
-                if data != self.data:
-                    self.data = data
+                if data != self.__data:
+                    self.__data = data
                     controllers_list = data.get('controllers')
 
                     if controllers_list is not None:
@@ -131,3 +132,8 @@ class SignalReceiver:
                 for input_name, value in data.items():
                     controller.update_input(input_name, value)
                 break
+            
+    # Getters
+    def get_data(self) -> dict:
+        '''Returns the last received data as a dictionary.'''
+        return self.__data
