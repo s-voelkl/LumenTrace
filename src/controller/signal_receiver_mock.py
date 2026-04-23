@@ -29,7 +29,7 @@ class SignalReceiverMock(SignalReceiverInterface):
         
         for controller in self.__controllers:
             for input_name in controller.INPUT_MAPPING.keys():
-                value = 0.5 + 0.5 * random.random()
+                value = 50 + 50 * random.random()
                 controller.update_input(input_name, value)
 
         self.__data["controllers"] = [self.__controller_data(controller) for controller in self.__controllers]

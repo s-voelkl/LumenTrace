@@ -42,9 +42,11 @@ class Game:
         self.__length = sum([tm.length for tm in track_modules]) if track_modules else 0
         self.__signal_receiver = signal_receiver
         self.__lanes = lanes if lanes else []
+        
         self.__stop_event = threading.Event()
         self.__threads: list[threading.Thread] = []
         self.__game_tick_interval_s = 0.02
+        
         self.__lane_change_states: dict[int, LaneChangeState] = {}
         self.__respawn_states: dict[int, RespawnState] = {}
         self.__inactive_controllers: set[int] = set()

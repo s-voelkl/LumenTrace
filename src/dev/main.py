@@ -82,22 +82,22 @@ def simple_game_setup():
                 ),
             ],
         ),
-        TrackModule(
-            track_type=TrackType.LOOPING,
-            part_length=80,
-            lines=[
-                Line(
-                    driving_profile=DrivingProfile(min_speed=70),
-                    lane=lane_1,
-                    line_length=80,
-                ),
-                Line(
-                    driving_profile=DrivingProfile(min_speed=70),
-                    lane=lane_2,
-                    line_length=80
-                ),
-            ],
-        )
+        # TrackModule(
+        #     track_type=TrackType.LOOPING,
+        #     part_length=80,
+        #     lines=[
+        #         Line(
+        #             driving_profile=DrivingProfile(min_speed=70),
+        #             lane=lane_1,
+        #             line_length=80,
+        #         ),
+        #         Line(
+        #             driving_profile=DrivingProfile(min_speed=70),
+        #             lane=lane_2,
+        #             line_length=80
+        #         ),
+        #     ],
+        # )
     ]
     
     # settings
@@ -113,7 +113,7 @@ def simple_game_setup():
     )
     
     # start game
-    game.start_game(fetch_interval_s=1, display_interval_s=1, game_tick_interval_s=2)
+    game.start_game(fetch_interval_s=0.02, display_interval_s=0.02, game_tick_interval_s=0.02)
     
 
 def main():
