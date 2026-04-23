@@ -45,6 +45,7 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 ### Lane Change (Timed Multi-Hop)
 
 - Lane changes are triggered by `special_1` using a rising-edge trigger and a configurable threshold (`special_1_threshold`).
+- The lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`.
 - Lane changes are only allowed on intersection modules where the current line profile has `lane_change_allowed = True`.
 - A lane change is executed as one or more timed adjacent hops:
   - Example rightward: `1 -> 2 -> 3 -> 4`

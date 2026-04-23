@@ -165,6 +165,45 @@ def test_game_lane_change_without_middle_lane(monkeypatch):
     assert vehicle.position == 30
 
 
+def test_game_lane_change_blocked_when_profile_disallows(monkeypatch):
+    left_lane = Lane()
+    right_lane = Lane()
+    controller = PlayerController()
+    vehicle = Vehicle(lane=left_lane, position=20)
+    player = Player(controller=controller, vehicle=vehicle)
+    signal_receiver = SignalReceiverMock(controllers=[controller])
+
+    track_module = TrackModule(
+        track_type=TrackType.INTERSECTION,
+        part_length=50,
+        lines=[
+            Line(driving_profile=DrivingProfile(lane_change_allowed=False), lane=left_lane, line_length=40),
+            Line(driving_profile=DrivingProfile(lane_change_allowed=True), lane=right_lane, line_length=60),
+        ],
+    )
+
+    game = Game(
+        players=[player],
+        settings=Settings(max_speed=101, special_1_threshold=0.5, lane_change_time=500.0),
+        track_modules=[track_module],
+        signal_receiver=signal_receiver,
+        lanes=[left_lane, right_lane],
+    )
+
+    controller.update_input("adc_1", 1.0)
+    times = iter([1000.0, 1600.0])
+    monkeypatch.setattr("src.game.game.time.perf_counter", lambda: next(times))
+
+    run_game_tick_for_test(game)
+    assert vehicle.lane == left_lane
+    assert vehicle.position == 20
+
+    # Even after the hop duration passes, no lane-change state should have been active.
+    run_game_tick_for_test(game)
+    assert vehicle.lane == left_lane
+    assert vehicle.position == 20
+
+
 def test_game_lane_change_across_multiple_lanes(monkeypatch):
     left_lane = Lane()
     middle_lane = Lane()

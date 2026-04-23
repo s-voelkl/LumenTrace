@@ -235,6 +235,11 @@ class Game:
         Returns:
             bool: ``True`` when a valid sequence was created, otherwise ``False``.
         """
+        # Enforce lane-change permission on the source line before building any transition state.
+        source_line = track_module.get_line_for_lane(player.vehicle.lane)
+        if source_line is None or not source_line.driving_profile.lane_change_allowed:
+            return False
+
         lane_sequence = self.__get_lane_sequence_for_module(track_module, player.vehicle.lane)
         if len(lane_sequence) < 2:
             return False
@@ -364,11 +369,9 @@ class Game:
 
                 if current_track_module is not None:
                     current_line = current_track_module.get_line_for_lane(player.vehicle.lane)
-                    # Lane changes are only legal inside intersection modules with an enabled profile.
+                    # driving profile must allow lane changes
                     can_change_lane = (
-                        current_track_module.track_type == TrackType.INTERSECTION
-                        and current_line is not None
-                        and current_line.driving_profile.lane_change_allowed
+                        current_line is not None and current_line.driving_profile.lane_change_allowed
                     )
 
                     # Start asynchronous lane-change progression and skip normal movement this tick.
