@@ -1,4 +1,5 @@
 from enum import Enum
+from .lane import Lane
 from .line import Line
 
 
@@ -18,12 +19,49 @@ class TrackModule:
     def __init__(
         self,
         track_type: TrackType = TrackType.NONE,
-        length: float = 0,
-        lines: list[Line] = [],
+        part_length: float = 0,
+        lines: list[Line] | None = None,
     ):
         self.__track_type = track_type if track_type in self.__track_types else TrackType.NONE
-        self.__length = length if length >= 0 else 0
+        self.__length = part_length if part_length >= 0 else 0
         self.__lines = lines if lines else []
+
+    def get_line_length_for_lane(self, lane: Lane) -> float:
+        '''Returns the line length for the given lane. If the lane is not found, returns 0.0.
+        
+        Args:
+            lane (Lane): The lane for which to get the line length.
+        Returns:
+            float: The line length for the given lane, or 0.0 if the lane is not found.
+        '''
+        for line in self.__lines:
+            if line.lane == lane:
+                return line.length
+        return 0.0
+
+    def get_line_for_lane(self, lane: Lane) -> Line | None:
+        for line in self.__lines:
+            if line.lane == lane:
+                return line
+        return None
+
+    def convert_position_between_lanes(
+        self,
+        source_lane: Lane,
+        target_lane: Lane,
+        source_position: float,
+    ) -> float:
+        source_line = self.get_line_for_lane(source_lane)
+        target_line = self.get_line_for_lane(target_lane)
+
+        if source_line is None or target_line is None:
+            return source_position if source_position >= 0 else 0.0
+
+        if source_line.length <= 0 or target_line.length <= 0:
+            return source_position if source_position >= 0 else 0.0
+
+        percent_through_line = max(0.0, min(source_position / source_line.length, 1.0))
+        return target_line.length * percent_through_line
 
     # Getters
     @property

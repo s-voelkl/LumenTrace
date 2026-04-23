@@ -20,7 +20,56 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 - Track modules with individual driving profiles to simulate different track conditions.
 - Settings for customizing the racing experience.
 
-## Classes
+## Game Mechanics
 
-Game, Track, TrackModule, LEDStrip, DrivingProfile, Settings, Player, Vehicle, Controller
-tbd
+### Acceleration and Friction
+
+- Controller input `forward_press` is mapped to vehicle acceleration each game tick.
+- Friction is applied continuously and reduces current speed by a configurable percentage.
+- Positive and negative movement are supported. If acceleration would invert speed direction in one step, speed is clamped to `0` first to keep transitions stable.
+
+### Speed Update and Limits
+
+- Speed is updated every tick as:
+  - `speed += acceleration * acceleration_multiplier`
+- Speed is clamped to `[-max_speed, +max_speed]`.
+- This allows realistic throttle behavior while preventing unstable values at high update rates.
+
+### Position and Round (Lap) Handling
+
+- Position is updated from speed using the active game-tick interval.
+- Each lane has its own total track length (sum of line lengths across modules).
+- When position exceeds lane length, position wraps around and `round` is incremented.
+- Reverse movement is also handled, including safe behavior for negative movement near lap boundaries.
+
+### Lane Change (Timed Multi-Hop)
+
+- Lane changes are triggered by `special_1` using a rising-edge trigger and a configurable threshold (`special_1_threshold`).
+- Lane changes are only allowed on intersection modules where the current line profile has `lane_change_allowed = True`.
+- A lane change is executed as one or more timed adjacent hops:
+  - Example rightward: `1 -> 2 -> 3 -> 4`
+  - Example leftward: `1 <- 2 <- 3 <- 4`
+- Each hop takes a fixed configurable duration (`lane_change_time`, currently 500 ms per hop).
+- During an active hop timer, normal position integration is paused for deterministic transitions.
+
+### Position Conversion During Lane Change
+
+- On each hop, the vehicle keeps its relative progress within the current track module.
+- Conversion is proportional:
+  - progress = `source_position / source_line_length`
+  - target_position = `progress * target_line_length`
+- This keeps cars visually and physically aligned when lane geometries have different lengths.
+
+## Architecture
+
+<!-- See file doc/architecture.png -->
+
+The architecture is designed to be modular and extensible, with clear separation of concerns between different components:
+
+- `Game` package handles the core game logic, including vehicle physics, track management, and players.
+- `Simulation` package provides tools for testing and visualizing the game mechanics in Python.
+- `Logger` package manages logging and debugging output for log files and MQTT.
+- `Controller` package handles player input and translates it into game actions.
+- `Display` package manages the LED effects and visual feedback for the game.
+
+![Architecture Diagram](docs/architecture.png)

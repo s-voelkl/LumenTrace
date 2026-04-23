@@ -13,11 +13,11 @@ class PlayerController:
     
     INPUT_MAPPING: dict[str, str] = {
         "adc_0": "forward_press",
-        "adc_1": "backward_press",
-        "adc_2": "left_press",
-        "adc_3": "right_press",
-        "adc_4": "special_1",
-        "adc_5": "special_2"
+        "adc_1": "special_1",
+        # "adc_2": "backward_press",
+        # "adc_3": "left_press",
+        # "adc_4": "right_press",
+        # "adc_5": "special_2"
     }
     
     # static controller count to generate default controller ids
@@ -33,11 +33,11 @@ class PlayerController:
         self.__controller_id = PlayerController.__controller_count
 
         self.__forward_press: float = 0
-        self.__backward_press: float = 0
-        self.__left_press: float = 0
-        self.__right_press: float = 0
         self.__special_1: float = 0
-        self.__special_2: float = 0
+        # self.__backward_press: float = 0
+        # self.__left_press: float = 0
+        # self.__right_press: float = 0
+        # self.__special_2: float = 0
 
 
     def __del__(self):
@@ -71,26 +71,26 @@ class PlayerController:
         return self.__forward_press
 
     @property
-    def backward_press(self) -> float:
-        '''Returns the backward press value.'''
-        return self.__backward_press
-
-    @property
-    def left_press(self) -> float:
-        '''Returns the left press value.'''
-        return self.__left_press
-
-    @property
-    def right_press(self) -> float:
-        '''Returns the right press value.'''
-        return self.__right_press
-
-    @property
     def special_1(self) -> float:
         '''Returns the special 1 value.'''
         return self.__special_1
+
+    # @property
+    # def backward_press(self) -> float:
+    #     '''Returns the backward press value.'''
+    #     return self.__backward_press
+
+    # @property
+    # def left_press(self) -> float:
+    #     '''Returns the left press value.'''
+    #     return self.__left_press
+
+    # @property
+    # def right_press(self) -> float:
+    #     '''Returns the right press value.'''
+    #     return self.__right_press
     
-    @property
-    def special_2(self) -> float:
-        '''Returns the special 2 value.'''
-        return self.__special_2
+    # @property
+    # def special_2(self) -> float:
+    #     '''Returns the special 2 value.'''
+    #     return self.__special_2

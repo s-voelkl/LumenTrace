@@ -36,65 +36,65 @@ def simple_game_setup():
     track_modules: list[TrackModule] = [
         TrackModule(
             track_type=TrackType.STRAIGHT,
-            length=50,
+            part_length=50,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(max_speed=100),
                     lane=lane_1,
-                    length=50,
+                    line_length=50,
                 ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=90),
                     lane=lane_2,
-                    length=50
+                    line_length=50
                 ),
             ],
         ),
         TrackModule(
             track_type=TrackType.CURVE_LEFT,
-            length=30,
+            part_length=30,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(max_speed=65, max_acceleration=7),
                     lane=lane_1,
-                    length=28,
+                    line_length=28,
                 ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=75, max_acceleration=8),
                     lane=lane_2,
-                    length=32
+                    line_length=32
                 ),
             ],
         ),
         TrackModule(
             track_type=TrackType.CURVE_RIGHT,
-            length=50,
+            part_length=50,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(max_speed=85, max_acceleration=9),
                     lane=lane_1,
-                    length=55,
+                    line_length=55,
                 ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=75, max_acceleration=8),
                     lane=lane_2,
-                    length=45
+                    line_length=45
                 ),
             ],
         ),
         TrackModule(
             track_type=TrackType.LOOPING,
-            length=80,
+            part_length=80,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(min_speed=70),
                     lane=lane_1,
-                    length=80,
+                    line_length=80,
                 ),
                 Line(
                     driving_profile=DrivingProfile(min_speed=70),
                     lane=lane_2,
-                    length=80
+                    line_length=80
                 ),
             ],
         )
