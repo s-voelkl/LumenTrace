@@ -2,14 +2,23 @@ from src.game.lane import Lane
 
 class Vehicle:
         
-    def __init__(self, lane: Lane, position: float = 0, speed: float = 0, acceleration: float = 0, 
-            round: int = 0, style: list[int] = []):
+    def __init__(
+        self,
+        lane: Lane,
+        position: float = 0,
+        speed: float = 0,
+        acceleration: float = 0,
+        round: int = 0,
+        style: list[int] = [],
+        vehicle_length: float = 20,
+    ):
         self.__lane = lane 
         self.__position = position if position >= 0 else 0
         self.__speed = speed if speed >= 0 else 0
         self.__acceleration = acceleration if acceleration >= 0 else 0
         self.__round = round if round >= 0 else 0
         self.__style = style if style else [0, 0, 0]
+        self.__vehicle_length = vehicle_length if vehicle_length > 0 else 20
 
     def apply_friction(self, fraction_percent: float = 0.02):
         '''Applies friction to the vehicle's speed by reducing it by a fraction of its current value.
@@ -82,6 +91,12 @@ class Vehicle:
     def set_position(self, position: float):
         self.__position = position if position >= 0 else 0
 
+    def set_speed(self, speed: float):
+        self.__speed = speed
+
+    def set_round(self, round_value: int):
+        self.__round = round_value if round_value >= 0 else 0
+
     # Getters
     @property
     def position(self) -> float:
@@ -106,3 +121,7 @@ class Vehicle:
     @property
     def style(self) -> list[int]:
         return self.__style
+
+    @property
+    def vehicle_length(self) -> float:
+        return self.__vehicle_length

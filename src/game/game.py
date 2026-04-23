@@ -19,6 +19,15 @@ class LaneChangeState(TypedDict):
     track_module: TrackModule
     module_position: float
     end_time: float
+
+
+class RespawnState(TypedDict):
+    """Internal timer state for one inactive player awaiting respawn.
+
+    Attributes:
+        end_time (float): Absolute tick-time at which a respawn attempt may start.
+    """
+    end_time: float
     
 class Game:    
     def __init__(self,
@@ -37,6 +46,8 @@ class Game:
         self.__threads: list[threading.Thread] = []
         self.__game_tick_interval_s = 0.02
         self.__lane_change_states: dict[int, LaneChangeState] = {}
+        self.__respawn_states: dict[int, RespawnState] = {}
+        self.__inactive_controllers: set[int] = set()
         self.__special_1_previous_active: dict[int, bool] = {}
 
         logger.log_json({
@@ -310,6 +321,354 @@ class Game:
         else:
             del self.__lane_change_states[player.controller.controller_id]
 
+    def __get_player_for_controller(self, controller_id: int) -> Player | None:
+        """Return the player instance that owns the given controller id.
+
+        Args:
+            controller_id (int): Unique controller identifier.
+
+        Returns:
+            Player | None: Matching player or ``None`` when not found.
+        """
+        for player in self.__players:
+            if player.controller.controller_id == controller_id:
+                return player
+        return None
+
+    def __lane_exists_at_race_start(self, lane: Lane) -> bool:
+        """Check whether a lane has a valid line in the first module.
+
+        Args:
+            lane (Lane): Lane to validate.
+
+        Returns:
+            bool: ``True`` if the lane is drivable at race start, otherwise ``False``.
+        """
+        if not self.__track_modules:
+            return False
+
+        start_line = self.__track_modules[0].get_line_for_lane(lane)
+        return start_line is not None and start_line.length > 0
+
+    def __circular_distance(self, a: float, b: float, lane_length: float) -> float:
+        """Compute shortest wrapped distance on a lane.
+
+        Args:
+            a (float): First position on the lane.
+            b (float): Second position on the lane.
+            lane_length (float): Total lane length for wrap-around distance.
+
+        Returns:
+            float: Minimal distance considering both wrap directions.
+        """
+        if lane_length <= 0:
+            return abs(a - b)
+
+        delta = abs(a - b) % lane_length
+        return min(delta, lane_length - delta)
+
+    def __is_lane_position_clear(self, lane: Lane, position: float, min_distance: float) -> bool:
+        """Check whether a lane position is free of active vehicles within a buffer.
+
+        Args:
+            lane (Lane): Lane to test.
+            position (float): Candidate placement position on the lane.
+            min_distance (float): Required minimum spacing to every active vehicle.
+
+        Returns:
+            bool: ``True`` if no active vehicle violates the spacing constraint.
+        """
+        lane_length = self.__get_lane_track_length(lane)
+        for other in self.__players:
+            other_controller_id = other.controller.controller_id
+            if other_controller_id in self.__inactive_controllers:
+                continue
+            if other.vehicle.lane != lane:
+                continue
+
+            if self.__circular_distance(position, other.vehicle.position, lane_length) < min_distance:
+                return False
+
+        return True
+
+    def __find_first_safe_position(self, lane: Lane, min_distance: float) -> float | None:
+        """Find the first safe respawn position on one lane.
+
+        Args:
+            lane (Lane): Lane to search.
+            min_distance (float): Required minimum spacing to active vehicles.
+
+        Returns:
+            float | None: First valid position or ``None`` when no safe slot exists.
+        """
+        lane_length = self.__get_lane_track_length(lane)
+        if lane_length <= 0:
+            return None
+
+        # Probe candidate positions with a fixed step to keep runtime bounded.
+        search_step = max(1.0, min_distance / 2)
+        candidate_position = 0.0
+        while candidate_position < lane_length:
+            if self.__is_lane_position_clear(lane, candidate_position, min_distance):
+                return candidate_position
+            candidate_position += search_step
+
+        return None
+
+    def __place_respawned_vehicle(self, player: Player, lane: Lane, position: float) -> None:
+        """Reset and place a respawned vehicle at a safe location.
+
+        Args:
+            player (Player): Player whose vehicle is respawned.
+            lane (Lane): Target lane for respawn.
+            position (float): Target position on the lane.
+
+        Returns:
+            None: Vehicle state is updated in place.
+        """
+        # Preserve lap count so respawns do not alter race progress metrics.
+        current_round = player.vehicle.round
+        player.vehicle.set_lane(lane)
+        player.vehicle.set_position(position)
+        player.vehicle.set_speed(0)
+        player.vehicle.set_acceleration(0)
+        player.vehicle.set_round(current_round)
+
+    def __try_respawn_player(self, player: Player) -> bool:
+        """Try to respawn one inactive player according to placement rules.
+
+        The method first tries position ``0`` on each eligible start lane. If no
+        start position is free, it searches the first safe fallback position with a
+        buffer of ``vehicle_length * 2``.
+
+        Args:
+            player (Player): Player to respawn.
+
+        Returns:
+            bool: ``True`` when a placement was found, otherwise ``False``.
+        """
+        eligible_lanes = [lane for lane in self.__lanes if self.__lane_exists_at_race_start(lane)]
+        if not eligible_lanes:
+            return False
+
+        safety_buffer = player.vehicle.vehicle_length * 2
+
+        # First preference: exact race start position in any eligible lane.
+        for lane in eligible_lanes:
+            if self.__is_lane_position_clear(lane, 0.0, safety_buffer):
+                self.__place_respawned_vehicle(player, lane, 0.0)
+                return True
+
+        # Fallback: first safe position in lane order with configured safety buffer.
+        for lane in eligible_lanes:
+            position = self.__find_first_safe_position(lane, safety_buffer)
+            if position is not None:
+                self.__place_respawned_vehicle(player, lane, position)
+                return True
+
+        return False
+
+    def __process_respawns(self, current_time: float) -> None:
+        """Advance respawn timers and reactivate players when possible.
+
+        Args:
+            current_time (float): Tick time used to evaluate respawn deadlines.
+
+        Returns:
+            None: Internal respawn state is mutated in place.
+        """
+        for controller_id, respawn_state in list(self.__respawn_states.items()):
+            if current_time < float(respawn_state["end_time"]):
+                continue
+
+            player = self.__get_player_for_controller(controller_id)
+            if player is None:
+                del self.__respawn_states[controller_id]
+                self.__inactive_controllers.discard(controller_id)
+                continue
+
+            if self.__try_respawn_player(player):
+                del self.__respawn_states[controller_id]
+                self.__inactive_controllers.discard(controller_id)
+
+    def __fall_vehicle(self, player: Player, current_time: float, reason: str) -> None:
+        """Deactivate a vehicle and schedule its respawn timer.
+
+        Args:
+            player (Player): Player whose vehicle has fallen.
+            current_time (float): Tick time used to schedule respawn.
+            reason (str): Human-readable reason for diagnostics.
+
+        Returns:
+            None: Player is marked inactive until respawn succeeds.
+        """
+        controller_id = player.controller.controller_id
+        if controller_id in self.__inactive_controllers:
+            return
+
+        self.__inactive_controllers.add(controller_id)
+        self.__lane_change_states.pop(controller_id, None)
+        self.__respawn_states[controller_id] = {
+            "end_time": current_time + self.__settings.respawn_time,
+        }
+
+        player.vehicle.set_speed(0)
+        player.vehicle.set_acceleration(0)
+
+        logger.log_json({
+            "event": "vehicle_fell",
+            "player": player.name,
+            "controller_id": controller_id,
+            "reason": reason,
+            "respawn_at": current_time + self.__settings.respawn_time,
+        })
+
+    def __get_lane_segments(self, lane: Lane) -> list[tuple[int, TrackModule, float]]:
+        """Collect all drivable lane segments across modules.
+
+        Args:
+            lane (Lane): Lane for which module segments are collected.
+
+        Returns:
+            list[tuple[int, TrackModule, float]]: Ordered tuples of module index,
+            module instance, and line length.
+        """
+        segments: list[tuple[int, TrackModule, float]] = []
+        for module_index, track_module in enumerate(self.__track_modules):
+            line = track_module.get_line_for_lane(lane)
+            if line is None or line.length <= 0:
+                continue
+            segments.append((module_index, track_module, line.length))
+        return segments
+
+    def __would_cross_lane_gap(self, player: Player, delta_position: float) -> bool:
+        """Determine whether movement would cross a missing lane continuation.
+
+        The check supports positive and negative movement and validates that lane
+        segments are contiguous in module order.
+
+        Args:
+            player (Player): Player to evaluate.
+            delta_position (float): Proposed movement in this tick.
+
+        Returns:
+            bool: ``True`` when movement crosses a lane gap and should trigger fall.
+        """
+        if delta_position == 0:
+            return False
+
+        lane = player.vehicle.lane
+        track_module, module_position = self.__get_track_module_for_lane_position(lane, player.vehicle.position)
+        if track_module is None or not self.__track_modules:
+            return True
+
+        current_line = track_module.get_line_for_lane(lane)
+        if current_line is None or current_line.length <= 0:
+            return True
+
+        segments = self.__get_lane_segments(lane)
+        if not segments:
+            return True
+
+        current_segment_index = next(
+            (index for index, (_, module, _) in enumerate(segments) if module is track_module),
+            -1,
+        )
+        if current_segment_index < 0:
+            return True
+
+        module_count = len(self.__track_modules)
+        remaining_distance = abs(delta_position)
+        direction = 1 if delta_position > 0 else -1
+
+        distance_to_boundary = (
+            current_line.length - module_position if direction > 0 else module_position
+        )
+        if remaining_distance <= distance_to_boundary:
+            return False
+
+        remaining_distance -= distance_to_boundary
+        segment_index = current_segment_index
+
+        while remaining_distance > 0:
+            next_segment_index = (segment_index + direction) % len(segments)
+            expected_module_index = (segments[segment_index][0] + direction) % module_count
+            next_module_index = segments[next_segment_index][0]
+            if next_module_index != expected_module_index:
+                return True
+
+            next_segment_length = segments[next_segment_index][2]
+            if remaining_distance <= next_segment_length:
+                return False
+
+            remaining_distance -= next_segment_length
+            segment_index = next_segment_index
+
+        return False
+
+    def __violates_driving_profile(self, player: Player) -> bool:
+        """Check whether vehicle kinematics violate the active line profile.
+
+        Args:
+            player (Player): Player whose current speed/acceleration are validated.
+
+        Returns:
+            bool: ``True`` when speed or acceleration is outside allowed bounds.
+        """
+        track_module, _ = self.__get_track_module_for_lane_position(
+            player.vehicle.lane,
+            player.vehicle.position,
+        )
+        if track_module is None:
+            return True
+
+        current_line = track_module.get_line_for_lane(player.vehicle.lane)
+        if current_line is None:
+            return True
+
+        profile = current_line.driving_profile
+        speed = player.vehicle.speed
+        acceleration = player.vehicle.acceleration
+
+        return (
+            speed > profile.max_speed
+            or speed < profile.min_speed
+            or acceleration > profile.max_acceleration
+            or acceleration < profile.min_acceleration
+        )
+
+    def __process_collisions(self, current_time: float) -> None:
+        """Evaluate same-lane collisions and drop the front vehicle on impact.
+
+        Args:
+            current_time (float): Tick time used when scheduling a resulting respawn.
+
+        Returns:
+            None: Falling vehicles are updated via ``__fall_vehicle``.
+        """
+        active_players = [
+            player
+            for player in self.__players
+            if player.controller.controller_id not in self.__inactive_controllers
+        ]
+
+        for index, player in enumerate(active_players):
+            for other in active_players[index + 1:]:
+                if player.vehicle.lane != other.vehicle.lane:
+                    continue
+
+                lane_length = self.__get_lane_track_length(player.vehicle.lane)
+                collision_distance = max(player.vehicle.vehicle_length, other.vehicle.vehicle_length)
+
+                if self.__circular_distance(player.vehicle.position, other.vehicle.position, lane_length) > collision_distance:
+                    continue
+
+                player_progress = player.vehicle.round * lane_length + player.vehicle.position
+                other_progress = other.vehicle.round * lane_length + other.vehicle.position
+                front_player = player if player_progress >= other_progress else other
+
+                self.__fall_vehicle(front_player, current_time, reason="collision_front_vehicle")
+
     def display(self):
         # Display current game state to lcd, led, log, ...
         # TODO: implement display logic
@@ -330,9 +689,15 @@ class Game:
         """
         # Evaluate time once so all decisions in this tick share the same time base.
         current_time = time.perf_counter()
+
+        # Progress respawn timers before processing active vehicles in this tick.
+        self.__process_respawns(current_time)
         
         for player in self.__players:
             controller_id = player.controller.controller_id
+            if controller_id in self.__inactive_controllers:
+                continue
+
             # Trigger lane change on a rising edge to avoid re-triggering while held.
             is_special_1_active = player.controller.special_1 > self.__settings.special_1_threshold
             was_special_1_active = self.__special_1_previous_active.get(controller_id, False)
@@ -350,6 +715,10 @@ class Game:
                 self.__settings.max_speed,
                 acceleration_multiplier=self.__settings.acceleration_multiplier,
             )
+
+            if self.__violates_driving_profile(player):
+                self.__fall_vehicle(player, current_time, reason="driving_profile_violation")
+                continue
 
             # During a lane change, movement is paused until the timed hop completes.
             lane_change_state = self.__lane_change_states.get(controller_id)
@@ -385,11 +754,19 @@ class Game:
 
             # update position and round
             lane_track_length = self.__get_lane_track_length(player.vehicle.lane)
+            delta_position = player.vehicle.speed * self.__game_tick_interval_s
+
+            if self.__would_cross_lane_gap(player, delta_position):
+                self.__fall_vehicle(player, current_time, reason="lane_ends_without_successor")
+                continue
+
             # Normal movement is only applied when no lane transition consumed this tick.
             player.vehicle.update_position(
-                player.vehicle.speed * self.__game_tick_interval_s,
+                delta_position,
                 lane_track_length,
             )
+
+        self.__process_collisions(current_time)
             
     
     def log_fully(self):       

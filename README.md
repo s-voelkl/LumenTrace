@@ -61,6 +61,26 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
   - target_position = `progress * target_line_length`
 - This keeps cars visually and physically aligned when lane geometries have different lengths.
 
+### Falling, Collision, and Respawn
+
+- A vehicle falls immediately when its current speed or acceleration violates the driving profile of the active line:
+  - `speed` must remain within `[min_speed, max_speed]`
+  - `acceleration` must remain within `[min_acceleration, max_acceleration]`
+- A vehicle also falls when it moves into a lane gap, meaning the current lane has no valid continuation in the next/previous module for the movement direction.
+- Collision detection is evaluated for vehicles on the same lane.
+  - If two vehicles are within collision distance, the vehicle in front falls.
+  - Collision distance is derived from vehicle geometry (`vehicle_length`, default `20`).
+
+### Respawn System
+
+- Fallen vehicles become inactive and enter a respawn timer (`settings.respawn_time`).
+- While inactive, vehicles do not move, collide, or receive lane-change progression.
+- After the timer expires, respawn placement follows this order:
+  - Try `position = 0` on any lane that exists in the first track module.
+  - Require the selected position to be unoccupied.
+  - If all start positions are occupied, search the first safe fallback position with buffer distance `vehicle_length * 2`.
+- Respawn does not increment `vehicle.round`; lap progress is preserved.
+
 ## Architecture
 
 <!-- See file doc/architecture.png -->

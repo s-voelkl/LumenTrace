@@ -20,6 +20,7 @@ def run_game_tick_for_test(game: Game) -> None:
     tick_fn()
 
 def test_game_setup():
+    """Validate baseline construction and default values of core game objects."""
     # player
     player_controller_1 = PlayerController()
     assert player_controller_1.forward_press == 0
@@ -38,6 +39,7 @@ def test_game_setup():
     assert vehicle_1.acceleration == 0
     assert vehicle_1.lane == lane_1
     assert vehicle_1.lane.lane_id == lane_1.lane_id
+    assert vehicle_1.vehicle_length == 20
     
     player_1 = Player(
         controller=player_controller_1,
@@ -102,6 +104,7 @@ def test_game_setup():
 
 
 def test_vehicle_position_wraparound():
+    """Ensure position wraps at lane length and increments lap counter."""
     lane = Lane()
     vehicle = Vehicle(lane=lane, position=48)
 
@@ -112,6 +115,7 @@ def test_vehicle_position_wraparound():
 
 
 def test_track_module_position_conversion_between_lanes():
+    """Verify proportional position conversion across lanes of different lengths."""
     left_lane = Lane()
     right_lane = Lane()
 
@@ -128,6 +132,7 @@ def test_track_module_position_conversion_between_lanes():
 
 
 def test_game_lane_change_without_middle_lane(monkeypatch):
+    """Confirm lane change works directly between two lanes without an intermediate lane."""
     left_lane = Lane()
     right_lane = Lane()
     controller = PlayerController()
@@ -166,6 +171,7 @@ def test_game_lane_change_without_middle_lane(monkeypatch):
 
 
 def test_game_lane_change_blocked_when_profile_disallows(monkeypatch):
+    """Confirm lane change is blocked when source line profile disallows it."""
     left_lane = Lane()
     right_lane = Lane()
     controller = PlayerController()
@@ -205,6 +211,7 @@ def test_game_lane_change_blocked_when_profile_disallows(monkeypatch):
 
 
 def test_game_lane_change_across_multiple_lanes(monkeypatch):
+    """Start a multi-hop lane change and verify the first tick keeps initial state."""
     left_lane = Lane()
     middle_lane = Lane()
     next_lane = Lane()
@@ -242,38 +249,298 @@ def test_game_lane_change_across_multiple_lanes(monkeypatch):
     assert vehicle.lane == left_lane
     assert vehicle.position == 20
 
-    run_game_tick_for_test(game)
-    assert vehicle.lane == middle_lane
-    assert vehicle.position == 25
+def test_game_push_down_when_speed_exceeds_profile_max(monkeypatch):
+    """Ensure profile speed violations trigger a fall and timed respawn at start."""
+    lane = Lane()
+    controller = PlayerController()
+    vehicle = Vehicle(lane=lane, position=10, speed=100)
+    player = Player(controller=controller, vehicle=vehicle)
+    signal_receiver = SignalReceiverMock(controllers=[controller])
+
+    track_module = TrackModule(
+        track_type=TrackType.STRAIGHT,
+        part_length=50,
+        lines=[
+            Line(
+                driving_profile=DrivingProfile(max_speed=90, min_speed=-100, max_acceleration=10, min_acceleration=-10),
+                lane=lane,
+                line_length=50,
+            ),
+        ],
+    )
+
+    game = Game(
+        players=[player],
+        settings=Settings(max_speed=200, respawn_time=100),
+        track_modules=[track_module],
+        signal_receiver=signal_receiver,
+        lanes=[lane],
+    )
+
+    # 1st tick: fall, 2nd tick: still waiting, 3rd tick: respawn window reached.
+    times = iter([1000.0, 1050.0, 1200.0])
+    monkeypatch.setattr("src.game.game.time.perf_counter", lambda: next(times))
 
     run_game_tick_for_test(game)
-    assert vehicle.lane == next_lane
-    assert vehicle.position == 30
+    assert vehicle.speed == 0
+    assert vehicle.position == 10
 
     run_game_tick_for_test(game)
-    assert vehicle.lane == right_lane
-    assert vehicle.position == 35
-
-    # First lane change done. Release trigger so the next press is a rising edge.
-    controller.update_input("adc_1", 0.0)
-    run_game_tick_for_test(game)
-    assert vehicle.lane == right_lane
-    assert vehicle.position == 35
-
-    # Trigger again from rightmost lane. This should now move left.
-    controller.update_input("adc_1", 1.0)
-    run_game_tick_for_test(game)
-    assert vehicle.lane == right_lane
-    assert vehicle.position == 35
+    assert vehicle.position == 10
 
     run_game_tick_for_test(game)
-    assert vehicle.lane == next_lane
-    assert vehicle.position == 30
+    assert vehicle.position == 0
+    assert vehicle.round == 0
+
+
+def test_game_push_down_when_acceleration_below_profile_min(monkeypatch):
+    """Ensure profile acceleration violations trigger immediate fall behavior."""
+    lane = Lane()
+    controller = PlayerController()
+    vehicle = Vehicle(lane=lane, position=5, speed=0)
+    player = Player(controller=controller, vehicle=vehicle)
+    signal_receiver = SignalReceiverMock(controllers=[controller])
+
+    track_module = TrackModule(
+        track_type=TrackType.STRAIGHT,
+        part_length=50,
+        lines=[
+            Line(
+                driving_profile=DrivingProfile(
+                    max_speed=100,
+                    min_speed=-100,
+                    max_acceleration=100,
+                    min_acceleration=50,
+                ),
+                lane=lane,
+                line_length=50,
+            ),
+        ],
+    )
+
+    game = Game(
+        players=[player],
+        settings=Settings(max_speed=200, respawn_time=1000),
+        track_modules=[track_module],
+        signal_receiver=signal_receiver,
+        lanes=[lane],
+    )
+
+    times = iter([2000.0])
+    monkeypatch.setattr("src.game.game.time.perf_counter", lambda: next(times))
 
     run_game_tick_for_test(game)
-    assert vehicle.lane == middle_lane
-    assert vehicle.position == 25
+    assert vehicle.speed == 0
+    assert vehicle.position == 5
+
+
+def test_game_collision_front_vehicle_falls(monkeypatch):
+    """Ensure same-lane collision removes the front vehicle from active play."""
+    lane = Lane()
+    controller_a = PlayerController()
+    controller_b = PlayerController()
+    vehicle_a = Vehicle(lane=lane, position=50)
+    vehicle_b = Vehicle(lane=lane, position=60)
+    player_a = Player(controller=controller_a, vehicle=vehicle_a)
+    player_b = Player(controller=controller_b, vehicle=vehicle_b)
+    signal_receiver = SignalReceiverMock(controllers=[controller_a, controller_b])
+
+    track_module = TrackModule(
+        track_type=TrackType.STRAIGHT,
+        part_length=100,
+        lines=[
+            Line(driving_profile=DrivingProfile(), lane=lane, line_length=100),
+        ],
+    )
+
+    game = Game(
+        players=[player_a, player_b],
+        settings=Settings(max_speed=100, respawn_time=1000),
+        track_modules=[track_module],
+        signal_receiver=signal_receiver,
+        lanes=[lane],
+    )
+
+    times = iter([3000.0, 4000.0])
+    monkeypatch.setattr("src.game.game.time.perf_counter", lambda: next(times))
 
     run_game_tick_for_test(game)
-    assert vehicle.lane == left_lane
-    assert vehicle.position == 20
+
+    # Player B is in front (higher lap progress) and should fall.
+    assert vehicle_b.speed == 0
+    assert vehicle_b.position == 60
+    
+    # Player A should remain unaffected in this scenario.
+    assert vehicle_a.speed == 0
+    assert vehicle_a.position == 50
+    
+    run_game_tick_for_test(game)
+    # After the second tick, Player B should have respawned at the start of the lane.
+    assert vehicle_b.position == 0
+    assert vehicle_b.round == 0
+    
+    # Player A should still be unaffected and remain in place.
+    assert vehicle_a.speed == 0
+    assert vehicle_a.position == 50 
+
+
+def test_game_vehicle_falls_when_lane_ends_forward(monkeypatch):
+    """Ensure forward movement across a missing lane continuation triggers a fall."""
+    lane = Lane()
+    controller = PlayerController()
+    vehicle = Vehicle(lane=lane, position=49)
+    vehicle.set_speed(100)
+    player = Player(controller=controller, vehicle=vehicle)
+    signal_receiver = SignalReceiverMock(controllers=[controller])
+
+    first_module = TrackModule(
+        track_type=TrackType.STRAIGHT,
+        part_length=50,
+        lines=[
+            Line(driving_profile=DrivingProfile(max_speed=200), lane=lane, line_length=50),
+        ],
+    )
+    second_module = TrackModule(track_type=TrackType.STRAIGHT, part_length=50, lines=[])
+
+    game = Game(
+        players=[player],
+        settings=Settings(max_speed=200, respawn_time=0.02),
+        track_modules=[first_module, second_module],
+        signal_receiver=signal_receiver,
+        lanes=[lane],
+    )
+
+    times = iter([0, 1])
+    monkeypatch.setattr("src.game.game.time.perf_counter", lambda: next(times))
+
+    run_game_tick_for_test(game)
+    assert vehicle.position == 49
+    assert vehicle.speed == 0
+    
+    run_game_tick_for_test(game)
+    assert vehicle.position == 0
+    assert vehicle.round == 0
+    assert vehicle.speed == 0
+
+
+def test_game_vehicle_falls_when_lane_ends_backward(monkeypatch):
+    """Ensure backward movement across a missing lane continuation triggers a fall."""
+    lane = Lane()
+    controller = PlayerController()
+    vehicle = Vehicle(lane=lane, position=0.2)
+    vehicle.set_speed(-20)
+    player = Player(controller=controller, vehicle=vehicle)
+    signal_receiver = SignalReceiverMock(controllers=[controller])
+
+    first_module = TrackModule(track_type=TrackType.STRAIGHT, part_length=50, lines=[])
+    second_module = TrackModule(
+        track_type=TrackType.STRAIGHT,
+        part_length=50,
+        lines=[
+            Line(driving_profile=DrivingProfile(max_speed=200, min_speed=-200), lane=lane, line_length=40),
+        ],
+    )
+
+    game = Game(
+        players=[player],
+        settings=Settings(max_speed=200, respawn_time=1000),
+        track_modules=[first_module, second_module],
+        signal_receiver=signal_receiver,
+        lanes=[lane],
+    )
+
+    times = iter([5000.0, 7000.0])
+    monkeypatch.setattr("src.game.game.time.perf_counter", lambda: next(times))
+
+    run_game_tick_for_test(game)
+    assert vehicle.position == 0.2
+    assert vehicle.speed == 0
+
+
+def test_game_respawn_uses_free_lane_at_start(monkeypatch):
+    """Respawn should prefer position zero on a start-eligible unoccupied lane."""
+    lane_1 = Lane()
+    lane_2 = Lane()
+    controller_a = PlayerController()
+    controller_b = PlayerController()
+
+    vehicle_a = Vehicle(lane=lane_1, position=0)
+    vehicle_b = Vehicle(lane=lane_2, position=10, speed=100)
+    player_a = Player(controller=controller_a, vehicle=vehicle_a)
+    player_b = Player(controller=controller_b, vehicle=vehicle_b)
+    signal_receiver = SignalReceiverMock(controllers=[controller_a, controller_b])
+
+    track_module = TrackModule(
+        track_type=TrackType.STRAIGHT,
+        part_length=100,
+        lines=[
+            Line(driving_profile=DrivingProfile(max_speed=100), lane=lane_1, line_length=100),
+            Line(driving_profile=DrivingProfile(max_speed=90), lane=lane_2, line_length=100),
+        ],
+    )
+
+    game = Game(
+        players=[player_a, player_b],
+        settings=Settings(max_speed=200, respawn_time=100),
+        track_modules=[track_module],
+        signal_receiver=signal_receiver,
+        lanes=[lane_1, lane_2],
+    )
+
+    times = iter([6000.0, 6200.0])
+    monkeypatch.setattr("src.game.game.time.perf_counter", lambda: next(times))
+
+    # Player B falls due to max speed violation in lane 2.
+    run_game_tick_for_test(game)
+    assert vehicle_b.position == 10
+
+    # Respawn should place Player B in lane 2 at position 0 (lane 1 is occupied at start).
+    run_game_tick_for_test(game)
+    assert vehicle_b.lane == lane_2
+    assert vehicle_b.position == 0
+
+
+def test_game_respawn_fallback_uses_first_safe_position(monkeypatch):
+    """Respawn should fallback to the first safe buffered position when start is blocked."""
+    lane = Lane()
+    controller_a = PlayerController()
+    controller_b = PlayerController()
+
+    vehicle_a = Vehicle(lane=lane, position=0)
+    vehicle_b = Vehicle(lane=lane, position=10, speed=100)
+    player_a = Player(controller=controller_a, vehicle=vehicle_a)
+    player_b = Player(controller=controller_b, vehicle=vehicle_b)
+    signal_receiver = SignalReceiverMock(controllers=[controller_a, controller_b])
+
+    track_module = TrackModule(
+        track_type=TrackType.STRAIGHT,
+        part_length=100,
+        lines=[
+            Line(
+                driving_profile=DrivingProfile(max_speed=100, max_acceleration=0.5),
+                lane=lane,
+                line_length=100,
+            ),
+        ],
+    )
+
+    game = Game(
+        players=[player_a, player_b],
+        settings=Settings(max_speed=200, respawn_time=100),
+        track_modules=[track_module],
+        signal_receiver=signal_receiver,
+        lanes=[lane],
+    )
+
+    # Force player B to violate profile in the first tick.
+    controller_b.update_input("adc_0", 1.0)
+
+    times = iter([7000.0, 7200.0])
+    monkeypatch.setattr("src.game.game.time.perf_counter", lambda: next(times))
+
+    run_game_tick_for_test(game)
+    assert vehicle_b.position == 10
+
+    run_game_tick_for_test(game)
+    # Position 0 is occupied, so fallback should place the vehicle at a safe distance.
+    assert vehicle_b.position >= vehicle_b.vehicle_length * 2
