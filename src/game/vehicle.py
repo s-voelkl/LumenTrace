@@ -10,7 +10,6 @@ class Vehicle:
         acceleration: float = 0,
         round: int = 0,
         style: list[int] = [],
-        vehicle_length: float = 20,
     ):
         self.__lane = lane 
         self.__position = position if position >= 0 else 0
@@ -18,7 +17,62 @@ class Vehicle:
         self.__acceleration = acceleration if acceleration >= 0 else 0
         self.__round = round if round >= 0 else 0
         self.__style = style if style else [0, 0, 0]
-        self.__vehicle_length = vehicle_length if vehicle_length > 0 else 20
+        
+        self.__respawn_ticks: int = 0
+        self.__active: bool = True
+        self.__line_change_ticks: int = 0
+        self.__line_change_target: Lane | None = None
+        
+    def reduce_respawn_ticks(self, ticks: int = 1):
+        '''Reduces the respawn ticks by a specified amount, ensuring it does not go below zero.
+        If the respawn ticks reach zero, the vehicle becomes active again.
+        
+        Args:
+            ticks (int): The number of ticks to reduce. Default is 1.
+        '''
+        
+        self.__respawn_ticks = max(self.__respawn_ticks - ticks, 0)
+        if self.__respawn_ticks == 0:
+            self.__active = True
+
+    def trigger_respawn(self, respawn_ticks: int):
+        '''Triggers the respawn process for the vehicle by setting the respawn ticks.
+        Makes the vehicle inactive if the respawn ticks are greater than zero.
+        
+        Args:
+            respawn_ticks (int): The number of ticks until the vehicle can respawn again.
+        '''
+        self.__respawn_ticks = max(respawn_ticks, 0)
+        if self.__respawn_ticks > 0:
+            self.__active = False
+            self.__speed = 0
+            self.__position = 0
+            self.__acceleration = 0
+            self.__lane = None
+            self.__line_change_ticks = 0
+            self.__line_change_target = None
+        else:
+            self.__active = True
+            
+    def reduce_line_change_ticks(self, ticks: int = 1):
+        '''Reduces the line change ticks by a specified amount, ensuring it does not go below zero.
+        If the line change ticks reach zero, the line change target is cleared.
+        
+        Args:
+            ticks (int): The number of ticks to reduce. Default is 1.
+        '''
+
+        self.__line_change_ticks = max(self.__line_change_ticks - ticks, 0)
+        if self.__line_change_ticks == 0:
+            self.__line_change_target = None
+            
+    def trigger_line_change(self, target_lane: Lane, line_change_ticks: int):
+        # set line change target and ticks
+        # checks if target is not the same as current lane and if line change ticks is greater than 0
+        if target_lane != self.__lane and line_change_ticks > 0:
+            self.__line_change_target = target_lane
+            self.__line_change_ticks = line_change_ticks
+    
 
     def apply_friction(self, fraction_percent: float = 0.02):
         '''Applies friction to the vehicle's speed by reducing it by a fraction of its current value.
@@ -80,7 +134,6 @@ class Vehicle:
 
         self.__position = new_position if new_position >= 0 else 0
 
-
     # Setter
     def set_acceleration(self, acceleration: float):
         self.__acceleration = acceleration
@@ -123,5 +176,17 @@ class Vehicle:
         return self.__style
 
     @property
-    def vehicle_length(self) -> float:
-        return self.__vehicle_length
+    def respawn_ticks(self) -> int:
+        return self.__respawn_ticks
+    
+    @property
+    def active(self) -> bool:
+        return self.__active
+    
+    @property
+    def line_change_ticks(self) -> int:
+        return self.__line_change_ticks
+    
+    @property
+    def line_change_target(self) -> Lane | None:
+        return self.__line_change_target

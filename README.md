@@ -44,14 +44,12 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 
 ### Lane Change (Timed Multi-Hop)
 
-- Lane changes are triggered by `special_1` using a rising-edge trigger and a configurable threshold (`special_1_threshold`).
+- Lane changes are triggered by `special_1` using a configurable threshold (`special_1_threshold`).
 - The lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`.
-- Lane changes are only allowed on intersection modules where the current line profile has `lane_change_allowed = True`.
 - A lane change is executed as one or more timed adjacent hops:
-  - Example rightward: `1 -> 2 -> 3 -> 4`
+  - Example rightward: `1 -> 2 -> 3 -> 4` (lane order is determined by the sorted list in `game.lanes` from left (first) to right (last))
   - Example leftward: `1 <- 2 <- 3 <- 4`
-- Each hop takes a fixed configurable duration (`lane_change_time`, currently 500 ms per hop).
-- During an active hop timer, normal position integration is paused for deterministic transitions.
+- Each hop takes a fixed configurable tick count (`lane_change_ticks`), during which the vehicle is in a transition state.
 
 ### Position Conversion During Lane Change
 
@@ -69,17 +67,16 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 - A vehicle also falls when it moves into a lane gap, meaning the current lane has no valid continuation in the next/previous module for the movement direction.
 - Collision detection is evaluated for vehicles on the same lane.
   - If two vehicles are within collision distance, the vehicle in front falls.
-  - Collision distance is derived from vehicle geometry (`vehicle_length`, default `20`).
+  - The collision happens, if the position distance between the `settings.__vehicle_crash_distance` is violated.
 
 ### Respawn System
 
-- Fallen vehicles become inactive and enter a respawn timer (`settings.respawn_time`).
-- While inactive, vehicles do not move, collide, or receive lane-change progression.
-- After the timer expires, respawn placement follows this order:
-  - Try `position = 0` on any lane that exists in the first track module.
-  - Require the selected position to be unoccupied.
-  - If all start positions are occupied, search the first safe fallback position with buffer distance `vehicle_length * 2`.
-- Respawn does not increment `vehicle.round`; lap progress is preserved.
+- Fallen vehicles become inactive and enter a respawn state (`settings.respawn_ticks`, `vehicle.respawn_ticks`, `vehicle.active`).
+- While `vehicle.active` is `False`, vehicles are ignored in the race.
+- After the `vehicle.respawn_ticks` count down to `0`, the vehicle attempts to respawn:
+  - Try `position = 0` on any unoccupied lane that exists in the first track module. Unoccupied means no active vehicle is on the module. The vehicle speed and acceleration are reset to `0`.
+  - If no lane is available, the vehicle remains inactive and tries again in the next tick.
+- Respawn does not increment `vehicle.round`.
 
 ## Architecture
 
