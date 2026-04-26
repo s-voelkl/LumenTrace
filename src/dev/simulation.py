@@ -187,7 +187,7 @@ def create_simulation_game() -> Game:
         max_speed=100,
         respawn_ticks=5,
         friction_percent=0.02,
-        acceleration_multiplier=0.015,
+        acceleration_multiplier=0.03,
         special_1_threshold=0.5,
         lane_change_ticks=2,
     )

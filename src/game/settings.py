@@ -4,7 +4,7 @@ class Settings:
         max_speed: float = 100.0,
         respawn_ticks: int = 200,
         friction_percent: float = 0.02,
-        acceleration_multiplier: float = 0.015,
+        acceleration_multiplier: float = 0.03,
         special_1_threshold: float = 0.5, # TODO:measure fitting threshold for activation of line change
         lane_change_ticks: int = 25,
     ):

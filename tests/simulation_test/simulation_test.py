@@ -1,5 +1,7 @@
 """Tests for local terminal simulation components."""
 
+from unittest.mock import patch
+
 from src.controller.player_controller import PlayerController
 from src.dev.simulation import create_simulation_game
 from src.game import DrivingProfile, Game, Line, Player, Settings, TrackModule, Vehicle
@@ -11,7 +13,7 @@ from src.simulation.terminal_renderer import TerminalSimulationRenderer
 
 
 def test_simulation_signal_receiver_emits_deterministic_payload() -> None:
-    """Receiver should update controllers and expose consistent data schema."""
+    """Receiver should keep player 1 manual-only and still drive player 2 automatically."""
     controller_1 = PlayerController()
     controller_2 = PlayerController()
     receiver = SimulationSignalReceiver([controller_1, controller_2], lane_change_period_ticks=10)
@@ -21,9 +23,10 @@ def test_simulation_signal_receiver_emits_deterministic_payload() -> None:
 
     assert "controllers" in payload
     assert len(payload["controllers"]) == 2
-    assert payload["controllers"][0]["adc_0"] in {70.0, 42.0, 84.0, 28.0}
-    assert payload["controllers"][0]["adc_1"] in {0.0, 1.0}
-    assert controller_1.forward_press in {70.0, 42.0, 84.0, 28.0}
+    assert payload["controllers"][0]["adc_0"] == 0.0
+    assert payload["controllers"][0]["adc_1"] == 0.0
+    assert controller_1.forward_press == 0.0
+    assert payload["controllers"][1]["adc_0"] in {70.0, 42.0, 84.0, 28.0}
 
 
 def test_terminal_renderer_frame_contains_required_sections() -> None:
@@ -162,3 +165,55 @@ def test_middle_intersection_lane_renders_only_in_intersection_segment() -> None
     assert "=" in lane_bar
     assert "-" not in lane_bar
     assert lane_bar.count(" ") > 0
+
+
+def test_manual_key_controls_player_one_forward_press_mapping() -> None:
+    """Number keys should map to player 1 forward press in steps of 10."""
+    controller_1 = PlayerController()
+    controller_2 = PlayerController()
+    receiver = SimulationSignalReceiver(
+        [controller_1, controller_2],
+        lane_change_period_ticks=100,
+        keyboard_controls_enabled=False,
+    )
+
+    receiver.apply_manual_key("1")
+    receiver.receive_signal()
+    assert controller_1.forward_press == 10.0
+
+    receiver.apply_manual_key("0")
+    receiver.receive_signal()
+    assert controller_1.forward_press == 100.0
+
+
+def test_player_one_special_1_stays_zero_without_manual_r() -> None:
+    """Player 1 should not receive automatic special_1 pulses."""
+    controller_1 = PlayerController()
+    receiver = SimulationSignalReceiver(
+        [controller_1],
+        lane_change_period_ticks=1,
+        keyboard_controls_enabled=False,
+    )
+
+    for _ in range(5):
+        receiver.receive_signal()
+
+    assert controller_1.special_1 == 0.0
+
+
+def test_manual_key_r_triggers_single_tick_special_1_pulse() -> None:
+    """R key should set special_1 for one tick only."""
+    controller_1 = PlayerController()
+    receiver = SimulationSignalReceiver(
+        [controller_1],
+        lane_change_period_ticks=100,
+        keyboard_controls_enabled=False,
+    )
+
+    with patch("src.simulation.signal_receiver.random.choice", return_value=0.0):
+        receiver.apply_manual_key("r")
+        receiver.receive_signal()
+        assert controller_1.special_1 == 1.0
+
+        receiver.receive_signal()
+        assert controller_1.special_1 == 0.0
