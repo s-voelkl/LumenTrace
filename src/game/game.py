@@ -14,22 +14,23 @@ logger = get_logger()
 
 
 class LaneChangeState(TypedDict):
-    lane_sequence: list[Lane]
-    sequence_index: int
-    track_module: TrackModule
-    module_position: float
-    end_time: float
-
-
-class RespawnState(TypedDict):
-    """Internal timer state for one inactive player awaiting respawn.
+    """Internal state for a multi-hop lane-change operation.
 
     Attributes:
-        end_time (float): Absolute tick-time at which a respawn attempt may start.
+        lane_sequence (list[Lane]): Ordered path including source and final target lane.
+        sequence_index (int): Index of the currently active source lane in the sequence.
     """
-    end_time: float
+    lane_sequence: list[Lane]
+    sequence_index: int
     
 class Game:    
+    """Core simulation loop for player movement, lane changes, collisions, and respawns.
+
+    The game is tick-based. Each tick updates active players in a deterministic order,
+    then resolves collisions. Inactive players remain in respawn state and are retried
+    according to the rules from the project README.
+    """
+
     def __init__(self,
         players: list[Player],
         settings: Settings,
@@ -42,6 +43,7 @@ class Game:
         self.__length = sum([tm.length for tm in track_modules]) if track_modules else 0
         self.__signal_receiver = signal_receiver
         self.__lanes = lanes if lanes else []
+        self.__lane_change_states: dict[Player, LaneChangeState] = {}
         
         self.__stop_event = threading.Event()
         self.__threads: list[threading.Thread] = []
@@ -132,6 +134,52 @@ class Game:
         """
         return sum([tm.get_line_length_for_lane(lane) for tm in self.__track_modules])
 
+    def __get_track_module_index_and_local_position(self, lane: Lane, position: float) -> tuple[int | None, float]:
+        """Resolve one lane position to a concrete module index and lane-local position.
+
+        Args:
+            lane (Lane): Lane in which the position is interpreted.
+            position (float): Global lane position value.
+
+        Returns:
+            tuple[int | None, float]:
+                The matched module index and local position in that module.
+                Returns ``(None, 0.0)`` if no lane segment can be resolved.
+        """
+        lane_length = self.__get_lane_track_length(lane)
+        if lane_length <= 0:
+            return None, 0.0
+
+        normalized_position = position % lane_length if position >= 0 else 0.0
+        cumulative = 0.0
+        for index, module in enumerate(self.__track_modules):
+            line_length = module.get_line_length_for_lane(lane)
+            if line_length <= 0:
+                continue
+
+            upper = cumulative + line_length
+            if normalized_position < upper:
+                return index, normalized_position - cumulative
+            cumulative = upper
+
+        return None, normalized_position
+
+    def __build_global_lane_position(self, lane: Lane, module_index: int, module_local_position: float) -> float:
+        """Build global lane position from a module-local coordinate.
+
+        Args:
+            lane (Lane): Target lane.
+            module_index (int): Module index for the local position.
+            module_local_position (float): Offset within the lane line of that module.
+
+        Returns:
+            float: Global lane position coordinate.
+        """
+        global_position = 0.0
+        for idx in range(module_index):
+            global_position += self.__track_modules[idx].get_line_length_for_lane(lane)
+        return max(0.0, global_position + max(0.0, module_local_position))
+
     def __get_track_module_for_lane_position(self, lane: Lane, position: float) -> tuple[TrackModule | None, float]:
         """Resolve a lane position to its module and local offset inside that module.
 
@@ -148,26 +196,254 @@ class Game:
                 The matched track module and the module-local lane offset.
                 Returns ``(None, 0.0)`` if the lane has no positive total length.
         """
-        lane_length = self.__get_lane_track_length(lane)
-        if lane_length <= 0:
-            return None, 0.0
+        module_index, local_position = self.__get_track_module_index_and_local_position(lane, position)
+        if module_index is None:
+            return None, local_position
+        return self.__track_modules[module_index], local_position
 
-        # Normalize to one lap so lookups remain stable for wrapped positions.
-        normalized_position = position % lane_length if position >= 0 else 0.0
-        cumulative_length = 0.0
+    def __fall_player(self, player: Player) -> None:
+        """Move one player into respawn state and clear pending lane-change state."""
+        self.__lane_change_states.pop(player, None)
+        player.vehicle.trigger_respawn(self.__settings.respawn_ticks)
 
-        for track_module in self.__track_modules:
-            line_length = track_module.get_line_length_for_lane(lane)
-            if line_length <= 0:
+    def __would_move_into_lane_gap(self, player: Player, delta_position: float) -> bool:
+        """Check whether the requested movement crosses a module boundary without lane continuation.
+
+        A lane gap exists if the next module in movement direction has no line for the
+        player's current lane.
+
+        Args:
+            player (Player): Player to check.
+            delta_position (float): Planned movement distance for this tick.
+
+        Returns:
+            bool: ``True`` if the movement would enter a lane gap.
+        """
+        if delta_position == 0:
+            return False
+
+        lane = player.vehicle.lane
+        if lane is None or not self.__track_modules:
+            return True
+
+        module_index, module_position = self.__get_track_module_index_and_local_position(lane, player.vehicle.position)
+        if module_index is None:
+            return True
+
+        remaining = delta_position
+        track_module_count = len(self.__track_modules)
+
+        while remaining != 0:
+            current_module = self.__track_modules[module_index]
+            current_line_length = current_module.get_line_length_for_lane(lane)
+            if current_line_length <= 0:
+                return True
+
+            if remaining > 0:
+                distance_to_end = max(current_line_length - module_position, 0.0)
+                if remaining <= distance_to_end:
+                    return False
+
+                remaining -= distance_to_end
+                module_index = (module_index + 1) % track_module_count
+                if self.__track_modules[module_index].get_line_length_for_lane(lane) <= 0:
+                    return True
+                module_position = 0.0
                 continue
 
-            next_cumulative_length = cumulative_length + line_length
-            if normalized_position < next_cumulative_length:
-                return track_module, normalized_position - cumulative_length
+            distance_to_start = max(module_position, 0.0)
+            if -remaining <= distance_to_start:
+                return False
 
-            cumulative_length = next_cumulative_length
+            remaining += distance_to_start
+            module_index = (module_index - 1) % track_module_count
+            previous_line_length = self.__track_modules[module_index].get_line_length_for_lane(lane)
+            if previous_line_length <= 0:
+                return True
+            module_position = previous_line_length
 
-        return None, normalized_position
+        return False
+
+    def __get_lane_sequence_between(self, source_lane: Lane, target_lane: Lane) -> list[Lane]:
+        """Return ordered adjacent lane path from source to target.
+
+        Args:
+            source_lane (Lane): Lane where the vehicle currently is.
+            target_lane (Lane): Requested final lane.
+
+        Returns:
+            list[Lane]: Inclusive ordered sequence of adjacent lanes.
+        """
+        source_index = self.__lanes.index(source_lane)
+        target_index = self.__lanes.index(target_lane)
+        if source_index <= target_index:
+            return self.__lanes[source_index:target_index + 1]
+        return list(reversed(self.__lanes[target_index:source_index + 1]))
+
+    def __is_lane_change_allowed(self, player: Player) -> bool:
+        """Check whether lane change is currently allowed on the active line."""
+        lane = player.vehicle.lane
+        if lane is None:
+            return False
+
+        module, _ = self.__get_track_module_for_lane_position(lane, player.vehicle.position)
+        if module is None:
+            return False
+
+        line = module.get_line_for_lane(lane)
+        return bool(line and line.driving_profile.lane_change_allowed)
+
+    def __start_lane_change_if_requested(self, player: Player) -> None:
+        """Initialize a multi-hop lane change based on controller input.
+
+        The current control model supports one button for switching between leftmost
+        and rightmost lane. Middle-lane origins are ignored unless they are part of
+        an already active lane-change sequence.
+        """
+        if player in self.__lane_change_states:
+            return
+
+        vehicle = player.vehicle
+        if vehicle.lane is None:
+            return
+        if vehicle.line_change_ticks != 0 or vehicle.line_change_target is not None:
+            return
+        if player.controller.special_1 < self.__settings.special_1_threshold:
+            return
+        if not self.__is_lane_change_allowed(player):
+            return
+
+        target_lane: Lane | None = None
+        if vehicle.lane == self.__lanes[0]:
+            target_lane = self.__lanes[-1]
+        elif vehicle.lane == self.__lanes[-1]:
+            target_lane = self.__lanes[0]
+
+        if target_lane is None or target_lane == vehicle.lane:
+            return
+
+        lane_sequence = self.__get_lane_sequence_between(vehicle.lane, target_lane)
+        if len(lane_sequence) <= 1:
+            return
+
+        self.__lane_change_states[player] = {
+            "lane_sequence": lane_sequence,
+            "sequence_index": 0,
+        }
+        vehicle.trigger_line_change(
+            target_lane=lane_sequence[1],
+            line_change_ticks=self.__settings.lane_change_ticks,
+        )
+
+    def __advance_lane_change(self, player: Player) -> None:
+        """Advance one lane-change state machine by one tick.
+
+        Once one hop timer expires, the vehicle is moved to the next adjacent lane and
+        position is converted proportionally inside the current track module.
+        """
+        state = self.__lane_change_states.get(player)
+        if state is None:
+            return
+
+        vehicle = player.vehicle
+        if vehicle.line_change_ticks > 0:
+            vehicle.reduce_line_change_ticks(1)
+        if vehicle.line_change_ticks > 0:
+            return
+
+        source_lane = state["lane_sequence"][state["sequence_index"]]
+        target_lane = state["lane_sequence"][state["sequence_index"] + 1]
+
+        module_index, source_module_position = self.__get_track_module_index_and_local_position(
+            source_lane,
+            vehicle.position,
+        )
+        if module_index is None:
+            self.__fall_player(player)
+            return
+
+        track_module = self.__track_modules[module_index]
+        if track_module.get_line_for_lane(target_lane) is None:
+            self.__fall_player(player)
+            return
+
+        target_module_position = track_module.convert_position_between_lanes(
+            source_lane,
+            target_lane,
+            source_module_position,
+        )
+        target_global_position = self.__build_global_lane_position(
+            target_lane,
+            module_index,
+            target_module_position,
+        )
+
+        vehicle.set_lane(target_lane)
+        vehicle.set_position(target_global_position)
+
+        state["sequence_index"] += 1
+        if state["sequence_index"] >= len(state["lane_sequence"]) - 1:
+            self.__lane_change_states.pop(player, None)
+            return
+
+        next_target = state["lane_sequence"][state["sequence_index"] + 1]
+        vehicle.trigger_line_change(
+            target_lane=next_target,
+            line_change_ticks=self.__settings.lane_change_ticks,
+        )
+
+    def __is_lane_available_for_respawn(self, lane: Lane, module_index: int) -> bool:
+        """Return whether lane is free of active vehicles in a given module index."""
+        for player in self.__players:
+            vehicle = player.vehicle
+            if not vehicle.active or vehicle.lane != lane:
+                continue
+
+            active_module_index, _ = self.__get_track_module_index_and_local_position(
+                lane,
+                vehicle.position,
+            )
+            if active_module_index == module_index:
+                return False
+
+        return True
+
+    def __try_respawn_player(self, player: Player) -> bool:
+        """Try to respawn one player at position 0 on the first module.
+
+        Returns:
+            bool: ``True`` when respawn succeeded.
+        """
+        if not self.__track_modules:
+            return False
+
+        first_module_index = 0
+        first_module = self.__track_modules[first_module_index]
+        for lane in self.__lanes:
+            if first_module.get_line_for_lane(lane) is None:
+                continue
+            if not self.__is_lane_available_for_respawn(lane, first_module_index):
+                continue
+
+            player.vehicle.set_lane(lane)
+            player.vehicle.set_position(0)
+            player.vehicle.set_speed(0)
+            player.vehicle.set_acceleration(0)
+            player.vehicle.set_respawn_ticks(0)
+            player.vehicle.set_active(True)
+            return True
+
+        return False
+
+    def __handle_inactive_player_tick(self, player: Player) -> None:
+        """Tick one inactive player and attempt respawn when ready."""
+        vehicle = player.vehicle
+        if vehicle.respawn_ticks > 0:
+            vehicle.reduce_respawn_ticks(1)
+
+        if vehicle.respawn_ticks == 0 and not self.__try_respawn_player(player):
+            # Keep retrying every tick while no lane is safely available.
+            vehicle.set_active(False)
 
     # Respawn
     # check tests for test details
@@ -182,6 +458,9 @@ class Game:
         Returns:
             bool: ``True`` when speed or acceleration is outside allowed bounds.
         """
+        if player.vehicle.lane is None:
+            return True
+
         track_module, _ = self.__get_track_module_for_lane_position(
             player.vehicle.lane,
             player.vehicle.position,
@@ -205,10 +484,38 @@ class Game:
         )
 
     def __detect_and_apply_collisions(self):
-        # TODO: implement
-        # check every player against every other player on the same lane for distance violations
-        # trigger player respawn if a collision with given rules (see readme) is detected
-        pass
+        """Detect same-lane rear-end collisions and mark front vehicles as fallen.
+
+        For each lane, players are ordered by position and only neighboring vehicles
+        can collide in one direction. If the forward gap is below or equal to the
+        configured crash distance, the vehicle in front falls.
+        """
+        players_to_fall: set[Player] = set()
+        crash_distance = self.__settings.vehicle_crash_distance
+
+        for lane in self.__lanes:
+            lane_players = [
+                player
+                for player in self.__players
+                if player.vehicle.active and player.vehicle.lane == lane
+            ]
+            if len(lane_players) < 2:
+                continue
+
+            lane_length = self.__get_lane_track_length(lane)
+            if lane_length <= 0:
+                continue
+
+            lane_players.sort(key=lambda player: player.vehicle.position)
+            for index, rear_player in enumerate(lane_players):
+                front_player = lane_players[(index + 1) % len(lane_players)]
+                forward_gap = (front_player.vehicle.position - rear_player.vehicle.position) % lane_length
+                if 0 < forward_gap <= crash_distance:
+                    players_to_fall.add(front_player)
+
+        for player in players_to_fall:
+            if player.vehicle.active:
+                self.__fall_player(player)
 
     # Further methods
     def display(self):
@@ -231,58 +538,44 @@ class Game:
         """        
         
         for player in self.__players:
-            # check respawn state 
-            if not player.vehicle.active and player.vehicle.respawn_ticks > 0:
-                player.vehicle.reduce_respawn_ticks(1)
+            vehicle = player.vehicle
+
+            if not vehicle.active:
+                self.__handle_inactive_player_tick(player)
                 continue
 
-            # get newest value for acceleration from controller input
-            player.vehicle.set_acceleration(player.controller.forward_press)
-            
-            # apply friction
-            player.vehicle.apply_friction(self.__settings.friction_percent)
-            
-            # update speed based on acceleration and max speed
-            player.vehicle.update_speed(
+            vehicle.set_acceleration(player.controller.forward_press)
+            vehicle.apply_friction(self.__settings.friction_percent)
+            vehicle.update_speed(
                 self.__settings.max_speed,
                 acceleration_multiplier=self.__settings.acceleration_multiplier,
             )
 
-            # lane change trigger
-            if (player.vehicle.line_change_ticks is 0 
-                and player.vehicle.line_change_target is None
-                and player.controller.special_1 >= self.__settings.special_1_threshold):
+            self.__start_lane_change_if_requested(player)
 
-                target_lane: Lane | None = None
-                # player is left (lane 0) -> target is right (lane -1) and vice versa
-                if player.vehicle.lane is not None:
-                    if self.__lanes[0] == player.vehicle.lane:
-                        target_lane = self.__lanes[-1]
-                    elif self.__lanes[-1] == player.vehicle.lane:
-                        target_lane = self.__lanes[0]
-                        
-                if target_lane is not None:
-                    player.vehicle.trigger_line_change(
-                        target_lane=target_lane,
-                        line_change_ticks=self.__settings.lane_change_ticks
-                    )
-
-            # fall down detection
             if self.__violates_driving_profile(player):
-                player.vehicle.trigger_respawn(self.__settings.respawn_ticks)
+                self.__fall_player(player)
                 continue
 
-            # update position and round
-            # lane_track_length: total length of the current lane across all modules.
-            # delta_position: distance to move in this tick, derived from current speed.
-            lane_track_length = self.__get_lane_track_length(player.vehicle.lane)
-            delta_position = player.vehicle.speed * self.__game_tick_interval_s
-            player.vehicle.update_position(
-                delta_position,
-                lane_track_length,
-            )
-            
-        # collision detection
+            delta_position = vehicle.speed * self.__game_tick_interval_s
+            if self.__would_move_into_lane_gap(player, delta_position):
+                self.__fall_player(player)
+                continue
+
+            if vehicle.lane is None:
+                self.__fall_player(player)
+                continue
+
+            lane_track_length = self.__get_lane_track_length(vehicle.lane)
+            vehicle.update_position(delta_position, lane_track_length)
+
+            self.__advance_lane_change(player)
+            if not vehicle.active:
+                continue
+
+            if self.__violates_driving_profile(player):
+                self.__fall_player(player)
+
         self.__detect_and_apply_collisions()
             
             
@@ -298,7 +591,7 @@ class Game:
                 "losses": player.losses,
                 "vehicle": {
                     "position": player.vehicle.position,
-                    "lane": player.vehicle.lane.lane_id,
+                    "lane": player.vehicle.lane.lane_id if player.vehicle.lane is not None else None,
                     "speed": player.vehicle.speed,
                     "acceleration": player.vehicle.acceleration,
                     "round": player.vehicle.round,
@@ -330,11 +623,12 @@ class Game:
             } for tm in self.__track_modules],
             "settings": {
                 "max_speed": self.settings.max_speed,
-                "respawn_time": self.settings.respawn_time,
+                "respawn_ticks": self.settings.respawn_ticks,
                 "friction_percent": self.settings.friction_percent,
                 "acceleration_multiplier": self.settings.acceleration_multiplier,
                 "special_1_threshold": self.settings.special_1_threshold,
-                "overtake_time": self.settings.lane_change_time,
+                "lane_change_ticks": self.settings.lane_change_ticks,
+                "vehicle_crash_distance": self.settings.vehicle_crash_distance,
             },
             "length": self.length,
             "signal_receiver": { 

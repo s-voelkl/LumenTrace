@@ -4,7 +4,7 @@ class Vehicle:
         
     def __init__(
         self,
-        lane: Lane,
+        lane: Lane | None,
         position: float = 0,
         speed: float = 0,
         acceleration: float = 0,
@@ -25,15 +25,15 @@ class Vehicle:
         
     def reduce_respawn_ticks(self, ticks: int = 1):
         '''Reduces the respawn ticks by a specified amount, ensuring it does not go below zero.
-        If the respawn ticks reach zero, the vehicle becomes active again.
+        The active state is not toggled automatically. Activation is controlled by
+        game-level respawn validation so a vehicle can remain inactive when spawn
+        space is blocked.
         
         Args:
             ticks (int): The number of ticks to reduce. Default is 1.
         '''
         
         self.__respawn_ticks = max(self.__respawn_ticks - ticks, 0)
-        if self.__respawn_ticks == 0:
-            self.__active = True
 
     def trigger_respawn(self, respawn_ticks: int):
         '''Triggers the respawn process for the vehicle by setting the respawn ticks.
@@ -138,7 +138,7 @@ class Vehicle:
     def set_acceleration(self, acceleration: float):
         self.__acceleration = acceleration
         
-    def set_lane(self, lane: Lane):
+    def set_lane(self, lane: Lane | None):
         self.__lane = lane
 
     def set_position(self, position: float):
@@ -146,6 +146,14 @@ class Vehicle:
 
     def set_speed(self, speed: float):
         self.__speed = speed
+
+    def set_active(self, active: bool):
+        '''Sets whether the vehicle participates in active race updates.'''
+        self.__active = active
+
+    def set_respawn_ticks(self, respawn_ticks: int):
+        '''Sets respawn tick countdown value with non-negative clamp.'''
+        self.__respawn_ticks = max(respawn_ticks, 0)
 
     def set_round(self, round_value: int):
         self.__round = round_value if round_value >= 0 else 0
@@ -156,7 +164,7 @@ class Vehicle:
         return self.__position
 
     @property
-    def lane(self) -> Lane:
+    def lane(self) -> Lane | None:
         return self.__lane
 
     @property

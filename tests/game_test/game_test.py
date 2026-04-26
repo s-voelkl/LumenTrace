@@ -1,174 +1,294 @@
-# testing the game class
+"""High-signal unit tests for game simulation rules.
+
+These tests validate rule boundaries described in the project README:
+- timed multi-hop lane changes
+- proportional position conversion during lane changes
+- profile-based falls and lane-gap falls
+- same-lane rear-end collisions
+- respawn retry behavior and spawn-lane occupancy checks
+"""
+
 from collections.abc import Callable
 from typing import cast
 
+import pytest
+
 from src.controller.player_controller import PlayerController
 from src.controller.signal_receiver_mock import SignalReceiverMock
-from src.game import *
+from src.game import DrivingProfile, Game, Line, Player, Settings, TrackModule, Vehicle
 from src.game.lane import Lane
 from src.game.track_module import TrackType
 
-# test for basic game setup
-
 
 def run_game_tick_for_test(game: Game) -> None:
-    """Execute one internal game tick for deterministic unit tests.
+    """Execute one internal game tick.
 
-    This indirection avoids direct private-attribute access warnings in static analysis.
+    Tests call the private loop directly to keep execution deterministic and avoid
+    background thread timing side effects.
     """
     tick_fn = cast(Callable[[], None], getattr(game, "_Game__game_loop"))
     tick_fn()
 
-def test_game_setup():
-    """Validate baseline construction and default values of core game objects."""
-    # player
-    player_controller_1 = PlayerController()
-    assert player_controller_1.forward_press == 0
-    assert player_controller_1.controller_id == 1
-    
-    # lanes
-    lane_1 = Lane()
-    assert lane_1.lane_id == 0
-    lane_2 = Lane()
-    assert lane_2.lane_id == 1
-    
-    vehicle_1 = Vehicle(lane=lane_1)
-    assert vehicle_1.speed == 0
-    assert vehicle_1.position == 0
-    assert vehicle_1.round == 0
-    assert vehicle_1.acceleration == 0
-    assert vehicle_1.lane == lane_1
-    assert vehicle_1.lane.lane_id == lane_1.lane_id
-    assert vehicle_1.vehicle_length == 20
-    
-    player_1 = Player(
-        controller=player_controller_1,
-        vehicle=vehicle_1
-    )
-    assert player_1.controller == player_controller_1
-    assert player_1.vehicle == vehicle_1
-    assert player_1.name == "Player 1"
-    
-    # signal receiver
-    signal_receiver_1 = SignalReceiverMock(controllers=[player_controller_1])
-    assert signal_receiver_1.controllers == [player_controller_1]   
-     
-    # track
-    max_speed = 101
-    driving_profile_1 = DrivingProfile(max_speed=max_speed, min_speed=-max_speed)
-    assert driving_profile_1.lane_change_allowed == False
-    assert driving_profile_1.min_speed == -max_speed
-    assert driving_profile_1.max_speed == max_speed
-    assert driving_profile_1.max_acceleration == 10
-    assert driving_profile_1.min_acceleration == -10
-    
-    line_1 = Line(driving_profile=driving_profile_1, lane=lane_1)
-    assert line_1.lane == lane_1
-    assert line_1.length == 0
-    assert line_1.driving_profile == driving_profile_1
-    
-    driving_profile_2 = DrivingProfile(max_speed=max_speed * 0.9)
-    line_2_length = 50
-    line_2 = Line(driving_profile=driving_profile_2, line_length=line_2_length, lane=lane_2)
-    assert line_2.lane == lane_2
-    assert line_2.length == line_2_length
-    
-    track_module_1_length = 50
-    track_module_1 = TrackModule(part_length=track_module_1_length, lines=[line_1, line_2], track_type=TrackType.STRAIGHT)
-    assert track_module_1.length == track_module_1_length
-    assert track_module_1.lines == [line_1, line_2]
-    assert track_module_1.track_type == TrackType.STRAIGHT
-    assert track_module_1.get_line_length_for_lane(lane_1) == line_1.length
-    assert track_module_1.get_line_length_for_lane(lane_2) == line_2.length
-    
-    # game
-    settings = Settings(max_speed=max_speed, respawn_ticks=200.0, lane_change_ticks=25.0, friction_percent=0.02, 
-        acceleration_multiplier=0.015, special_1_threshold=0.5)
-    assert settings.max_speed == max_speed
-    assert settings.respawn_ticks == 200.0
-    assert settings.lane_change_ticks == 25.0
-    assert settings.friction_percent == 0.02
-    assert settings.acceleration_multiplier == 0.015
-    assert settings.special_1_threshold == 0.5
-    
-    game: Game = Game(
-        players=[player_1],
+
+def set_controller_input(controller: PlayerController, *, forward_press: float = 0.0, special_1: float = 0.0) -> None:
+    """Set controller values through production input-mapping API."""
+    controller.update_input("adc_0", forward_press)
+    controller.update_input("adc_1", special_1)
+
+
+def make_track_modules(
+    lanes: list[Lane],
+    module_lane_lengths: list[list[float | None]],
+    *,
+    lane_change_allowed: bool,
+    max_speed: float = 100.0,
+    min_speed: float = -100.0,
+    max_acceleration: float = 10.0,
+    min_acceleration: float = -10.0,
+) -> list[TrackModule]:
+    """Create track modules where each entry defines per-lane line lengths.
+
+    Args:
+        lanes (list[Lane]): Lane order from left to right.
+        module_lane_lengths (list[list[float | None]]):
+            Outer list is module order. Inner list maps 1:1 to lanes.
+            ``None`` means lane is missing in that module.
+    """
+    modules: list[TrackModule] = []
+    for lane_lengths in module_lane_lengths:
+        lines: list[Line] = []
+        for lane, line_length in zip(lanes, lane_lengths):
+            if line_length is None:
+                continue
+            lines.append(
+                Line(
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed,
+                        min_speed=min_speed,
+                        max_acceleration=max_acceleration,
+                        min_acceleration=min_acceleration,
+                        lane_change_allowed=lane_change_allowed,
+                    ),
+                    lane=lane,
+                    line_length=line_length,
+                )
+            )
+
+        modules.append(
+            TrackModule(
+                track_type=TrackType.STRAIGHT,
+                part_length=max([length for length in lane_lengths if length is not None], default=0.0),
+                lines=lines,
+            )
+        )
+    return modules
+
+
+def make_game(
+    lanes: list[Lane],
+    players: list[Player],
+    track_modules: list[TrackModule],
+    *,
+    settings: Settings | None = None,
+) -> Game:
+    """Construct a game with deterministic settings for unit tests."""
+    if settings is None:
+        settings = Settings(
+            max_speed=100.0,
+            respawn_ticks=5,
+            friction_percent=0.02,
+            acceleration_multiplier=0.015,
+            special_1_threshold=0.5,
+            lane_change_ticks=2,
+        )
+
+    return Game(
+        players=players,
         settings=settings,
-        track_modules=[track_module_1],
-        signal_receiver=signal_receiver_1,
-        lanes=[lane_1, lane_2]
+        track_modules=track_modules,
+        signal_receiver=SignalReceiverMock([player.controller for player in players]),
+        lanes=lanes,
     )
-    assert game.settings == settings
-    assert game.players == [player_1]
-    assert game.track_modules == [track_module_1]
-    assert game.signal_receiver == signal_receiver_1
-    assert game.length == track_module_1_length
-    assert game.lanes == [lane_1, lane_2]
 
 
-def test_vehicle_position_wraparound():
-    """Ensure position wraps at lane length and increments lap counter."""
-    lane = Lane()
-    vehicle = Vehicle(lane=lane, position=48)
+def test_lane_change_is_timed_multi_hop_and_reaches_final_lane():
+    """Lane change from leftmost to rightmost should proceed in timed adjacent hops."""
+    lanes = [Lane(), Lane(), Lane()]
+    modules = make_track_modules(lanes, [[60.0, 60.0, 60.0]], lane_change_allowed=True)
 
-    vehicle.update_position(delta_position=5, lane_length=50)
+    controller = PlayerController()
+    set_controller_input(controller, special_1=1.0)
+    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
+    game = make_game(lanes, [player], modules)
 
-    assert vehicle.position == 3
-    assert vehicle.round == 1
+    run_game_tick_for_test(game)
+    run_game_tick_for_test(game)
+    assert player.vehicle.lane == lanes[1]
+
+    run_game_tick_for_test(game)
+    run_game_tick_for_test(game)
+    assert player.vehicle.lane == lanes[2]
+    assert player.vehicle.line_change_ticks == 0
+    assert player.vehicle.line_change_target is None
 
 
-def test_track_module_position_conversion_between_lanes():
-    """Verify proportional position conversion across lanes of different lengths."""
-    left_lane = Lane()
-    right_lane = Lane()
+def test_lane_change_requires_lane_change_allowed_profile():
+    """Lane change must be blocked on lines that disallow lane changes."""
+    lanes = [Lane(), Lane()]
+    modules = make_track_modules(lanes, [[50.0, 50.0]], lane_change_allowed=False)
 
-    track_module = TrackModule(
-        track_type=TrackType.INTERSECTION,
-        part_length=50,
-        lines=[
-            Line(driving_profile=DrivingProfile(lane_change_allowed=True), lane=left_lane, line_length=40),
-            Line(driving_profile=DrivingProfile(lane_change_allowed=True), lane=right_lane, line_length=60),
+    controller = PlayerController()
+    set_controller_input(controller, special_1=1.0)
+    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
+    game = make_game(lanes, [player], modules)
+
+    for _ in range(5):
+        run_game_tick_for_test(game)
+
+    assert player.vehicle.lane == lanes[0]
+    assert player.vehicle.line_change_ticks == 0
+    assert player.vehicle.line_change_target is None
+
+
+def test_lane_change_converts_module_position_proportionally():
+    """Lane hop should preserve module progress by proportional conversion."""
+    lanes = [Lane(), Lane()]
+    modules = make_track_modules(lanes, [[40.0, 80.0]], lane_change_allowed=True)
+
+    controller = PlayerController()
+    set_controller_input(controller, special_1=1.0)
+    settings = Settings(lane_change_ticks=1, special_1_threshold=0.5)
+    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=20.0))
+    game = make_game(lanes, [player], modules, settings=settings)
+
+    run_game_tick_for_test(game)
+
+    assert player.vehicle.lane == lanes[1]
+    assert player.vehicle.position == pytest.approx(40.0)
+
+
+def test_player_falls_on_driving_profile_violation():
+    """Speed and acceleration outside profile bounds must trigger immediate fall."""
+    lanes = [Lane()]
+    modules = make_track_modules(
+        lanes,
+        [[100.0]],
+        lane_change_allowed=False,
+        max_speed=5.0,
+        min_speed=-5.0,
+        max_acceleration=2.0,
+        min_acceleration=-2.0,
+    )
+
+    controller = PlayerController()
+    set_controller_input(controller, forward_press=0.0)
+    vehicle = Vehicle(lane=lanes[0], speed=10.0)
+    player = Player(controller=controller, vehicle=vehicle)
+    settings = Settings(respawn_ticks=7)
+    game = make_game(lanes, [player], modules, settings=settings)
+
+    run_game_tick_for_test(game)
+
+    assert not player.vehicle.active
+    assert player.vehicle.respawn_ticks == settings.respawn_ticks
+    assert player.vehicle.lane is None
+
+
+def test_player_falls_when_moving_into_lane_gap():
+    """Crossing a module boundary into a missing lane must trigger a fall."""
+    lanes = [Lane(), Lane()]
+    modules = make_track_modules(
+        lanes,
+        [
+            [50.0, 50.0],
+            [50.0, None],
         ],
+        lane_change_allowed=False,
     )
 
-    assert track_module.convert_position_between_lanes(left_lane, right_lane, 20) == 30
+    controller = PlayerController()
+    set_controller_input(controller, forward_press=0.0)
+    vehicle = Vehicle(lane=lanes[1], position=49.0, speed=2.0)
+    player = Player(controller=controller, vehicle=vehicle)
+    game = make_game(lanes, [player], modules)
+    setattr(game, "_Game__game_tick_interval_s", 1.0)
+
+    run_game_tick_for_test(game)
+
+    assert not player.vehicle.active
+    assert player.vehicle.lane is None
 
 
-# TODO:
-# basic acceleration, speed, position and round test for vehicle.
-# e.g. set speed to 10, apply friction, check if speed is reduced by 2% (0.02) to 9.8.
-# e.g. set speed to 10, acceleration to 100, apply update_speed with max_speed 100 and acceleration_multiplier 0.015.
-# make one round for the vehicle passing the vehicle through one round of the track
-# ...
+def test_collision_makes_front_vehicle_fall():
+    """Within crash distance, front vehicle on same lane must fall."""
+    lanes = [Lane()]
+    modules = make_track_modules(lanes, [[100.0]], lane_change_allowed=False)
 
-# TODO: lane change tests:
-# - lane change from left to right with only to lanes. 25 ticks needed for the whole operation.
-# - lane change from right to left with only to lanes. 25 ticks
-# - lane change from left to right with three lanes. 25 + 25 ticks
-# - lane change from right to left with three lanes. 25 + 25 ticks
-# - lane change from left to right with four lanes. 25 + 25 + 25 ticks
+    rear_controller = PlayerController()
+    front_controller = PlayerController()
+    set_controller_input(rear_controller, forward_press=0.0)
+    set_controller_input(front_controller, forward_press=0.0)
 
-# TODO: collision detection tests:
-# - no collision in bounds for speed and acceleration. test this on two track modules with different limits.
-# - collision when speed not in bounds or acceleration not in bounds. the vehicle.active == True, vehicle.respawn_ticks == settings.respawn_ticks.
-# - collision when crossing lane gap. example: 3 lanes. first track module with 3 lanes, 
-# second track module with 2 lanes 
-# (missing lane in the middle). vehicle on first track module is on lane 2 (middle), 
-# with max position on this line (e.g. 50). with speed > 0, the vehicle would go on on lane 2
-# (middle) of the second track module, which does not exist. this should be detected as a 
-# collision and cause a fall.
-# - collision with another player. example: one line, first player at position 0, 
-# second player at position 20. when first player moves with speed > 0, it would collide
-# with the second player. first player should not fall, second player should fall. 
-# check attributes vehicle.active and vehicle.respawn_ticks.
-# - respawn vehicle on one track without other players. should place the vehicle
-# on vehicle.position==0, vehicle.active==True, vehicle.lane==<lane>, vehicle.respawn_ticks==0, and vehicle.round==<round>.
-# - respawn vehicle. with two track modules and two lanes on it. first player exists on first lane, second player is respawned at second lane.
-# - respawn vehicle. with two track modules and two lanes on it. first player exists on second lane, second player is respawned at first lane.
-# - respawn vehicle. with on track module and one lane. first player exists on this lane, second player attempts to respawn.
-# second player should not respawn, because the lane is occupied. 
-# - respawn vehicle. with two track module and one lane. first player exists on the first track module, 
-# second player attempts to respawn on first track module. second player should not respawn, 
-# because the lane is occupied. before the second tick, the first player is moved to the second
-# track module. in the second tick, the second player should respawn, because the lane on the 
-# first track module is now unoccupied.
+    rear_player = Player(controller=rear_controller, vehicle=Vehicle(lane=lanes[0], position=0.0, speed=0.0))
+    front_player = Player(controller=front_controller, vehicle=Vehicle(lane=lanes[0], position=15.0, speed=0.0))
+    game = make_game(lanes, [rear_player, front_player], modules)
+
+    run_game_tick_for_test(game)
+
+    assert rear_player.vehicle.active
+    assert not front_player.vehicle.active
+    assert front_player.vehicle.respawn_ticks == game.settings.respawn_ticks
+
+
+def test_respawn_uses_free_lane_on_first_module_without_changing_round():
+    """Respawn should select an available lane at module zero and keep lap count unchanged."""
+    lanes = [Lane(), Lane()]
+    modules = make_track_modules(lanes, [[50.0, 50.0], [50.0, 50.0]], lane_change_allowed=False)
+
+    occupied_controller = PlayerController()
+    falling_controller = PlayerController()
+    occupied_player = Player(
+        controller=occupied_controller,
+        vehicle=Vehicle(lane=lanes[0], position=10.0, speed=0.0),
+    )
+
+    respawning_vehicle = Vehicle(lane=lanes[0], position=5.0, round=3)
+    respawning_vehicle.trigger_respawn(1)
+    respawning_player = Player(controller=falling_controller, vehicle=respawning_vehicle)
+
+    game = make_game(lanes, [occupied_player, respawning_player], modules)
+    run_game_tick_for_test(game)
+
+    assert respawning_player.vehicle.active
+    assert respawning_player.vehicle.lane == lanes[1]
+    assert respawning_player.vehicle.position == 0.0
+    assert respawning_player.vehicle.speed == 0.0
+    assert respawning_player.vehicle.acceleration == 0.0
+    assert respawning_player.vehicle.respawn_ticks == 0
+    assert respawning_player.vehicle.round == 3
+
+
+def test_respawn_retries_until_first_module_lane_becomes_free():
+    """Respawn must keep retrying each tick when spawn lane is still occupied."""
+    lanes = [Lane()]
+    modules = make_track_modules(lanes, [[50.0], [50.0]], lane_change_allowed=False)
+
+    blocker_controller = PlayerController()
+    waiting_controller = PlayerController()
+
+    blocker = Player(controller=blocker_controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
+    waiting_vehicle = Vehicle(lane=lanes[0], position=0.0)
+    waiting_vehicle.trigger_respawn(1)
+    waiting = Player(controller=waiting_controller, vehicle=waiting_vehicle)
+
+    game = make_game(lanes, [blocker, waiting], modules)
+
+    run_game_tick_for_test(game)
+    assert not waiting.vehicle.active
+    assert waiting.vehicle.respawn_ticks == 0
+
+    blocker.vehicle.set_position(60.0)
+    run_game_tick_for_test(game)
+    assert waiting.vehicle.active
+    assert waiting.vehicle.position == 0.0
+    assert waiting.vehicle.lane == lanes[0]
