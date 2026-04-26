@@ -20,6 +20,28 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 - Track modules with individual driving profiles to simulate different track conditions.
 - Settings for customizing the racing experience.
 
+## Local Simulation (Terminal)
+
+For fast manual validation of game logic, a text-based simulation runner is
+available at `src/dev/simulation.py`.
+
+- Entrypoint: `python -m src.dev.simulation`
+- Renderer: `src/simulation/terminal_renderer.py`
+- Input script: `src/simulation/signal_receiver.py`
+
+The simulation dashboard displays:
+
+- Global settings (`max_speed`, friction, lane-change timing, respawn timing, etc.)
+- Full player and vehicle telemetry (lane, position, speed, acceleration, lap, respawn state)
+- Full track module list including per-lane driving profiles
+- Current player module context (`module_index:track_type@local_position`)
+- ASCII lane visualization with module boundaries and live player markers
+
+Track layout used by the simulation:
+
+- Standard modules: 2 lanes, lane change disabled
+- Intersection module: 3 temporary lanes, lane change enabled
+
 ## Game Mechanics
 
 ### Acceleration and Friction

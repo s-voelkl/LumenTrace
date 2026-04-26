@@ -1,7 +1,7 @@
 import threading
 import time
 from collections.abc import Callable
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from src.controller.signal_receiver_interface import SignalReceiverInterface
 from .lane import Lane
@@ -44,12 +44,15 @@ class Game:
         self.__signal_receiver = signal_receiver
         self.__lanes = lanes if lanes else []
         self.__lane_change_states: dict[Player, LaneChangeState] = {}
+        self.__event_history: list[dict[str, Any]] = []
+        self.__event_history_limit = 200
+        self.__tick_count = 0
         
         self.__stop_event = threading.Event()
         self.__threads: list[threading.Thread] = []
         self.__game_tick_interval_s = 0.02
         
-        logger.log_json({
+        self.__record_event({
             "event": "game_initialized",
             "players": [player.name for player in self.__players],
             "settings": self.__settings.__dict__,
@@ -62,7 +65,7 @@ class Game:
         display_interval_s: float = 0.02,
         game_tick_interval_s: float = 0.02,
     ):
-        logger.log_json({
+        self.__record_event({
             "event": "game_started",
         })
 
@@ -121,6 +124,43 @@ class Game:
 
     def fetch_data(self):
         self.__signal_receiver.receive_signal()
+
+    def __record_event(self, payload: dict[str, Any]) -> None:
+        """Store and emit one structured game event."""
+        event = {"tick": self.__tick_count, **payload}
+        self.__event_history.append(event)
+        if len(self.__event_history) > self.__event_history_limit:
+            self.__event_history = self.__event_history[-self.__event_history_limit:]
+        logger.log_json(event)
+
+    def tick_once(
+        self,
+        *,
+        fetch_data: bool = True,
+        display: bool = False,
+        game_tick_interval_s: float | None = None,
+    ) -> None:
+        """Run one deterministic game tick.
+
+        This API is intended for simulation and unit tests where external control
+        over tick cadence is preferred over threaded background loops.
+
+        Args:
+            fetch_data (bool, optional): Whether input receiver should be polled first.
+            display (bool, optional): Whether to call ``display`` after tick update.
+            game_tick_interval_s (float | None, optional): Tick duration used by
+                movement integration. ``None`` keeps the current configured value.
+        """
+        if game_tick_interval_s is not None:
+            self.__game_tick_interval_s = game_tick_interval_s
+
+        if fetch_data:
+            self.fetch_data()
+
+        self.__game_loop()
+
+        if display:
+            self.display()
 
     # Helpers
     def __get_lane_track_length(self, lane: Lane) -> float:
@@ -204,6 +244,15 @@ class Game:
     def __fall_player(self, player: Player) -> None:
         """Move one player into respawn state and clear pending lane-change state."""
         self.__lane_change_states.pop(player, None)
+        self.__record_event({
+            "event": "player_fell",
+            "player": player.name,
+            "lane": player.vehicle.lane.lane_id if player.vehicle.lane is not None else None,
+            "position": player.vehicle.position,
+            "speed": player.vehicle.speed,
+            "acceleration": player.vehicle.acceleration,
+            "respawn_ticks": self.__settings.respawn_ticks,
+        })
         player.vehicle.trigger_respawn(self.__settings.respawn_ticks)
 
     def __would_move_into_lane_gap(self, player: Player, delta_position: float) -> bool:
@@ -318,6 +367,14 @@ class Game:
             target_lane = self.__lanes[-1]
         elif vehicle.lane == self.__lanes[-1]:
             target_lane = self.__lanes[0]
+        else:
+            # In 3+ lane configurations (for example intersections), allow middle
+            # lanes to initiate a lane change as well. We choose the nearest edge,
+            # and in a tie we move right to keep behavior deterministic.
+            source_index = self.__lanes.index(vehicle.lane)
+            left_distance = source_index
+            right_distance = (len(self.__lanes) - 1) - source_index
+            target_lane = self.__lanes[-1] if right_distance <= left_distance else self.__lanes[0]
 
         if target_lane is None or target_lane == vehicle.lane:
             return
@@ -330,6 +387,14 @@ class Game:
             "lane_sequence": lane_sequence,
             "sequence_index": 0,
         }
+        self.__record_event({
+            "event": "lane_change_started",
+            "player": player.name,
+            "source_lane": vehicle.lane.lane_id,
+            "target_lane": target_lane.lane_id,
+            "lane_sequence": [lane.lane_id for lane in lane_sequence],
+            "lane_change_ticks": self.__settings.lane_change_ticks,
+        })
         vehicle.trigger_line_change(
             target_lane=lane_sequence[1],
             line_change_ticks=self.__settings.lane_change_ticks,
@@ -380,10 +445,24 @@ class Game:
 
         vehicle.set_lane(target_lane)
         vehicle.set_position(target_global_position)
+        self.__record_event({
+            "event": "lane_change_hop_completed",
+            "player": player.name,
+            "from_lane": source_lane.lane_id,
+            "to_lane": target_lane.lane_id,
+            "module_index": module_index,
+            "position": vehicle.position,
+        })
 
         state["sequence_index"] += 1
         if state["sequence_index"] >= len(state["lane_sequence"]) - 1:
             self.__lane_change_states.pop(player, None)
+            self.__record_event({
+                "event": "lane_change_finished",
+                "player": player.name,
+                "final_lane": target_lane.lane_id,
+                "position": vehicle.position,
+            })
             return
 
         next_target = state["lane_sequence"][state["sequence_index"] + 1]
@@ -431,6 +510,12 @@ class Game:
             player.vehicle.set_acceleration(0)
             player.vehicle.set_respawn_ticks(0)
             player.vehicle.set_active(True)
+            self.__record_event({
+                "event": "player_respawned",
+                "player": player.name,
+                "lane": lane.lane_id,
+                "position": player.vehicle.position,
+            })
             return True
 
         return False
@@ -444,6 +529,10 @@ class Game:
         if vehicle.respawn_ticks == 0 and not self.__try_respawn_player(player):
             # Keep retrying every tick while no lane is safely available.
             vehicle.set_active(False)
+            self.__record_event({
+                "event": "respawn_retry_blocked",
+                "player": player.name,
+            })
 
     # Respawn
     # check tests for test details
@@ -537,6 +626,8 @@ class Game:
             None: Mutates player vehicles and game-internal lane-change state.
         """        
         
+        self.__tick_count += 1
+
         for player in self.__players:
             vehicle = player.vehicle
 
@@ -660,3 +751,8 @@ class Game:
     @property
     def lanes(self) -> list[Lane]:
         return self.__lanes
+
+    @property
+    def recent_events(self) -> list[dict[str, Any]]:
+        """Return in-memory structured event history for local simulations."""
+        return list(self.__event_history)
