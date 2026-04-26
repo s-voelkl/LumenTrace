@@ -48,8 +48,8 @@ class SimulationSignalReceiver(SignalReceiverInterface):
         else:
             forward_press = 28.0
 
-        # Trigger lane-change intent. 20% lane change
-        special_1 = random.choice([0.0] * 5 + [1.0])
+        # Trigger lane-change intent.
+        special_1 = random.choice([0.0] * 2 + [1.0])
         return forward_press, special_1
 
     def receive_signal(self) -> None:

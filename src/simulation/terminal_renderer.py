@@ -14,9 +14,18 @@ class TerminalSimulationRenderer:
     development shell without graphics setup.
     """
 
-    def __init__(self, track_width_chars: int = 72, max_event_lines: int = 18) -> None:
+    _ANSI_RESET = "\x1b[0m"
+    _ANSI_DIM = "\x1b[2m"
+    _ANSI_YELLOW = "\x1b[33m"
+    _ANSI_GREEN = "\x1b[32m"
+    _ANSI_CYAN = "\x1b[36m"
+    _ANSI_RED_BOLD = "\x1b[1;31m"
+    _ANSI_BLUE_BOLD = "\x1b[1;34m"
+
+    def __init__(self, track_width_chars: int = 72, max_event_lines: int = 18, use_color: bool = True) -> None:
         self.__track_width_chars = max(24, track_width_chars)
         self.__max_event_lines = max(5, max_event_lines)
+        self.__use_color = use_color
 
     def render_frame(self, game: Game, tick: int) -> str:
         """Build one complete dashboard frame.
@@ -115,6 +124,7 @@ class TerminalSimulationRenderer:
     def __render_visual_track(self, game: Game) -> list[str]:
         out: list[str] = ["VISUAL TRACK (per lane)"]
         display_lanes = self.__get_display_lanes(game)
+        module_spans = self.__module_spans_for_game(game)
 
         player_symbols: dict[Lane, dict[int, str]] = {}
         for player_index, player in enumerate(game.players, start=1):
@@ -122,14 +132,24 @@ class TerminalSimulationRenderer:
             if not player.vehicle.active or lane is None:
                 continue
 
-            lane_length = self.__lane_track_length(game.track_modules, lane)
-            if lane_length <= 0:
+            module_index, local_position = self.__resolve_lane_module_position(
+                game.track_modules,
+                lane,
+                player.vehicle.position,
+            )
+            if module_index is None:
                 continue
 
-            normalized_pos = player.vehicle.position % lane_length
-            char_index = int((normalized_pos / lane_length) * (self.__track_width_chars - 1))
+            line_length = game.track_modules[module_index].get_line_length_for_lane(lane)
+            if line_length <= 0:
+                continue
+
+            start, end = module_spans[module_index]
+            segment_width = max(1, end - start)
+            progress = max(0.0, min(local_position / line_length, 1.0))
+            char_index = start + min(segment_width - 1, int(progress * (segment_width - 1)))
             lane_symbols = player_symbols.setdefault(lane, {})
-            lane_symbols[char_index] = str(player_index)
+            lane_symbols[char_index] = self.__player_symbol(player_index)
 
         for lane in display_lanes:
             lane_length = self.__lane_track_length(game.track_modules, lane)
@@ -137,10 +157,21 @@ class TerminalSimulationRenderer:
                 out.append(f"  L{lane.lane_id}: (no drivable segments)")
                 continue
 
-            chars = ["-"] * self.__track_width_chars
-            for boundary_index in self.__module_boundaries_for_lane(game.track_modules, lane):
-                if 0 <= boundary_index < self.__track_width_chars:
-                    chars[boundary_index] = "|"
+            chars = [" "] * self.__track_width_chars
+            for module_index, module in enumerate(game.track_modules):
+                start, end = module_spans[module_index]
+                line = module.get_line_for_lane(lane)
+                if line is None:
+                    continue
+
+                segment_char = "=" if line.driving_profile.lane_change_allowed else "-"
+                segment_color = self._ANSI_GREEN if line.driving_profile.lane_change_allowed else self._ANSI_CYAN
+                for index in range(start, end):
+                    chars[index] = self.__colorize(segment_char, segment_color)
+
+            for start, _ in module_spans:
+                if 0 <= start < self.__track_width_chars:
+                    chars[start] = self.__colorize("|", self._ANSI_YELLOW)
 
             for char_index, symbol in player_symbols.get(lane, {}).items():
                 chars[char_index] = symbol
@@ -148,7 +179,8 @@ class TerminalSimulationRenderer:
             lane_bar = "".join(chars)
             out.append(f"  L{lane.lane_id} [{lane_bar}] len={lane_length:.2f}")
 
-        out.append("  legend: '|' module boundary, digits player positions")
+        out.append("  legend: '|' module boundary, '=' lane-change allowed, '-' lane-change blocked")
+        out.append("          cyan=blocked lanes, green=lane-change lanes, red/blue=players")
         return out
 
     def __render_event_log(self, game: Game) -> list[str]:
@@ -202,6 +234,50 @@ class TerminalSimulationRenderer:
     @staticmethod
     def __lane_target_label(target_lane: Lane | None) -> str:
         return f"L{target_lane.lane_id}" if target_lane is not None else "None"
+
+    def __colorize(self, text: str, color: str) -> str:
+        if not self.__use_color:
+            return text
+        return f"{color}{text}{self._ANSI_RESET}"
+
+    def __player_symbol(self, player_index: int) -> str:
+        symbol = str(player_index)
+        if player_index % 2 == 1:
+            return self.__colorize(symbol, self._ANSI_RED_BOLD)
+        return self.__colorize(symbol, self._ANSI_BLUE_BOLD)
+
+    def __module_spans_for_game(self, game: Game) -> list[tuple[int, int]]:
+        """Return module-aligned character spans across the full track width."""
+        track_modules = game.track_modules
+        if not track_modules:
+            return []
+
+        width = self.__track_width_chars
+        total_length = sum(max(0.0, module.length) for module in track_modules)
+
+        if total_length <= 0:
+            step = width / len(track_modules)
+            boundaries = [int(round(index * step)) for index in range(len(track_modules) + 1)]
+        else:
+            boundaries = [0]
+            cumulative = 0.0
+            for module in track_modules:
+                cumulative += max(0.0, module.length)
+                boundaries.append(int(round((cumulative / total_length) * width)))
+
+        boundaries[0] = 0
+        boundaries[-1] = width
+        for index in range(1, len(boundaries)):
+            if boundaries[index] < boundaries[index - 1]:
+                boundaries[index] = boundaries[index - 1]
+
+        spans: list[tuple[int, int]] = []
+        for index in range(len(track_modules)):
+            start = min(max(0, boundaries[index]), width - 1)
+            end = min(max(start + 1, boundaries[index + 1]), width)
+            spans.append((start, end))
+
+        return spans
 
     @staticmethod
     def __lane_track_length(track_modules: list[TrackModule], lane: Lane) -> float:

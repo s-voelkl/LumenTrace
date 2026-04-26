@@ -34,8 +34,8 @@
       "request": "launch",
       "module": "src.dev.simulation",
       "cwd": "${workspaceFolder}",
-      // "console": "externalTerminal",
-      "console": "integratedTerminal",
+      "console": "externalTerminal",
+      // "console": "integratedTerminal",
       "justMyCode": true
     },
     {

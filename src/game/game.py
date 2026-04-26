@@ -241,12 +241,13 @@ class Game:
             return None, local_position
         return self.__track_modules[module_index], local_position
 
-    def __fall_player(self, player: Player) -> None:
+    def __fall_player(self, player: Player, reason: str) -> None:
         """Move one player into respawn state and clear pending lane-change state."""
         self.__lane_change_states.pop(player, None)
         self.__record_event({
             "event": "player_fell",
             "player": player.name,
+            "reason": reason,
             "lane": player.vehicle.lane.lane_id if player.vehicle.lane is not None else None,
             "position": player.vehicle.position,
             "speed": player.vehicle.speed,
@@ -268,16 +269,22 @@ class Game:
         Returns:
             bool: ``True`` if the movement would enter a lane gap.
         """
+        return self.__lane_gap_reason(player, delta_position) is not None
+
+    def __lane_gap_reason(self, player: Player, delta_position: float) -> str | None:
+        """Return a short reason when movement enters a lane gap."""
         if delta_position == 0:
-            return False
+            return None
 
         lane = player.vehicle.lane
-        if lane is None or not self.__track_modules:
-            return True
+        if lane is None:
+            return "lane is ended: vehicle has no lane"
+        if not self.__track_modules:
+            return "lane is ended: no track modules configured"
 
         module_index, module_position = self.__get_track_module_index_and_local_position(lane, player.vehicle.position)
         if module_index is None:
-            return True
+            return "lane is ended: current lane position not resolvable"
 
         remaining = delta_position
         track_module_count = len(self.__track_modules)
@@ -286,32 +293,49 @@ class Game:
             current_module = self.__track_modules[module_index]
             current_line_length = current_module.get_line_length_for_lane(lane)
             if current_line_length <= 0:
-                return True
+                return f"lane is ended in module {module_index}"
 
             if remaining > 0:
                 distance_to_end = max(current_line_length - module_position, 0.0)
                 if remaining <= distance_to_end:
-                    return False
+                    return None
 
                 remaining -= distance_to_end
                 module_index = (module_index + 1) % track_module_count
                 if self.__track_modules[module_index].get_line_length_for_lane(lane) <= 0:
-                    return True
+                    return f"lane is ended: missing next lane segment in module {module_index}"
                 module_position = 0.0
                 continue
 
             distance_to_start = max(module_position, 0.0)
             if -remaining <= distance_to_start:
-                return False
+                return None
 
             remaining += distance_to_start
             module_index = (module_index - 1) % track_module_count
             previous_line_length = self.__track_modules[module_index].get_line_length_for_lane(lane)
             if previous_line_length <= 0:
-                return True
+                return f"lane is ended: missing previous lane segment in module {module_index}"
             module_position = previous_line_length
 
-        return False
+        return None
+
+    @staticmethod
+    def __get_profile_violation_reason(player: Player, profile: Any) -> str | None:
+        """Return short violation string for speed/acceleration bounds."""
+        speed = player.vehicle.speed
+        acceleration = player.vehicle.acceleration
+
+        if speed > profile.max_speed:
+            return f"speed ({speed:.2f}) > {profile.max_speed:.2f}"
+        if speed < profile.min_speed:
+            return f"speed ({speed:.2f}) < {profile.min_speed:.2f}"
+        if acceleration > profile.max_acceleration:
+            return f"acceleration ({acceleration:.2f}) > {profile.max_acceleration:.2f}"
+        if acceleration < profile.min_acceleration:
+            return f"acceleration ({acceleration:.2f}) < {profile.min_acceleration:.2f}"
+
+        return None
 
     def __get_lane_sequence_between(self, source_lane: Lane, target_lane: Lane) -> list[Lane]:
         """Return ordered adjacent lane path from source to target.
@@ -424,12 +448,15 @@ class Game:
             vehicle.position,
         )
         if module_index is None:
-            self.__fall_player(player)
+            self.__fall_player(player, "lane change failed: source lane position not resolvable")
             return
 
         track_module = self.__track_modules[module_index]
         if track_module.get_line_for_lane(target_lane) is None:
-            self.__fall_player(player)
+            self.__fall_player(
+                player,
+                f"lane change failed: target lane L{target_lane.lane_id} missing in module {module_index}",
+            )
             return
 
         target_module_position = track_module.convert_position_between_lanes(
@@ -561,16 +588,7 @@ class Game:
         if current_line is None:
             return True
 
-        profile = current_line.driving_profile
-        speed = player.vehicle.speed
-        acceleration = player.vehicle.acceleration
-
-        return (
-            speed > profile.max_speed
-            or speed < profile.min_speed
-            or acceleration > profile.max_acceleration
-            or acceleration < profile.min_acceleration
-        )
+        return self.__get_profile_violation_reason(player, current_line.driving_profile) is not None
 
     def __detect_and_apply_collisions(self):
         """Detect same-lane rear-end collisions and mark front vehicles as fallen.
@@ -579,7 +597,7 @@ class Game:
         can collide in one direction. If the forward gap is below or equal to the
         configured crash distance, the vehicle in front falls.
         """
-        players_to_fall: set[Player] = set()
+        players_to_fall: dict[Player, str] = {}
         crash_distance = self.__settings.vehicle_crash_distance
 
         for lane in self.__lanes:
@@ -600,11 +618,13 @@ class Game:
                 front_player = lane_players[(index + 1) % len(lane_players)]
                 forward_gap = (front_player.vehicle.position - rear_player.vehicle.position) % lane_length
                 if 0 < forward_gap <= crash_distance:
-                    players_to_fall.add(front_player)
+                    players_to_fall[front_player] = (
+                        f"collision with {rear_player.name} at position {rear_player.vehicle.position:.2f}"
+                    )
 
-        for player in players_to_fall:
+        for player, reason in players_to_fall.items():
             if player.vehicle.active:
-                self.__fall_player(player)
+                self.__fall_player(player, reason)
 
     # Further methods
     def display(self):
@@ -644,17 +664,32 @@ class Game:
 
             self.__start_lane_change_if_requested(player)
 
-            if self.__violates_driving_profile(player):
-                self.__fall_player(player)
+            track_module, _ = self.__get_track_module_for_lane_position(
+                vehicle.lane,
+                vehicle.position,
+            ) if vehicle.lane is not None else (None, 0.0)
+            if track_module is None or vehicle.lane is None:
+                self.__fall_player(player, "lane is ended: active lane/module not resolvable")
+                continue
+
+            current_line = track_module.get_line_for_lane(vehicle.lane)
+            if current_line is None:
+                self.__fall_player(player, "lane is ended: missing line for active lane")
+                continue
+
+            profile_reason = self.__get_profile_violation_reason(player, current_line.driving_profile)
+            if profile_reason is not None:
+                self.__fall_player(player, profile_reason)
                 continue
 
             delta_position = vehicle.speed * self.__game_tick_interval_s
-            if self.__would_move_into_lane_gap(player, delta_position):
-                self.__fall_player(player)
+            lane_gap_reason = self.__lane_gap_reason(player, delta_position)
+            if lane_gap_reason is not None:
+                self.__fall_player(player, lane_gap_reason)
                 continue
 
             if vehicle.lane is None:
-                self.__fall_player(player)
+                self.__fall_player(player, "lane is ended: vehicle lane is None after movement")
                 continue
 
             lane_track_length = self.__get_lane_track_length(vehicle.lane)
@@ -664,8 +699,22 @@ class Game:
             if not vehicle.active:
                 continue
 
-            if self.__violates_driving_profile(player):
-                self.__fall_player(player)
+            track_module_after, _ = self.__get_track_module_for_lane_position(
+                vehicle.lane,
+                vehicle.position,
+            ) if vehicle.lane is not None else (None, 0.0)
+            if track_module_after is None or vehicle.lane is None:
+                self.__fall_player(player, "lane is ended: active lane/module not resolvable after movement")
+                continue
+
+            current_line_after = track_module_after.get_line_for_lane(vehicle.lane)
+            if current_line_after is None:
+                self.__fall_player(player, "lane is ended: missing line for active lane after movement")
+                continue
+
+            profile_reason_after = self.__get_profile_violation_reason(player, current_line_after.driving_profile)
+            if profile_reason_after is not None:
+                self.__fall_player(player, profile_reason_after)
 
         self.__detect_and_apply_collisions()
             

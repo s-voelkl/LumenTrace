@@ -97,6 +97,20 @@ def test_renderer_event_log_persists_events_across_ticks() -> None:
     assert "player_fell" in frame_after_next_tick
 
 
+def test_player_fall_event_contains_reason_string() -> None:
+    """Crash/fall event should include a short human-readable reason string."""
+    game = create_simulation_game()
+    game.players[0].controller.update_input("adc_0", 500.0)
+
+    game.tick_once(fetch_data=False, display=False, game_tick_interval_s=0.05)
+
+    fall_events = [event for event in game.recent_events if event.get("event") == "player_fell"]
+    assert fall_events
+    reason = fall_events[-1].get("reason")
+    assert isinstance(reason, str)
+    assert reason != ""
+
+
 def test_middle_lane_player_can_initiate_lane_change_in_three_lane_module() -> None:
     """Middle-lane players should be able to initiate lane changes in 3-lane layouts."""
     lane_1 = Lane()
@@ -128,3 +142,23 @@ def test_middle_lane_player_can_initiate_lane_change_in_three_lane_module() -> N
 
     game.tick_once(fetch_data=False, display=False, game_tick_interval_s=0.05)
     assert player.vehicle.lane == lane_3
+
+
+def test_middle_intersection_lane_renders_only_in_intersection_segment() -> None:
+    """Middle lane bar should be sparse outside the intersection module."""
+    game = create_simulation_game()
+    renderer = TerminalSimulationRenderer(track_width_chars=72, use_color=False)
+
+    frame = renderer.render_frame(game, tick=0)
+    middle_lane = game.lanes[1]
+
+    lane_line = next(
+        line
+        for line in frame.splitlines()
+        if line.startswith(f"  L{middle_lane.lane_id} [")
+    )
+    lane_bar = lane_line.split("[", 1)[1].split("]", 1)[0]
+
+    assert "=" in lane_bar
+    assert "-" not in lane_bar
+    assert lane_bar.count(" ") > 0
