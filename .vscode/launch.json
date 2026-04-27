@@ -29,6 +29,16 @@
       "justMyCode": true
     },
     {
+      "name": "Python: Dev Simulation",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.dev.simulation",
+      "cwd": "${workspaceFolder}",
+      "console": "externalTerminal",
+      // "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
       "name": "Python: Test (module)",
       "type": "debugpy",
       "request": "launch",

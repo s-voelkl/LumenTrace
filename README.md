@@ -20,6 +20,28 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 - Track modules with individual driving profiles to simulate different track conditions.
 - Settings for customizing the racing experience.
 
+## Local Simulation (Terminal)
+
+For fast manual validation of game logic, a text-based simulation runner is
+available at `src/dev/simulation.py`.
+
+- Entrypoint: `python -m src.dev.simulation`
+- Renderer: `src/simulation/terminal_renderer.py`
+- Input script: `src/simulation/signal_receiver.py`
+
+The simulation dashboard displays:
+
+- Global settings (`max_speed`, friction, lane-change timing, respawn timing, etc.)
+- Full player and vehicle telemetry (lane, position, speed, acceleration, lap, respawn state)
+- Full track module list including per-lane driving profiles
+- Current player module context (`module_index:track_type@local_position`)
+- ASCII lane visualization with module boundaries and live player markers
+
+Track layout used by the simulation:
+
+- Standard modules: 2 lanes, lane change disabled
+- Intersection module: 3 temporary lanes, lane change enabled
+
 ## Game Mechanics
 
 ### Acceleration and Friction
@@ -44,13 +66,12 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 
 ### Lane Change (Timed Multi-Hop)
 
-- Lane changes are triggered by `special_1` using a rising-edge trigger and a configurable threshold (`special_1_threshold`).
-- Lane changes are only allowed on intersection modules where the current line profile has `lane_change_allowed = True`.
+- Lane changes are triggered by `special_1` using a configurable threshold (`special_1_threshold`).
+- The lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`.
 - A lane change is executed as one or more timed adjacent hops:
-  - Example rightward: `1 -> 2 -> 3 -> 4`
+  - Example rightward: `1 -> 2 -> 3 -> 4` (lane order is determined by the sorted list in `game.lanes` from left (first) to right (last))
   - Example leftward: `1 <- 2 <- 3 <- 4`
-- Each hop takes a fixed configurable duration (`lane_change_time`, currently 500 ms per hop).
-- During an active hop timer, normal position integration is paused for deterministic transitions.
+- Each hop takes a fixed configurable tick count (`lane_change_ticks`), during which the vehicle is in a transition state.
 
 ### Position Conversion During Lane Change
 
@@ -59,6 +80,25 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
   - progress = `source_position / source_line_length`
   - target_position = `progress * target_line_length`
 - This keeps cars visually and physically aligned when lane geometries have different lengths.
+
+### Falling, Collision, and Respawn
+
+- A vehicle falls immediately when its current speed or acceleration violates the driving profile of the active line:
+  - `speed` must remain within `[min_speed, max_speed]`
+  - `acceleration` must remain within `[min_acceleration, max_acceleration]`
+- A vehicle also falls when it moves into a lane gap, meaning the current lane has no valid continuation in the next/previous module for the movement direction.
+- Collision detection is evaluated for vehicles on the same lane.
+  - If two vehicles are within collision distance, the vehicle in front falls.
+  - The collision happens, if the position distance between the `settings.__vehicle_crash_distance` is violated.
+
+### Respawn System
+
+- Fallen vehicles become inactive and enter a respawn state (`settings.respawn_ticks`, `vehicle.respawn_ticks`, `vehicle.active`).
+- While `vehicle.active` is `False`, vehicles are ignored in the race.
+- After the `vehicle.respawn_ticks` count down to `0`, the vehicle attempts to respawn:
+  - Try `position = 0` on any unoccupied lane that exists in the first track module. Unoccupied means no active vehicle is on the module. The vehicle speed and acceleration are reset to `0`.
+  - If no lane is available, the vehicle remains inactive and tries again in the next tick.
+- Respawn does not increment `vehicle.round`.
 
 ## Architecture
 
