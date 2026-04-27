@@ -1,22 +1,40 @@
-Done:
-Controller-Steuerung, Übertragung zu Raspy3 von Pico.
+# Informationen aus Besprechungen und Todos
 
-Todo:
+## Aktive Todos
 
-- LED Band ansteuern, testen, live einbinden (sodass Datenmodell direkt von Raspy3 auf die LED geht).
-- Nächster Test: LED-Band mit Leuchtkästchen, das sich je nach Eingabe des Controllers bewegt.
-- Mapping des Controllers: von 45k-65k auf 0 bis 100, eventuell mit Widerständen rumspielen.
-- OOP Datenmodell umsetzen: Game-Logic: testen auf raspy mit neuem receive code mit pico. außerdem game log und game start testen.
-- @Simon: todos aus todo liste handy
+27.04.
 
----
+Bestellung LED Strip, SD-Card, Sound-Boxen, ...
 
-Besprechung:
+Microcontroller Orchestration:
+
+- Testen SignalReader zwischen RPI3 und RPIPico
+- Controller special_1 Anschluss
+- Mapping Controllereingaben: forward [0,100], special_1 [0,1]
+- Sichere Verkabelung der Controller
+- 3D-gedrucktes Gehäuse für Microcontroller als Schutz?
+
+LED-Code:
+
+- WS2812 Code ansehen, einfaches Ansteuern probieren
+- Display Architektur überdenken
+- Converter TrackModule Position in LED-Punkt
+- Festlegung Lichteffekte für Vehicle-/Game-States
+- Implementierung
+- Überholung LED-Streifen Produkt/Möglichkeit finden
+
+Sound:
+
+- Test mit Audiosignalen (wav/mp3), Stereo (l/r), Python Code
+
+## 22.04. Besprechung
+
+Wünsche
 
 - Wunsch nach Überholungsstreifen mit extra LED-Strecke, z.B. für 12 LEDs groß.
 - EIngang von Pico als dig. EIngangspin. ANgabe eines internen Pull-Up/-DOwn widerstand angeben (Pull Down bei uns)
 
-Kurvenproblem:
+Kurvenproblem
 
 - 3d modell zu aufwändig? -> Bahn Grundplatte vielleicht in hälfte teilbar.
 - anderer umsetzungsweg: diffuser. schwierig bei kurven, da vorgefertigte Modelle keine Kurvenradien haben.
@@ -38,3 +56,13 @@ Sounds:
 - https://www.amazon.de/Speedlink-USB-betriebene-Stereo-Lautsprecher-Ausgangsleistung-Frequenzbereich-Schwarz/dp/B01HDR5EIK
 - https://www.amazon.de/Hama-Lautsprecher-Computer-Notebook-Smartphone/dp/B018VONYPY?th=1
   frühzeitig alles bestellen und abklären
+
+## 29.04. Besprechung
+
+Zu besprechen:
+
+- Bestellte LED-Streifen, Sound-Boxen, SD-Karte.
+- aktueller Stand Game-Logik
+- Problematik: Wie Überholstrecke mit LED-Streifen darstellen, sodass es schön bleibt?
+
+...
