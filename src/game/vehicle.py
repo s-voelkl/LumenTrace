@@ -73,7 +73,6 @@ class Vehicle:
             self.__line_change_target = target_lane
             self.__line_change_ticks = line_change_ticks
     
-
     def apply_friction(self, fraction_percent: float = 0.02):
         '''Applies friction to the vehicle's speed by reducing it by a fraction of its current value.
         

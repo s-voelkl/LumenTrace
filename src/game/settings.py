@@ -11,7 +11,7 @@ class Settings:
         self.__max_speed = max_speed if max_speed > 0 else 100.0
         self.__respawn_ticks = respawn_ticks if respawn_ticks > 0 else 200
         self.__friction_percent = friction_percent if friction_percent > 0 else 0.02
-        self.__acceleration_multiplier = acceleration_multiplier if acceleration_multiplier > 0 else 0.015
+        self.__acceleration_multiplier = acceleration_multiplier if acceleration_multiplier > 0 else 0.03
         self.__special_1_threshold = special_1_threshold if special_1_threshold >= 0 else 0.5
         self.__lane_change_ticks = lane_change_ticks if lane_change_ticks > 0 else 25
         self.__vehicle_crash_distance: float = 20.0
