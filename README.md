@@ -29,6 +29,9 @@ available at `src/dev/simulation.py`.
 - Renderer: `src/simulation/terminal_renderer.py`
 - Input script: `src/simulation/signal_receiver.py`
 
+![Simulation Terminal Screenshot](docs/Simulation_Example_1.png)
+
+
 The simulation dashboard displays:
 
 - Global settings (`max_speed`, friction, lane-change timing, respawn timing, etc.)
@@ -101,8 +104,6 @@ Track layout used by the simulation:
 - Respawn does not increment `vehicle.round`.
 
 ## Architecture
-
-<!-- See file doc/architecture.png -->
 
 The architecture is designed to be modular and extensible, with clear separation of concerns between different components:
 
