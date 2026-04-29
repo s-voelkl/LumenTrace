@@ -4,10 +4,11 @@
 
 27.04.
 
-Bestellung LED Strip, SD-Card, Sound-Boxen, ...
+Bestellung LED Strips
 
 Microcontroller Orchestration:
 
+- apt remove "node red name" für Node auto-start bei ssh
 - Testen SignalReader zwischen RPI3 und RPIPico
 - Controller special_1 Anschluss
 - Mapping Controllereingaben: forward [0,100], special_1 [0,1]
@@ -61,8 +62,8 @@ Sounds:
 
 Zu besprechen:
 
-- Bestellte LED-Streifen, Sound-Boxen, SD-Karte.
-- aktueller Stand Game-Logik
-- Problematik: Wie Überholstrecke mit LED-Streifen darstellen, sodass es schön bleibt?
+- Bestellte LED-Streifen, Sound-Boxen, SD-Karte. -> einzelexemplare mit 5m bestellen, dann nachbestellen. sd karte neu aufsetzen. 
+- aktueller Stand Game-Logik -> passt
+- Problematik: Wie Überholstrecke mit LED-Streifen darstellen, sodass es schön bleibt? -> Überholstrecken anders machen
 
 ...

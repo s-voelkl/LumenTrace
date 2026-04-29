@@ -6,3 +6,4 @@ setuptools
 wheel
 paho-mqtt
 pytest-cov
+mpremote
