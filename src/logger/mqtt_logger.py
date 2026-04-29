@@ -22,6 +22,7 @@ class MQTTLogger:
 
         self._connected = threading.Event()
         self._topic = credentials["hivemq"]["topic"]
+        self._active = True
 
         # Using MQTT version 5 here, for 3.1.1: MQTTv311, 3.1: MQTTv31
         self._client = paho.Client(client_id=f"lumentrace-{uuid4().hex[:8]}", userdata=None, protocol=paho.MQTTv5)
@@ -42,7 +43,11 @@ class MQTTLogger:
         # Connect to HiveMQ Cloud on port 8883 (default for MQTT)
         cluster_url = credentials["hivemq"]["clusterurl"]
         port = credentials["hivemq"].get("port", 8883)
-        self._client.connect(cluster_url, port)
+        try:
+            self._client.connect(cluster_url, port)
+        except Exception as e:
+            self._active = False
+            print(f"MQTT-Logger: Failed to connect to MQTT broker: {e}")
 
         # Start the MQTT loop
         self._client.loop_start()
@@ -77,7 +82,10 @@ class MQTTLogger:
 
     def _publish(self, payload: str, qos: int) -> None:
         """Publish only after a confirmed MQTT connection."""
-        if not self._connected.wait(timeout=5):
+        if not self._active:
+            print("MQTT-Logger: Skipping publish due to missing broker connection.")
+            return
+        if not self._connected.wait(timeout=3):
             print("MQTT-Logger: publish skipped: no broker connection available.")
             return
 
@@ -88,11 +96,17 @@ class MQTTLogger:
 
     def log(self, message: str, qos: int = 1) -> None:
         """Publish a message to the configured MQTT topic."""
+        if not self._active:
+            print("MQTT-Logger: Skipping log:", message)
+            return
         print("MQTT-Logger: Log:", message)
         self._publish(message, qos)
 
     def log_json(self, data: dict, qos: int = 1) -> None:
         """Publish a dictionary as JSON to the configured MQTT topic."""
+        if not self._active:
+            print("MQTT-Logger: Skipping JSON log:", data)
+            return
         print("MQTT-Logger: Log JSON:", data)
         self._publish(json.dumps(data), qos)
 

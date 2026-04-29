@@ -49,7 +49,7 @@ LED-Streifen:
 
 Sounds:
 
-- AUdio-AUsgang im RPI3, jedoch mit schlechter Audio-Qualität. USB zu Aux Kabel.
+- Audio-AUsgang im RPI3, jedoch mit schlechter Audio-Qualität. USB zu Aux Kabel.
 - Kanalverteilung auf 2 Lautsprecher (Stereo link rechts) für räuimlichkeit. SOnic Pi
 - pulseaudio oder pygame für überlappende Audiofiles (z.B. wenn beide Autos die selbe Kurve schnell fahren und/oder einer rausfliegt)
 - mehrere Soundkarten zu mehreren Lautsprechern (zusammen mit pulseaudio) https://www.youtube.com/watch?v=k1c2qlfvjBQ
