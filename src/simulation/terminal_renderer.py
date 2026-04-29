@@ -27,7 +27,7 @@ class TerminalSimulationRenderer:
         self.__max_event_lines = max(5, max_event_lines)
         self.__use_color = use_color
 
-    def render_frame(self, game: Game, tick: int) -> str:
+    def render_frame(self, game: Game, tick: int, show_logs: bool = True) -> str:
         """Build one complete dashboard frame.
 
         Args:
@@ -48,13 +48,14 @@ class TerminalSimulationRenderer:
         lines.extend(self.__render_track_modules(game))
         lines.append("")
         lines.extend(self.__render_visual_track(game))
-        lines.append("")
-        lines.extend(self.__render_event_log(game))
+        if show_logs:
+            lines.append("")
+            lines.extend(self.__render_event_log(game))
         return "\n".join(lines)
 
     def render_to_terminal(self, game: Game, tick: int) -> None:
         """Clear terminal and print latest frame."""
-        frame = self.render_frame(game, tick)
+        frame = self.render_frame(game, tick, show_logs=False)
         print("\x1b[2J\x1b[H", end="")
         print(frame)
 
