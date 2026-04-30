@@ -59,12 +59,13 @@ Track layout used by the simulation:
   - `speed += acceleration * acceleration_multiplier`
 - Speed is clamped to `[-max_speed, +max_speed]`.
 - This allows realistic throttle behavior while preventing unstable values at high update rates.
+- A goal is to specify the friction and acceleration multipliers such that the vehicle can't possibly exceed the `max_speed` at all.
 
 ### Position and Round (Lap) Handling
 
 - Position is updated from speed using the active game-tick interval.
 - Each lane has its own total track length (sum of line lengths across modules).
-- When position exceeds lane length, position wraps around and `round` is incremented.
+- When position exceeds lane length, position wraps around and `round` is incremented and the position is reset.
 - Reverse movement is also handled, including safe behavior for negative movement near lap boundaries.
 
 ### Lane Change (Timed Multi-Hop)
