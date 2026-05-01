@@ -23,7 +23,9 @@ ssh lumentrace@
 Ordner finden: cd ./documents/repos/lumentrace
 Environment aktivieren: source .venv/bin/activate
 Pip package list checken: pip list
+Optional pip packages installieren: pip install -r src/rpi_4/requirements.txt
 Code ausführen: python src/rpi_4/main.py
+
 
 ## Hardware-Set
 
