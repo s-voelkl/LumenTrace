@@ -1,0 +1,5 @@
+pyserial
+RPi.GPIO
+pytest
+paho-mqtt
+pytest-cov

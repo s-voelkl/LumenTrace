@@ -18,6 +18,13 @@ Username: lumentrace
 Passwort: lumentrace
 ssh lumentrace@
 
+## Codeausführung
+
+Ordner finden: cd ./documents/repos/lumentrace
+Environment aktivieren: source .venv/bin/activate
+Pip package list checken: pip list
+Code ausführen: python src/rpi_4/main.py
+
 ## Hardware-Set
 
 - Raspberry Pi 4 Model B 4GB RAM, mit 4 montierten Kühlkörpern, mit Verpackung
