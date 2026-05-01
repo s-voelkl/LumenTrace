@@ -16,8 +16,13 @@ def _configure_pylogger() -> None:
 	if _CONFIGURED:
 		return
 
-	config_path = Path(__file__).resolve().with_name("pylogger_config.ini")
-	logging.config.fileConfig(config_path, disable_existing_loggers=False)
+	try:
+		config_path = Path(__file__).resolve().with_name("pylogger_config.ini")
+		logging.config.fileConfig(config_path, disable_existing_loggers=False)
+	except Exception as e:
+		print(f"Error configuring the logger: {e}")
+		print("The file \"logs/app.log\" must exist and be writable for the logger to work.")
+		raise e
 	_CONFIGURED = True
 
 
