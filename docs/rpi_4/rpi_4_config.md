@@ -2,29 +2,29 @@
 
 ## OS
 
-Raspberry Pi OS (64-bit): A port of Debian Trixie with Raspberry Pi Desktop (Recommended).
-Micro-SD: 32 GB.
-Hauptstadt: Berlin/Germany
-Zeitzone: Europe/Berlin
-Tastaturlayout: de
-Wlan: Erst mal das bei SimonV "BND-Spionage 5"
-SSh aktivieren: Ja, mit Passwort (lumentrace) 
-Raspberry Pi Connect: Ja, mit einem Raspberry Pi Account. Siehe Privatnachricht für Zugangsdaten.
+- Raspberry Pi OS (64-bit): A port of Debian Trixie with Raspberry Pi Desktop (Recommended).
+- Micro-SD: 32 GB.
+- Hauptstadt: Berlin/Germany
+- Zeitzone: Europe/Berlin
+- Tastaturlayout: de
+- Wlan: Erst mal das bei SimonV "BND-Spionage 5"
+- SSh aktivieren: Ja, mit Passwort (lumentrace) 
+- Raspberry Pi Connect: Ja, mit einem Raspberry Pi Account. Siehe Privatnachricht für Zugangsdaten.
 
 ## Verbindung (SSH)
 
-Hostname: lumentrace
-Username: lumentrace
-Passwort: lumentrace
-ssh lumentrace@
+- Hostname: lumentrace
+- Username: lumentrace
+- Passwort: lumentrace
+- ssh lumentrace@
 
 ## Codeausführung
 
-Ordner finden: cd ./documents/repos/lumentrace
-Environment aktivieren: source .venv/bin/activate
-Pip package list checken: pip list
-Optional pip packages installieren: pip install -r src/rpi_4/requirements.txt
-Code ausführen: python src/rpi_4/main.py
+- Ordner finden: ``cd ./documents/repos/lumentrace``
+- Environment aktivieren: ``source .venv/bin/activate``
+- Pip package list checken: ``pip list``
+- Optional pip packages installieren: ``pip install -r src/rpi_4/requirements.txt``
+- Code ausführen: ``python -m src.dev.main`` (wichtig!)
 
 
 ## Hardware-Set
