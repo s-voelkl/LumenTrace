@@ -24,7 +24,7 @@
 - Environment aktivieren: ``source .venv/bin/activate``
 - Pip package list checken: ``pip list``
 - Optional pip packages installieren: ``pip install -r src/rpi_4/requirements.txt``
-- Code ausführen: ``python -m src.dev.main`` (wichtig!)
+- Code ausführen: ``python -m src.rpi_4.main`` (wichtig!)
 
 
 ## Hardware-Set
