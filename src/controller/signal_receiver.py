@@ -19,7 +19,9 @@ class SignalReceiver(SignalReceiverInterface):
         bits=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
         stop=serial.STOPBITS_ONE,
-        port='/dev/ttyS0',  # Default UART port on GPIO 14/15
+        # port='/dev/ttyS0',  # Default UART port on GPIO 14/15
+        # port='/dev/ttyACM0',  # Default UART port on GPIO 14/15
+        port='/dev/serial0',
         controllers=None):
 
         self.__controllers: List[PlayerController] = controllers if controllers is not None else []
@@ -41,16 +43,20 @@ class SignalReceiver(SignalReceiverInterface):
         '''
 
         try:
+            self.serial.reset_input_buffer()
             # blocks until new line or timeout
             line = self.serial.readline()
+            print(f"Received line: {line}")  # Debug print to check received data
 
             if not line:
                 # timeout reached
+                print("No data received within timeout period.")
                 return
 
             decoded_line = line.decode("utf-8").strip()
 
             if not decoded_line:
+                print("Received empty line after decoding.")
                 return
 
             # JSON parse

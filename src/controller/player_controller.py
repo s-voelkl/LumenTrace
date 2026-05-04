@@ -13,7 +13,7 @@ class PlayerController:
     
     INPUT_MAPPING: dict[str, str] = {
         "adc_0": "forward_press",
-        "adc_1": "special_1",
+        "dig_0": "special_1",
         # "adc_2": "backward_press",
         # "adc_3": "left_press",
         # "adc_4": "right_press",
@@ -55,9 +55,9 @@ class PlayerController:
         internal_name = self.INPUT_MAPPING.get(input_name)
         if internal_name and value is not None:
             setattr(self, f"_{type(self).__name__}__{internal_name}", value)
-            # logger.log(f"Received signal update for controller {self.__controller_id}: {input_name} -> {internal_name} with value {value}")
-        else:
-            logger.log(f"Warning: Received unmapped input name '{input_name}' for controller {self.__controller_id}.")
+            #logger.log(f"Received signal update for controller {self.__controller_id}: {input_name} -> {internal_name} with value {value}")
+        #else:
+            #logger.log(f"Warning: Received unmapped input name '{input_name}' for controller {self.__controller_id}.")
             
     # Getters
     @property
