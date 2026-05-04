@@ -19,7 +19,7 @@ class SignalReceiver(SignalReceiverInterface):
         bits=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
         stop=serial.STOPBITS_ONE,
-        port='/dev/ttyS0',  # Default UART port on GPIO 14/15
+        port='/dev/ttyACM0',  # Default UART port on GPIO 14/15
         controllers=None):
 
         self.__controllers: List[PlayerController] = controllers if controllers is not None else []
