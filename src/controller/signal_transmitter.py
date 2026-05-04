@@ -16,7 +16,7 @@ class SignalTransmitter:
         bits=8,
         parity=None,
         stop=1,
-        controllers: list[PhysicalController] = []):
+        controllers = None):
         '''Initializes the SignalTransmitter with the specified UART configuration and a list of physical controllers to read values from.
 
         Args:
@@ -31,9 +31,9 @@ class SignalTransmitter:
 
         self.serial = ma.UART(0, baudrate=baud_rate, tx=ma.Pin(tx_pin), rx=ma.Pin(rx_pin),
             bits=bits, parity=parity, stop=stop)
-        self.controllers: list[PhysicalController] = controllers if controllers is not None else []
+        self.controllers = controllers if controllers is not None else []
 
-    def transmit_signal(self, sleep_s: float = 0.05):
+    def transmit_signal(self, sleep_s = 0.05):
         '''Transmits the current values of the physical controllers as a JSON object via UART.
         Even if no change in the values of the physical controllers is detected, 
         the current values will be transmitted at regular intervals.
@@ -44,16 +44,18 @@ class SignalTransmitter:
 
         # read value(s) from ADCs of the physical controllers
         controllers_data = []
+        
         for controller in self.controllers:
-            values: dict = controller.read_values()
-            controllers_data.append({
-                "controller_id": controller.controller_id,
-                **values
-            })
+            values = controller.read_values()
+            # Combine ID and data
+            entry = {"controller_id": controller.controller_id}
+            entry.update(values)
+            controllers_data.append(entry)
+            
 
         # build complete json
         data = {"controllers": controllers_data}
         
         # send via UART as JSON string
-        self.serial.write((json.dumps(data) + "\n").encode())
+        self.serial.write(json.dumps(data).encode('utf-8'))
         time.sleep(sleep_s)

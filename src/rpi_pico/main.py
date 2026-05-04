@@ -8,10 +8,9 @@ def main():
     ]
     signal_transmitter = SignalTransmitter(controllers=physical_controllers)
     while True:
+        # print("Transmitting signal...")
+        # time.sleep(0.05)
         signal_transmitter.transmit_signal()
-
-if __name__ == "__main__":
-    main()
 
 
 class SignalTransmitter:
@@ -26,7 +25,7 @@ class SignalTransmitter:
         bits=8,
         parity=None,
         stop=1,
-        controllers: list[PhysicalController] = []):
+        controllers = None):
         '''Initializes the SignalTransmitter with the specified UART configuration and a list of physical controllers to read values from.
 
         Args:
@@ -41,9 +40,9 @@ class SignalTransmitter:
 
         self.serial = ma.UART(0, baudrate=baud_rate, tx=ma.Pin(tx_pin), rx=ma.Pin(rx_pin),
             bits=bits, parity=parity, stop=stop)
-        self.controllers: list[PhysicalController] = controllers if controllers is not None else []
+        self.controllers = controllers if controllers is not None else []
 
-    def transmit_signal(self, sleep_s: float = 0.05):
+    def transmit_signal(self, sleep_s = 0.05):
         '''Transmits the current values of the physical controllers as a JSON object via UART.
         Even if no change in the values of the physical controllers is detected, 
         the current values will be transmitted at regular intervals.
@@ -54,12 +53,14 @@ class SignalTransmitter:
 
         # read value(s) from ADCs of the physical controllers
         controllers_data = []
+        
         for controller in self.controllers:
-            values: dict = controller.read_values()
-            controllers_data.append({
-                "controller_id": controller.controller_id,
-                **values
-            })
+            values = controller.read_values()
+            # Combine ID and data
+            entry = {"controller_id": controller.controller_id}
+            entry.update(values)
+            controllers_data.append(entry)
+            
 
         # build complete json
         data = {"controllers": controllers_data}
@@ -81,7 +82,7 @@ class PhysicalController:
     # static controller count to generate default controller ids
     __controller_count = 0
 
-    def __init__(self, adc_pins: list[int]):
+    def __init__(self, adc_pins):
         '''Initializes the physical controller with a unique identifier and a list of ADC pins.
 
         Args:
@@ -92,7 +93,7 @@ class PhysicalController:
         
         self.__controller_count += 1
         self.controller_id = self.__controller_count
-        self.adc_controllers: list[ma.ADC] = []
+        self.adc_controllers = []
         
         # multiple pins allowed per controller, e.g. for multiple sensors
         for pin in adc_pins:
@@ -102,16 +103,19 @@ class PhysicalController:
         # decrement controller count when a controller instance is deleted
         PhysicalController.__controller_count -= 1
                     
-    def read_values(self) -> dict[str, int]:
+    def read_values(self):
         """Read all ADC values from the controller's pins.
         
         Returns:
             dict[str, int]: Dictionary with ADC values keyed by pin index (e.g., "adc_0", "adc_1").
         """
         # read values of adc_0..n and save in self.data
-        data: dict = {}
+        data = {}
         
         for i, adc_controller in enumerate(self.adc_controllers):
-            data[f"adc_{i}"] = adc_controller.read_u16()
+            data["adc_{}".format(i)] = adc_controller.read_u16()
             
         return data
+    
+if __name__ == "__main__":
+    main()

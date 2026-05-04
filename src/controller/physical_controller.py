@@ -13,7 +13,7 @@ class PhysicalController:
     # static controller count to generate default controller ids
     __controller_count = 0
 
-    def __init__(self, adc_pins: list[int]):
+    def __init__(self, adc_pins):
         '''Initializes the physical controller with a unique identifier and a list of ADC pins.
 
         Args:
@@ -24,7 +24,7 @@ class PhysicalController:
         
         self.__controller_count += 1
         self.controller_id = self.__controller_count
-        self.adc_controllers: list[ma.ADC] = []
+        self.adc_controllers = []
         
         # multiple pins allowed per controller, e.g. for multiple sensors
         for pin in adc_pins:
@@ -34,16 +34,16 @@ class PhysicalController:
         # decrement controller count when a controller instance is deleted
         PhysicalController.__controller_count -= 1
                     
-    def read_values(self) -> dict[str, int]:
+    def read_values(self):
         """Read all ADC values from the controller's pins.
         
         Returns:
             dict[str, int]: Dictionary with ADC values keyed by pin index (e.g., "adc_0", "adc_1").
         """
         # read values of adc_0..n and save in self.data
-        data: dict = {}
+        data = {}
         
         for i, adc_controller in enumerate(self.adc_controllers):
-            data[f"adc_{i}"] = adc_controller.read_u16()
+            data["adc_{}".format(i)] = adc_controller.read_u16()
             
         return data
