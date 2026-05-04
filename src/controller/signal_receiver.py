@@ -4,7 +4,6 @@ import re
 from .player_controller import PlayerController
 from typing import List
 import serial
-import RPi.GPIO as GPIO
 from .signal_receiver_interface import SignalReceiverInterface
 from src.logger.multi_logger import get_logger
 
@@ -21,13 +20,9 @@ class SignalReceiver(SignalReceiverInterface):
         parity=serial.PARITY_NONE,
         stop=serial.STOPBITS_ONE,
         port='/dev/ttyS0',  # Default UART port on GPIO 14/15
-        rx_pin=15,
         controllers=None):
 
         self.__controllers: List[PlayerController] = controllers if controllers is not None else []
-
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(rx_pin, GPIO.IN)  # RX pin
 
         self.serial = serial.Serial(
             port=port,  # Default UART port on GPIO 14/15

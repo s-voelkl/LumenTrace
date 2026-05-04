@@ -9,10 +9,10 @@ def main():
     logger.log("Raspberry Pi 4: Main script running.")
     player_controller_1 = PlayerController()
     signal_receiver = SignalReceiver(controllers=[player_controller_1])
-    print("Setup of SignalReceiver and PlayerController complete. Entering main loop.")
+    logger.log("Setup of SignalReceiver and PlayerController complete. Entering main loop.")
     
     while True:
-        print("Main loop iteration: Receiving signals...")
+        logger.log("Main loop iteration: Receiving signals...")
         signal_receiver.receive_signal()
         time.sleep(0.20)  # Sleep for a short time to prevent high CPU usage
 
