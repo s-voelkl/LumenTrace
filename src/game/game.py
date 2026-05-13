@@ -3,12 +3,19 @@ import time
 from collections.abc import Callable
 from typing import Any, TypedDict
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from src.controller.signal_receiver_interface import SignalReceiverInterface
 from .lane import Lane
 from .player import Player
 from .settings import Settings
 from .track_module import TrackModule, TrackType
 from src.logger.multi_logger import get_logger
+
+if TYPE_CHECKING:
+    from src.display.display import Display
 
 logger = get_logger()
 
@@ -36,13 +43,15 @@ class Game:
         settings: Settings,
         track_modules: list[TrackModule],
         signal_receiver: SignalReceiverInterface,
-        lanes: list[Lane]):
+        lanes: list[Lane],
+        display: Display | None = None):
         self.__players = players if players else []
         self.__settings = settings
         self.__track_modules = track_modules if track_modules else []
         self.__length = sum([tm.length for tm in track_modules]) if track_modules else 0
         self.__signal_receiver = signal_receiver
         self.__lanes = lanes if lanes else []
+        self.__display = display
         self.__lane_change_states: dict[Player, LaneChangeState] = {}
         self.__event_history: list[dict[str, Any]] = []
         self.__event_history_limit = 200
@@ -628,10 +637,9 @@ class Game:
 
     # Further methods
     def display(self):
-        # Display current game state to lcd, led, log, ...
-        # TODO: implement display logic
         self.log_fully()
-        pass
+        if self.__display is not None:
+            self.__display.update(self)
 
     def __game_loop(self):
         """Execute one simulation tick for all players.
