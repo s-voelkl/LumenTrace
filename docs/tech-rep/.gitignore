@@ -27,4 +27,4 @@ _minted/*
 .devcontainer/*
 *.upa
 *.upb
-*.bib
+/*selfref.bib
