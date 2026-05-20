@@ -10,6 +10,9 @@ class Vehicle:
         acceleration: float = 0,
         round: int = 0,
         style: list[int] = [],
+        primary_color: tuple[int, int, int] = (0, 255, 0),
+        decelerate_color: tuple[int, int, int] = (0, 0, 255),
+        accelerate_color: tuple[int, int, int] = (128, 0, 128),
     ):
         self.__lane = lane 
         self.__position = position if position >= 0 else 0
@@ -17,6 +20,10 @@ class Vehicle:
         self.__acceleration = acceleration if acceleration >= 0 else 0
         self.__round = round if round >= 0 else 0
         self.__style = style if style else [0, 0, 0]
+        
+        self.__primary_color = primary_color
+        self.__decelerate_color = decelerate_color
+        self.__accelerate_color = accelerate_color
         
         self.__respawn_ticks: int = 0
         self.__active: bool = True
@@ -197,3 +204,15 @@ class Vehicle:
     @property
     def line_change_target(self) -> Lane | None:
         return self.__line_change_target
+
+    @property
+    def primary_color(self) -> tuple[int, int, int]:
+        return self.__primary_color
+
+    @property
+    def decelerate_color(self) -> tuple[int, int, int]:
+        return self.__decelerate_color
+
+    @property
+    def accelerate_color(self) -> tuple[int, int, int]:
+        return self.__accelerate_color

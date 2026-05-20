@@ -101,6 +101,7 @@ class Game:
                 args=(self.__game_loop, game_tick_interval_s),
                 daemon=False,
             ),
+            # sound logic
         ]
 
         for thread in self.__threads:
@@ -170,6 +171,14 @@ class Game:
 
         if display:
             self.display()
+
+    def display(self):
+        if hasattr(self, "log_fully"):
+            self.log_fully()
+        if hasattr(self, "_Game__display") and self.__display is not None:
+            self.__display.update(self)
+        elif hasattr(self, "_display") and self._display is not None:
+            self._display.update(self)
 
     # Helpers
     def __get_lane_track_length(self, lane: Lane) -> float:

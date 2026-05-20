@@ -1,194 +1,75 @@
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from src.game.game import Game
-    from src.game.lane import Lane
-
 try:
-    from rpi_ws281x import PixelStrip, Color as WsColor
-    _HAS_HW = True
+    from rpi_ws281x import PixelStrip, Color
+    RPI_WS281X_AVAILABLE = True
 except ImportError:
-    _HAS_HW = False
+    RPI_WS281X_AVAILABLE = False
+    PixelStrip = None
+    Color = None
 
-_SAFETY_BRIGHTNESS_CAP = 80  # max 80/255 ≈ 31 % – strip draws less current
+from src.game.lane import Lane
 
+class VirtualLedStrip:
+    """Represents a virtual LED strip mapped to a single Lane."""
+    def __init__(self, lane: Lane, real_strip_id: int, min_index: int, max_index: int):
+        self.lane = lane
+        self.real_strip_id = real_strip_id
+        self.min_index = min_index
+        self.max_index = max_index
+        self.length = max_index - min_index + 1
 
-@dataclass
-class LaneStripConfig:
-    """Maps one lane to a contiguous segment on the physical LED strip.
-
-    Args:
-        lane_id: ID of the lane this config applies to.
-        led_offset: Index of the first LED belonging to this lane on the strip.
-        led_count: Number of LEDs reserved for this lane.
-    """
-    lane_id: int
-    led_offset: int
-    led_count: int
-
+    def get_real_index(self, position_ratio: float) -> int:
+        ratio = max(0.0, min(1.0, position_ratio))
+        return self.min_index + int(ratio * (self.length - 1))
 
 class Display:
-    """Renders live game state onto a WS2812 LED strip connected to the RPi 4.
+    """Holds the internal array representing the LEDs, and pushes updates to physical strips."""
+    def __init__(self, real_strips: dict[int, PixelStrip], virtual_strips: list[VirtualLedStrip]):
+        self.real_strips = real_strips
+        self.virtual_strips = virtual_strips
+        
+        # Internal array: Dict[lane_id, list of colors (r,g,b)]
+        self.virtual_arrays: dict[int, list[tuple[int, int, int]]] = {}
+        for vs in virtual_strips:
+            self.virtual_arrays[vs.lane.lane_id] = [(0, 0, 0)] * vs.length
 
-    Only LEDs around active vehicle positions and the start/finish marker are
-    lit. The strip background stays dark at all times to stay within safe
-    power limits. Overall brightness is capped at _SAFETY_BRIGHTNESS_CAP.
+    def clear(self):
+        for lane_id in self.virtual_arrays:
+            length = len(self.virtual_arrays[lane_id])
+            self.virtual_arrays[lane_id] = [(0, 0, 0)] * length
 
-    If rpi_ws281x is not available (development machine) the class silently
-    skips hardware writes; the internal buffer is still updated for testing.
+    def set_lane_pixel_by_ratio(self, lane: Lane, ratio: float, color: tuple[int,int,int]):
+        if lane.lane_id in self.virtual_arrays:
+            arr = self.virtual_arrays[lane.lane_id]
+            idx = int(ratio * (len(arr) - 1))
+            idx = max(0, min(len(arr)-1, idx))
+            arr[idx] = color
 
-    Args:
-        lane_configs: One LaneStripConfig per lane, mapping lane IDs to strip
-            segments.
-        total_led_count: Total number of LEDs on the physical strip.
-        gpio_pin: BCM pin number the strip data line is connected to (default 18).
-        units_per_meter: How many position units equal one meter (default 100
-            for centimetres). Used only for documentation / future scaling;
-            the mapping is always proportional to lane length.
-        brightness: Global strip brightness 0–255. Clamped to
-            _SAFETY_BRIGHTNESS_CAP regardless of the value passed.
-    """
+    def fill_lane(self, lane: Lane, color: tuple[int,int,int]):
+        if lane.lane_id in self.virtual_arrays:
+            length = len(self.virtual_arrays[lane.lane_id])
+            self.virtual_arrays[lane.lane_id] = [color] * length
 
-    _COLOR_HEADLIGHT: tuple[int, int, int] = (220, 220, 160)
-    _COLOR_TAILLIGHT: tuple[int, int, int] = (180, 0, 0)
-    _COLOR_FINISH:    tuple[int, int, int] = (0, 80, 0)
-    _COLOR_INACTIVE:  tuple[int, int, int] = (30, 0, 0)   # dim red = respawning
+    def fill_lane_section_by_ratio(self, lane: Lane, start_ratio: float, end_ratio: float, color: tuple[int,int,int]):
+        if lane.lane_id in self.virtual_arrays:
+            arr = self.virtual_arrays[lane.lane_id]
+            start_idx = int(start_ratio * (len(arr) - 1))
+            end_idx = int(end_ratio * (len(arr) - 1))
+            start_idx = max(0, min(len(arr)-1, start_idx))
+            end_idx = max(0, min(len(arr)-1, end_idx))
+            for i in range(start_idx, end_idx + 1):
+                arr[i] = color
 
-    def __init__(
-        self,
-        lane_configs: list[LaneStripConfig],
-        total_led_count: int,
-        gpio_pin: int = 18,
-        units_per_meter: float = 100.0,
-        brightness: int = 80,
-    ) -> None:
-        self.__configs: dict[int, LaneStripConfig] = {
-            cfg.lane_id: cfg for cfg in lane_configs
-        }
-        self.__total = total_led_count
-        self.__units_per_meter = units_per_meter
-        self.__brightness = min(max(brightness, 0), _SAFETY_BRIGHTNESS_CAP)
-        self.__buffer: list[tuple[int, int, int]] = [(0, 0, 0)] * total_led_count
-
-        if _HAS_HW:
-            self.__strip: PixelStrip | None = PixelStrip(
-                total_led_count,
-                gpio_pin,
-                freq_hz=800_000,
-                dma=10,
-                invert=False,
-                brightness=self.__brightness,
-                channel=0,
-            )
-            self.__strip.begin()
-        else:
-            self.__strip = None
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def update(self, game: Game) -> None:
-        """Recompute LED colours from current game state and push to strip."""
-        self.__clear_buffer()
-        self.__draw_finish_markers(game)
-        self.__draw_vehicles(game)
-        self.__flush()
-
-    def cleanup(self) -> None:
-        """Turn all LEDs off and release hardware. Call on shutdown."""
-        self.__clear_buffer()
-        self.__flush()
-
-    # ------------------------------------------------------------------
-    # Internal rendering
-    # ------------------------------------------------------------------
-
-    def __draw_finish_markers(self, game: Game) -> None:
-        for lane in game.lanes:
-            cfg = self.__configs.get(lane.lane_id)
-            if cfg is None:
-                continue
-            # position 0 is start/finish → first LED of the lane segment
-            self.__set_led(cfg.led_offset, self._COLOR_FINISH)
-
-    def __draw_vehicles(self, game: Game) -> None:
-        for player in game.players:
-            vehicle = player.vehicle
-
-            if vehicle.lane is None:
-                continue
-
-            cfg = self.__configs.get(vehicle.lane.lane_id)
-            if cfg is None:
-                continue
-
-            if not vehicle.active:
-                # show a dim marker at strip start while respawning
-                self.__set_led(cfg.led_offset, self._COLOR_INACTIVE)
-                continue
-
-            total_length = self.__lane_length(game, vehicle.lane)
-            if total_length <= 0:
-                continue
-
-            progress = max(0.0, min(vehicle.position / total_length, 1.0))
-            center = cfg.led_offset + int(progress * (cfg.led_count - 1))
-
-            body_color = self.__resolve_color(vehicle.style)
-
-            # rear – body – front  (positive movement = increasing index)
-            self.__set_led(center - 1, self._COLOR_TAILLIGHT)
-            self.__set_led(center,     body_color)
-            self.__set_led(center + 1, self._COLOR_HEADLIGHT)
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    def __lane_length(self, game: Game, lane: Lane) -> float:
-        return sum(tm.get_line_length_for_lane(lane) for tm in game.track_modules)
-
-    def __resolve_color(self, style: list[int]) -> tuple[int, int, int]:
-        if style and len(style) >= 3 and any(v > 0 for v in style[:3]):
-            return (
-                max(0, min(style[0], 255)),
-                max(0, min(style[1], 255)),
-                max(0, min(style[2], 255)),
-            )
-        return (0, 120, 255)  # default blue if style is unset / all-zero
-
-    def __set_led(self, index: int, color: tuple[int, int, int]) -> None:
-        if 0 <= index < self.__total:
-            self.__buffer[index] = color
-
-    def __clear_buffer(self) -> None:
-        for i in range(self.__total):
-            self.__buffer[i] = (0, 0, 0)
-
-    def __flush(self) -> None:
-        if self.__strip is None:
+    def render(self):
+        if not RPI_WS281X_AVAILABLE:
             return
-        for i, (r, g, b) in enumerate(self.__buffer):
-            self.__strip.setPixelColor(i, WsColor(r, g, b))
-        self.__strip.show()
 
-    # ------------------------------------------------------------------
-    # Read-only access for tests / debugging
-    # ------------------------------------------------------------------
-
-    @property
-    def buffer(self) -> list[tuple[int, int, int]]:
-        """Current LED colour buffer (copy). All zeros when strip is dark."""
-        return list(self.__buffer)
-
-    @property
-    def brightness(self) -> int:
-        return self.__brightness
-
-    @property
-    def units_per_meter(self) -> float:
-        return self.__units_per_meter
+        for vs in self.virtual_strips:
+            strip = self.real_strips.get(vs.real_strip_id)
+            if strip:
+                arr = self.virtual_arrays.get(vs.lane.lane_id, [])
+                for i, color in enumerate(arr):
+                    real_idx = vs.min_index + i
+                    strip.setPixelColor(real_idx, Color(color[0], color[1], color[2]))
+                    
+        for strip in self.real_strips.values():
+            strip.show()

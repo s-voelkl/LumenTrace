@@ -1,0 +1,93 @@
+You are a professional programmer and implement the feature of displaying the current state of the game each tick onto a LED Strip.
+Libraries: rpi_ws281x for PixelStrip and Color.
+Information: See @file:game.py , @file:vehicle.py , @file:lane.py , @file:line.py , @file:driving_profile.py , @file:track_module.py , @file:player.py , @file:settings.py.
+Code here: in game.py, in each tick, the method display(self) is called with all of the game information.
+
+```
+    def display(self):
+        self.log_fully()
+        if self.__display is not None:
+            self.__display.update(self)
+```
+
+constant colors should be safed as constants in the color_con
+
+Information to be presented in the following hierarchy (1=top, 2=second (below the first), ...):
+
+1. Active Vehicle
+Vehicle: Display the position. LED color dependent on the current speed / accuracy relative to the current track_module's driving_profile min and max speed and max accuracy.
+vehicle 1 decelerate color: blue (warning, vehicle should go slower or accelerate less!)
+vehicle 1 default color: green. 
+vehicle 1 accelerate color: purple (warning: vehicle should go faster or accelerate stronger!)
+vehicle 2 default color: pink
+vehicle 2 default color: orange
+vehicle 2 warning color: red
+those colors should be defined in the vehicle (update it, so it has both the primary and warning colors as attributes).
+In the display, the color should be changed dynamically and not staticly implemented into the code.
+E.g. look at the following example:
+The current track module has a max speed of 100 and a min speed of -100. 
+For the speed of [-50, 50], the color should be default.
+For the speed of ]50, 100], the color should turn linearly from default to decelerate color.
+For the speed of [-100, -50[, the color should turn linearly from default to accelerate color.
+
+2. Inactive vehicle:
+if the vehicle.active is False or the vehicle.respawn_ticks > 0.
+Every 5 ticks of the respawn_ticks, the color should change from white to the default track start color (gray).
+E.g. values of respawn_ticks % 10: [0,4] -> white, [5,9] -> gray.
+The number of the tick change should be defined as a constant in the settings.py file.
+So at half the ticks, the modulo is applied and the two tick color ranges are defined dynamically.
+e.g. respawn_tick_color_change = 20: % 20 -> [0,9] -> white, [10,19] -> gray.
+
+3. round advance:
+if a vehicle.round increments by one, the color of the lane should blink yellow / white for each round_advance_tick_color_change=5 ticks for a total of round_advance_ticks=20 ticks.
+
+4. start of the track:
+The start and end of the track should be displayed as gray line at the first pixel of a lane.
+A lane is the start of the track if it is in the first track module.lanes (see method method in game).
+
+5. intersection animation:
+when a vehicle is on the current track module and lane of the intersection, the lane should change its color to light pink.
+
+6. intersection module:
+by default, the intersection module should be displayed as a light gray color on the lane.
+an intersection can be identified by the track module TrackType.INTERSECTION. 
+keep in mind, the lane change logic will be changed later on, but this logic will stay the same.
+
+-----------
+
+call the hierachy from top to bottom to override an internal array of the display class.
+e.g. start of the track > round advance > inactive vehicle > active vehicle
+the internal array should hold the color (rgb) for each pixel of each lane.
+after all methods of the hierarchy are called, the real led strip should be updated with the internal array with a simple loop per lane.
+This way, the color code is strictly separated from the logic code.
+I suggest, also putting those two parts into different classes:
+- display class: holds the internal array and the method to update the real led strip.
+- display_manager class: holds the logic to update the internal array based on the game 
+    information and the hierarchy of the display information. 
+    It should have methods for each point of the hierarchy.
+
+GPIO pins of first lane: 18, second lane: 19.
+For the intersections, there can be temporary third lanes for the lane change. 
+Can they be displayed with a third pin or another option as well?
+else, we must use the rest of a led strip for one lane for the intersection part.
+e.g. the first led strip being 5 meters long in total, but the first lane is only 4 meters long. so one meter is left.
+we could then use the last 1 meter for the intersection part. but this way, we would have to handle the logic differently:
+- it should be able to split a real led strip into virtual led strips.
+- a virtual led strip can be assigned to a lane.
+- it should contain a min and max led pixel index to define the part of the real led strip it uses.
+- it should also contain an id of the real led strip it is assigned to.
+- the display manager should update the internal array with the virtual led strip.
+- when displaying with the real display class, the real led strip should be updated with the combination of the virtual led strips per real led strip.
+
+the display class should be added to the game class in src/rpi_4/main.py, where the display can be configured easily.
+
+-------------
+
+Testing:
+
+write unit tests for the display manager class into the display manager test.
+
+
+-------------
+
+For any logic questions, see the Readme file
