@@ -1,0 +1,211 @@
+\documentclass[conference,a4paper,flushend]{cs-techrep} % (based on IEEEtran.cls)
+
+% The class iaria.cls loads biblatex/biber with correct IARIA settings
+% as well as a set of common packages (times, inputenc[utf8], fontenc[T1],
+% graphicx, xcolor, url, orcidlink, hyperref, extdash[shortcuts])
+
+% Packages (self-added, not included in cs-techrep.cls):
+\usepackage[shortlabels]{enumitem} % Verbesserte Einstellungsmöglichkeiten von Listen. Nicht bei Beamer anwendbar
+% \setlist{itemsep=1ex, topsep=1em}
+% \usepackage{graphicx} % Required for inserting images
+\usepackage{csquotes} % Korrekte Anführungszeichen setzen. Sprachspezifisch möglich. mit \setquotestyle{style} und \enquote{}.
+% \usepackage[american]{babel} % Ändert die Darstellung des Datums in amerikanische Darstellung.
+\usepackage{hyperref}
+\usepackage[capitalise,nameinlink,noabbrev]{cleveref} % Referenzen besser machen. z.B. mit \cref{}. needs hyperref defined before it.
+% \usepackage[backend=biber, style=ieee, alldates=iso]{biblatex} % Zitieren
+% \usepackage{array} % Tabellen mit \begin{tabular}
+\usepackage{multirow} % Mehrere Zeilen in eine zusammenfassen. für Spalten einfach \multicolumn benutzen
+\usepackage{booktabs} % Hübschere Tabellen mit \top/mid/cmid/bottomrule
+\usepackage{minted} % Neuere Bibliothek für Code-Blöcke, mit \begin{listing oder minted}
+\usepackage{amsmath} % American Mathematical Society für mathematische Formeln, z.B. mit \begin{equation}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{siunitx}
+\usepackage{array}
+\usepackage{tabularx}
+
+\addbibresource{references.bib}
+% \addbibresource{xampl.bib} % (xampl file provided by the BibTEX base files)
+% ======================================================================
+% EDIT THESE:
+\cstechrepAuthorListTex{Simon Völkl, Erik Dombrowsky, Simon Frey\,\orcidlink{0000-0002-1175-2668}}
+\cstechrepAuthorListBib{Simon Völkl and Erik Dombrowsky and Simon Frey}
+% Capitalization: https://capitalizemytitle.com/style/Chicago/
+\cstechrepTitleTex{LumenTrace: A high-performance MCU-based LED racing simulator}
+ % IF you need manual linebreaks in the title, then clone the title without linebreaks for BibTeX:
+\cstechrepTitleBib{{\cstechrepTitleTex}}
+\cstechrepDepartment{Department of Electrical Engineering, Media, and Computer Science}
+\cstechrepInstitution{Ostbayerische Technische Hochschule Amberg\-/Weiden}
+\cstechrepAddress{Amberg, Germany}
+\cstechrepSeries{Technical Reports}
+\cstechrepYear{2026}
+\cstechrepMonth{7}
+\cstechrepNumber{CL-\cstechrepYear{}-42}
+\cstechrepLang{english}  % en-US
+% ======================================================================
+% DO NOT DELETE AND DO NOT MODIFY THIS:
+\filecontentsForceExpansion|[] % force command expansion inside a filecontents* environment
+\begin{filecontents*}[overwrite]{selfref.bib}
+    @TECHREPORT{selfref,
+        author = {|cstechrepAuthorListBib},
+        title  = {\cstechrepTitleBib},
+        institution = {\cstechrepInstitution, \cstechrepDepartment},
+        series = {\cstechrepSeries},
+        number = {\cstechrepNumber},
+        year   = {|cstechrepYear},
+        month  = {|cstechrepMonth},
+        langid  = {|cstechrepLang},
+    }
+\end{filecontents*}
+
+\begin{document}
+\selectlanguage{\cstechrepLang}
+\maketitle
+\begin{abstract}
+    Background: tbd
+
+    Methods: tbd
+
+    Conclusion: tbd
+\end{abstract}
+\begin{IEEEkeywords}
+    MCU, LED, neonpixel, WS2812, racing simulator, Raspberry Pi
+\end{IEEEkeywords}
+
+\section{Introduction}\label{sec:introduction}
+
+\subsection{Motivation}\label{sec:motivation}
+tbd
+
+% Section Overview
+tbd
+
+\subsection{Unique Selling Point}\label{sec:unique_selling_point}
+% Alleinstellungsmerkmal
+tbd
+
+\subsection{Key Technical Components}\label{sec:key_technical_components}
+% Benennung von technischen Schlüssel-Bausteinen
+tbd
+
+\section{Related Work}\label{sec:related_work}
+% andere Arbeiten oder Technologien (die als Inspiration dienten), Screenshots
+tbd
+
+\section{Requirements}\label{sec:requirements}
+% benötigt? z.B. user stories
+
+% Agile User Stories (+Akzeptanzkriterien als Definition of Done) oder klassische Use-Cases als Anforderungen an die Anwendung.
+% Beschreibung von Eingabe und Ausgabe des Systems und dessen Teilfunktionen; benötigte Ressourcen (z.B. Bestandsdaten), 
+
+\subsection{Project Personas}\label{sec:project_personas}
+% benötigt?
+
+To ensure the system meets the diverse needs of all stakeholders, the requirements are guided by the following personas. 
+Each persona has a specific role, defined goals, and distinct interests in the system:
+
+\begin{description}
+    \item[AAA AAA] 
+    tbd
+\end{description}
+
+
+\subsection{User Stories}\label{sec:user_stories}
+
+\subsubsection{Real-time Temperature Monitoring}\label{sec:us_01}
+
+\begin{quote}
+    \textit{yada yada}
+\end{quote}
+
+Acceptance Criteria:
+\begin{itemize}
+    \item yada yada
+\end{itemize}
+
+\medskip
+
+\subsection{Definition of Done}\label{sec:definition_of_done}
+
+tbd
+
+\begin{itemize}
+    \item yada yada
+\end{itemize}
+
+
+\subsection{Prioritisation (MoSCoW)}\label{sec:prioritisation}
+
+yada yada
+
+% \begin{table}[!h]
+%     \centering
+%     \caption{MoSCoW Prioritization of User Stories}
+%     \label{tab:moscow_prioritization}
+%     \begin{tabularx}{0.9\linewidth}{>{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}X}
+%         \toprule
+%         \textbf{Category} & \textbf{User Stories} \\
+%         \midrule
+%         yada & yada
+%         \bottomrule
+%     \end{tabularx}
+% \end{table}
+
+\subsection{Minimum Viable Product (MVP)}\label{sec:mvp}
+tbd
+
+\section{Technical Concept}\label{sec:technical_concept}
+% knapp technische Schlüsselmerkmale der Anwendung, rein deskriptiv
+
+\subsection{Data Acquisition and Transmission}\label{sec:data_acquisition}
+
+\begin{lstlisting}[language=json, float, caption={example listing}, label={lst:listing}]
+{}
+\end{lstlisting}
+
+\subsection{Technology Stack}\label{sec:technology_stack}
+
+
+\begin{itemize}
+    \item yada yada
+\end{itemize}
+
+% \begin{figure*}[!htb]
+%   \centering
+%   \includegraphics[width=\linewidth]{img}
+%   \caption{caption}
+%   \label{fig:figure}
+% \end{figure*}
+
+\subsection{Testability}\label{sec:testability}
+
+\subsection{Costs}\label{sec:costs}
+
+
+% \begin{table*}[!htb]
+%     \centering
+%     \caption{Costs}
+%     \label{tab:costs}
+%     \begin{tabularx}{0.8\textwidth}{>{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}r >{\raggedright\arraybackslash}r}
+%         \toprule
+%         \textbf{Component} & \textbf{Usage/Quantity} & \textbf{A} & \textbf{B} \\
+%         \midrule
+%         Yada & yada & 1 & 2
+%         \midrule
+%         \textbf{Total} & & \textbf{\(\sim\)\$0.00} & \textbf{\(\sim\)\$0.00} \\ 
+%         \bottomrule
+%     \end{tabularx}
+% \end{table*}
+
+\section{Conclusion and Future Work}\label{sec:conclusion}
+% Zusammenfassung der wichtigsten Erkenntnisse, Ausblick auf die nächsten Schritte
+
+% ======== References =========
+\sloppy
+\printbibliography[notcategory=selfref]
+% \printbibliography
+
+\end{document}
