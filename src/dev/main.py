@@ -1,4 +1,6 @@
 from src.controller.signal_receiver_mock import SignalReceiverMock
+from src.display.display import Display
+from src.display.display_manager import DisplayManager
 from src.game.lane import Lane
 from src.logger.multi_logger import get_logger
 from src.game.game import Game
@@ -116,6 +118,9 @@ def simple_game_setup():
         #     ],
         # )
     ]
+    
+    display = Display({}, [])  # Empty display for dev testing without rendering dependency.
+    display_manager = DisplayManager(display=display) 
 
     # Build game instance.
     game = Game(
@@ -123,7 +128,8 @@ def simple_game_setup():
         track_modules=track_modules,
         settings=settings,
         signal_receiver=signal_receiver,
-        lanes=[lane_1, lane_2]
+        lanes=[lane_1, lane_2],
+        display=display
     )
 
     logger.log("Starting dev game loop with updated game logic settings.")

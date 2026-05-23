@@ -9,7 +9,6 @@ class Vehicle:
         speed: float = 0,
         acceleration: float = 0,
         round: int = 0,
-        style: list[int] = [],
         primary_color: tuple[int, int, int] = (0, 255, 0),
         decelerate_color: tuple[int, int, int] = (0, 0, 255),
         accelerate_color: tuple[int, int, int] = (128, 0, 128),
@@ -19,7 +18,6 @@ class Vehicle:
         self.__speed = speed if speed >= 0 else 0
         self.__acceleration = acceleration if acceleration >= 0 else 0
         self.__round = round if round >= 0 else 0
-        self.__style = style if style else [0, 0, 0]
         
         self.__primary_color = primary_color
         self.__decelerate_color = decelerate_color
@@ -184,10 +182,6 @@ class Vehicle:
     @property
     def round(self) -> int:
         return self.__round
-
-    @property
-    def style(self) -> list[int]:
-        return self.__style
 
     @property
     def respawn_ticks(self) -> int:

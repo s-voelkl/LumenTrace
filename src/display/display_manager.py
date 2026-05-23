@@ -7,6 +7,21 @@ from src.display.config import DisplayConfig
 from src.display.color_constants import *
 
 def interpolate_color(color1: tuple[int,int,int], color2: tuple[int,int,int], ratio: float) -> tuple[int,int,int]:
+    """
+    Interpolate between two RGB colors based on a ratio.
+    
+    This function calculates a new color that is a mix of color1 and color2
+    according to the given ratio. A ratio of 0.0 results in color1, a ratio of
+    1.0 results in color2, and values in between result in a blended color.
+    
+    Args:
+        color1 (tuple[int, int, int]): The starting RGB color.
+        color2 (tuple[int, int, int]): The ending RGB color.
+        ratio (float): The interpolation ratio between 0.0 and 1.0.
+        
+    Returns:
+        tuple[int, int, int]: The interpolated RGB color.
+    """
     ratio = max(0.0, min(1.0, ratio))
     r = int(color1[0] + (color2[0] - color1[0]) * ratio)
     g = int(color1[1] + (color2[1] - color1[1]) * ratio)
@@ -14,9 +29,26 @@ def interpolate_color(color1: tuple[int,int,int], color2: tuple[int,int,int], ra
     return (r, g, b)
 
 class DisplayManager:
-    """Logic component to translate game state into visual components using the hierarchy."""
+    """
+    Logic component to translate game state into visual components using the hierarchy.
     
-    def __init__(self, display: Display, config: DisplayConfig = None):
+    This class manages the rendering logic for the LED display, taking the current
+    game state and deciding which visual elements to display based on a defined
+    hierarchy (e.g., track start, intersections, vehicles).
+    
+    Attributes:
+        display (Display): The display instance used to render the game state.
+        config (DisplayConfig | None): Configuration settings for the display manager.
+    """
+    
+    def __init__(self, display: Display, config: DisplayConfig | None = None):
+        """
+        Initialize the DisplayManager.
+        
+        Args:
+            display (Display): The display instance for rendering.
+            config (DisplayConfig | None): Configuration settings.
+        """
         self.display = display
         self.config = config if config else DisplayConfig()
         # Track round ticks for vehicles
@@ -24,6 +56,19 @@ class DisplayManager:
         self.__vehicle_rounds = {}
 
     def update(self, game: Game):
+        """
+        Update the display based on the current game state.
+        
+        This method clears the display and then renders the various visual
+        components in a specific hierarchical order, finally pushing the
+        updates to the physical LEDs.
+        
+        Args:
+            game (Game): The current game state object.
+            
+        Returns:
+            None
+        """
         self.display.clear()
         
         self._update_round_ticks(game)
@@ -37,8 +82,8 @@ class DisplayManager:
         self.display.render()
 
     def _update_round_ticks(self, game: Game):
-        if hasattr(game, '_Game__players'):
-            players = game._Game__players
+        if hasattr(game, 'players'):
+            players = game.players
         else:
             players = getattr(game, 'players', [])
             
@@ -62,12 +107,12 @@ class DisplayManager:
 
     def _render_intersection_modules(self, game: Game):
         lanes = getattr(game, 'lanes', [])
-        if not lanes and hasattr(game, '_Game__lanes'):
-            lanes = game._Game__lanes
+        if not lanes and hasattr(game, 'lanes'):
+            lanes = game.lanes
 
         track_modules = getattr(game, 'track_modules', [])
-        if not track_modules and hasattr(game, '_Game__track_modules'):
-            track_modules = game._Game__track_modules
+        if not track_modules and hasattr(game, 'track_modules'):
+            track_modules = game.track_modules
 
         lane_lengths = {lane: 0.0 for lane in lanes}
         
@@ -79,7 +124,7 @@ class DisplayManager:
                 end_pos = start_pos + line_length
                 
                 if is_intersection and line_length > 0:
-                    lane_total = game._Game__get_lane_track_length(lane)
+                    lane_total = game.get_track_length_for_lane(lane)
                     if lane_total > 0:
                         start_ratio = start_pos / lane_total
                         end_ratio = end_pos / lane_total
@@ -89,28 +134,28 @@ class DisplayManager:
 
     def _render_intersection_animations(self, game: Game):
         players = getattr(game, 'players', [])
-        if not players and hasattr(game, '_Game__players'):
-            players = game._Game__players
+        if not players and hasattr(game, 'players'):
+            players = game.players
 
         for player in players:
             vehicle = player.vehicle
             if vehicle and vehicle.lane:
-                module, _ = game._Game__get_track_module_for_lane_position(vehicle.lane, vehicle.position)
+                module, _ = game.get_track_module_for_lane_position(vehicle.lane, vehicle.position)
                 if module and module.track_type == TrackType.INTERSECTION:
                     self.display.fill_lane(vehicle.lane, LIGHT_PINK)
 
     def _render_start_of_track(self, game: Game):
         lanes = getattr(game, 'lanes', [])
-        if not lanes and hasattr(game, '_Game__lanes'):
-            lanes = game._Game__lanes
+        if not lanes and hasattr(game, 'lanes'):
+            lanes = game.lanes
 
         for lane in lanes:
             self.display.set_lane_pixel_by_ratio(lane, 0.0, GRAY)
 
     def _render_round_advance(self, game: Game):
         players = getattr(game, 'players', [])
-        if not players and hasattr(game, '_Game__players'):
-            players = game._Game__players
+        if not players and hasattr(game, 'players'):
+            players = game.players
 
         for player in players:
             vehicle = player.vehicle
@@ -125,8 +170,8 @@ class DisplayManager:
 
     def _render_inactive_vehicles(self, game: Game):
         players = getattr(game, 'players', [])
-        if not players and hasattr(game, '_Game__players'):
-            players = game._Game__players
+        if not players and hasattr(game, 'players'):
+            players = game.players
 
         for player in players:
             vehicle = player.vehicle
@@ -135,31 +180,41 @@ class DisplayManager:
                     ticks = vehicle.respawn_ticks
                     change_interv = self.config.respawn_tick_color_change
                     color = WHITE if (ticks // change_interv) % 2 == 0 else GRAY
-                    lane_total = game._Game__get_lane_track_length(vehicle.lane)
+                    lane_total = game.get_track_length_for_lane(vehicle.lane)
                     if lane_total > 0:
                         ratio = vehicle.position / lane_total
                         self.display.set_lane_pixel_by_ratio(vehicle.lane, ratio, color)
 
     def _render_active_vehicles(self, game: Game):
         players = getattr(game, 'players', [])
-        if not players and hasattr(game, '_Game__players'):
-            players = game._Game__players
+        if not players and hasattr(game, 'players'):
+            players = game.players
 
         for player in players:
             vehicle = player.vehicle
             if vehicle and vehicle.lane and vehicle.active and vehicle.respawn_ticks <= 0:
-                module, _ = game._Game__get_track_module_for_lane_position(vehicle.lane, vehicle.position)
+                module, _ = game.get_track_module_for_lane_position(vehicle.lane, vehicle.position)
                 if module:
                     line = module.get_line_for_lane(vehicle.lane)
                     if line:
                         dp = line.driving_profile
                         color = self._get_active_color(vehicle, dp)
-                        lane_total = game._Game__get_lane_track_length(vehicle.lane)
+                        lane_total = game.get_track_length_for_lane(vehicle.lane)
                         if lane_total > 0:
                             ratio = vehicle.position / lane_total
                             self.display.set_lane_pixel_by_ratio(vehicle.lane, ratio, color)
 
     def _get_active_color(self, vehicle: Vehicle, dp: DrivingProfile) -> tuple[int,int,int]:
+        """
+        Calculate the appropriate color for an active vehicle based on its speed relative to the driving profile limits.
+        
+        Args:
+            vehicle (Vehicle): The active vehicle instance.
+            dp (DrivingProfile): The driving profile of the current line segment.
+            
+        Returns:
+            tuple[int, int, int]: The RGB color to display for the active vehicle.
+        """
         speed = vehicle.speed
         half_max = dp.max_speed / 2.0
         half_min = abs(dp.min_speed) / 2.0

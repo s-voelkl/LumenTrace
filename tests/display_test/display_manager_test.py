@@ -1,4 +1,3 @@
-import pytest
 from src.display.display import Display, VirtualLedStrip
 from src.display.display_manager import DisplayManager
 from src.display.color_constants import (
