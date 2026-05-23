@@ -2,10 +2,10 @@
   "version": "0.2.1",
   "configurations": [
     {
-      "name": "Python: RPI 3 (module)",
+      "name": "Python: RPI 4 (module)",
       "type": "debugpy",
       "request": "launch",
-      "module": "src.rpi_3.main",
+      "module": "src.rpi_4.main",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true
@@ -36,15 +36,6 @@
       "cwd": "${workspaceFolder}",
       "console": "externalTerminal",
       // "console": "integratedTerminal",
-      "justMyCode": true
-    },
-    {
-      "name": "Python: Test (module)",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "tests.test_main",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
       "justMyCode": true
     }
   ]

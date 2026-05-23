@@ -1,7 +1,7 @@
 pytest
 pyserial
 # RPi.GPIO
-machine
+# machine
 setuptools
 wheel
 paho-mqtt
