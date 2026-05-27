@@ -24,7 +24,7 @@ def _configure_pylogger() -> None:
 	_CONFIGURED = True
 
 
-def get_pylogger(name: str = "pylogger_example") -> logging.Logger:
+def get_pylogger(name: str = "pylogger") -> logging.Logger:
 	"""Return a configured stdlib logger."""
 	_configure_pylogger()
 	return logging.getLogger(name)
