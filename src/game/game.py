@@ -137,6 +137,7 @@ class Game:
         if len(self.__event_history) > self.__event_history_limit:
             self.__event_history = self.__event_history[-self.__event_history_limit:]
         logger.log_json(event)
+        print(event)
 
     def tick_once(
         self,
@@ -168,7 +169,7 @@ class Game:
             self.display()
 
     def display(self):
-        self.log_fully()
+        # self.log_fully()
         if self.__display_manager is not None:
             self.__display_manager.update(self)
 
@@ -718,7 +719,16 @@ class Game:
                 continue
 
             lane_track_length = self.get_lane_track_length(vehicle.lane)
-            vehicle.update_position(delta_position, lane_track_length)
+            
+            # handle possible round changes as an event trigger
+            round_change = vehicle.update_position(delta_position, lane_track_length)
+            if round_change != 0:
+                self.__record_event({
+                    "event": "round_change",
+                    "player": player.name,
+                    "change": round_change,
+                    "new_round_value": vehicle.round,
+                })
 
             self.__advance_lane_change(player)
             if not vehicle.active:

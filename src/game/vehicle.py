@@ -115,28 +115,36 @@ class Vehicle:
         elif self.__speed < -max_abs_speed:
             self.__speed = -max_abs_speed
             
-    def update_position(self, delta_position: float, lane_length: float):
+    def update_position(self, delta_position: float, lane_length: float) -> int:
         '''Updates the vehicle position along the track and wraps it around at the track length.
 
         Args:
             delta_position (float): The distance to move in this tick.
             lane_length (float): The total lane length used for wraparound.
+            
+        Returns:
+            int: The changed number of rounds completed 
+            (-n for n backward wraps, +n for n forward wrap, 0 for no wrap).
         '''
+        round_change = 0
         new_position = self.__position + delta_position
 
         if lane_length <= 0:
             self.__position = new_position if new_position >= 0 else 0
-            return
+            return round_change
 
         while new_position >= lane_length:
             new_position -= lane_length
             self.__round += 1
+            round_change += 1
 
         while new_position < 0 and self.__round > 0:
             new_position += lane_length
             self.__round -= 1
+            round_change -= 1
 
         self.__position = new_position if new_position >= 0 else 0
+        return round_change
 
     # Setter
     def set_acceleration(self, acceleration: float, min_acceleration: float, max_acceleration: float):
