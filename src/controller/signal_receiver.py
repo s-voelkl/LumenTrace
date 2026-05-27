@@ -46,7 +46,7 @@ class SignalReceiver(SignalReceiverInterface):
             self.serial.reset_input_buffer()
             # blocks until new line or timeout
             line = self.serial.readline()
-            print(f"Received line: {line}")  # Debug print to check received data
+            # print(f"Received line: {line}")  # Debug print to check received data
 
             if not line:
                 # timeout reached

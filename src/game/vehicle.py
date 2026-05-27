@@ -139,9 +139,14 @@ class Vehicle:
         self.__position = new_position if new_position >= 0 else 0
 
     # Setter
-    def set_acceleration(self, acceleration: float):
-        self.__acceleration = acceleration
-        
+    def set_acceleration(self, acceleration: float, min_acceleration: float, max_acceleration: float):
+        if acceleration < min_acceleration:
+            self.__acceleration = min_acceleration
+        elif acceleration > max_acceleration:
+            self.__acceleration = max_acceleration
+        else:
+            self.__acceleration = acceleration
+
     def set_lane(self, lane: Lane | None):
         self.__lane = lane
 

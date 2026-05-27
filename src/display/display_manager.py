@@ -116,7 +116,7 @@ class DisplayManager:
                 
                 if is_intersection and line_length > 0:
                     # lane_total = game.get_track_length_for_lane(lane)
-                    lane_total = game.__get_lane_track_length(lane)
+                    lane_total = game.get_lane_track_length(lane)
                     if lane_total > 0:
                         start_ratio = start_pos / lane_total
                         end_ratio = end_pos / lane_total
@@ -167,7 +167,7 @@ class DisplayManager:
                     change_interv = self.config.respawn_tick_color_change
                     color = WHITE if (ticks // change_interv) % 2 == 0 else GRAY
                     # lane_total = game.get_track_length_for_lane(vehicle.lane)
-                    lane_total = game.__get_lane_track_length(vehicle.lane)
+                    lane_total = game.get_lane_track_length(vehicle.lane)
                     if lane_total > 0:
                         ratio = vehicle.position / lane_total
                         self.display.set_lane_pixel_by_ratio(vehicle.lane, ratio, color)
@@ -185,7 +185,7 @@ class DisplayManager:
                         dp = line.driving_profile
                         color = self._get_active_color(vehicle, dp)
                         # lane_total = game.get_track_length_for_lane(vehicle.lane)
-                        lane_total = game.__get_lane_track_length(vehicle.lane)
+                        lane_total = game.get_lane_track_length(vehicle.lane)
                         if lane_total > 0:
                             ratio = vehicle.position / lane_total
                             self.display.set_lane_pixel_by_ratio(vehicle.lane, ratio, color)

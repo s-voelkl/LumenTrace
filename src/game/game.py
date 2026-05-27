@@ -173,7 +173,7 @@ class Game:
             self.__display_manager.update(self)
 
     # Helpers
-    def __get_lane_track_length(self, lane: Lane) -> float:
+    def get_lane_track_length(self, lane: Lane) -> float:
         """Return total drivable length for one lane across all configured modules.
 
         Args:
@@ -196,7 +196,7 @@ class Game:
                 The matched module index and local position in that module.
                 Returns ``(None, 0.0)`` if no lane segment can be resolved.
         """
-        lane_length = self.__get_lane_track_length(lane)
+        lane_length = self.get_lane_track_length(lane)
         if lane_length <= 0:
             return None, 0.0
 
@@ -346,6 +346,22 @@ class Game:
             return f"acceleration ({acceleration:.2f}) < {profile.min_acceleration:.2f}"
 
         return None
+    
+    @staticmethod
+    def map_forward_press_to_acceleration(forward_press: float) -> float:
+        input_min = 42000 # 70% of 65536 is 45875, but rounding down to 42000 to give some buffer for switch activation
+        input_max = 65536
+        output_min = 0
+        output_max = 100
+        if forward_press < input_min:
+            return 0.0
+        if forward_press > input_max:
+            return 100.0
+        
+        # calculation for the mapping: linear interpolation
+        # $$f(x) = (x - \text{input\_min}) \cdot \frac{\text{output\_max} - \text{output\_min}}{\text{input\_max} - \text{input\_min}} + \text{output\_min}$$
+        mapped_signal: float = (forward_press - input_min) * (output_max - output_min) // (input_max - input_min) + output_min
+        return mapped_signal
 
     def __get_lane_sequence_between(self, source_lane: Lane, target_lane: Lane) -> list[Lane]:
         """Return ordered adjacent lane path from source to target.
@@ -391,7 +407,7 @@ class Game:
             return
         if vehicle.line_change_ticks != 0 or vehicle.line_change_target is not None:
             return
-        if player.controller.special_1 < self.__settings.special_1_threshold:
+        if player.controller.special_1 == 0:
             return
         if not self.__is_lane_change_allowed(player):
             return
@@ -544,7 +560,7 @@ class Game:
             player.vehicle.set_lane(lane)
             player.vehicle.set_position(0)
             player.vehicle.set_speed(0)
-            player.vehicle.set_acceleration(0)
+            player.vehicle.set_acceleration(0, self.__settings.min_acceleration, self.__settings.max_acceleration)
             player.vehicle.set_respawn_ticks(0)
             player.vehicle.set_active(True)
             self.__record_event({
@@ -619,7 +635,7 @@ class Game:
             if len(lane_players) < 2:
                 continue
 
-            lane_length = self.__get_lane_track_length(lane)
+            lane_length = self.get_lane_track_length(lane)
             if lane_length <= 0:
                 continue
 
@@ -658,7 +674,13 @@ class Game:
                 self.__handle_inactive_player_tick(player)
                 continue
 
-            vehicle.set_acceleration(player.controller.forward_press)
+            # map the input to acceleration and apply it
+            vehicle_acceleration = self.map_forward_press_to_acceleration(player.controller.forward_press)
+            vehicle.set_acceleration(
+                vehicle_acceleration,
+                self.__settings.min_acceleration,
+                self.__settings.max_acceleration
+            )
             vehicle.apply_friction(self.__settings.friction_percent)
             vehicle.update_speed(
                 self.__settings.max_speed,
@@ -695,7 +717,7 @@ class Game:
                 self.__fall_player(player, "lane is ended: vehicle lane is None after movement")
                 continue
 
-            lane_track_length = self.__get_lane_track_length(vehicle.lane)
+            lane_track_length = self.get_lane_track_length(vehicle.lane)
             vehicle.update_position(delta_position, lane_track_length)
 
             self.__advance_lane_change(player)
@@ -768,10 +790,11 @@ class Game:
             } for tm in self.__track_modules],
             "settings": {
                 "max_speed": self.settings.max_speed,
+                "min_acceleration": self.settings.min_acceleration,
+                "max_acceleration": self.settings.max_acceleration,
                 "respawn_ticks": self.settings.respawn_ticks,
                 "friction_percent": self.settings.friction_percent,
                 "acceleration_multiplier": self.settings.acceleration_multiplier,
-                "special_1_threshold": self.settings.special_1_threshold,
                 "lane_change_ticks": self.settings.lane_change_ticks,
                 "vehicle_crash_distance": self.settings.vehicle_crash_distance,
             },
