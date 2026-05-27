@@ -34,7 +34,7 @@ class SimulationOrchestrator:
         tick = 0
         while tick < max_ticks:
             loop_start = time.perf_counter()
-            self.__game.tick_once(fetch_data=True, display=False, game_tick_interval_s=self.__game_tick_interval_s)
+            self.__game.tick_once(fetch_data=True, show_display=False, game_tick_interval_s=self.__game_tick_interval_s)
 
             if tick % self.__display_interval_ticks == 0:
                 self.__renderer.render_to_terminal(self.__game, tick)

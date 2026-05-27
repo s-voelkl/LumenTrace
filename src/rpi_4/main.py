@@ -135,7 +135,7 @@ def build_game() -> Game:
         settings=settings,
         signal_receiver=signal_receiver,
         lanes=[lane_1, lane_2],
-        display=display,
+        display_manager=display_manager,
     )
 
     return game

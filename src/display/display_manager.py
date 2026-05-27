@@ -82,10 +82,7 @@ class DisplayManager:
         self.display.render()
 
     def _update_round_ticks(self, game: Game):
-        if hasattr(game, 'players'):
-            players = game.players
-        else:
-            players = getattr(game, 'players', [])
+        players = game.players
             
         for player in players:
             pid = id(player)
@@ -106,14 +103,8 @@ class DisplayManager:
                     state["ticks_left"] -= 1
 
     def _render_intersection_modules(self, game: Game):
-        lanes = getattr(game, 'lanes', [])
-        if not lanes and hasattr(game, 'lanes'):
-            lanes = game.lanes
-
-        track_modules = getattr(game, 'track_modules', [])
-        if not track_modules and hasattr(game, 'track_modules'):
-            track_modules = game.track_modules
-
+        lanes = game.lanes
+        track_modules = game.track_modules
         lane_lengths = {lane: 0.0 for lane in lanes}
         
         for module in track_modules:
@@ -124,7 +115,8 @@ class DisplayManager:
                 end_pos = start_pos + line_length
                 
                 if is_intersection and line_length > 0:
-                    lane_total = game.get_track_length_for_lane(lane)
+                    # lane_total = game.get_track_length_for_lane(lane)
+                    lane_total = game.__get_lane_track_length(lane)
                     if lane_total > 0:
                         start_ratio = start_pos / lane_total
                         end_ratio = end_pos / lane_total
@@ -133,9 +125,7 @@ class DisplayManager:
                 lane_lengths[lane] = end_pos
 
     def _render_intersection_animations(self, game: Game):
-        players = getattr(game, 'players', [])
-        if not players and hasattr(game, 'players'):
-            players = game.players
+        players = game.players
 
         for player in players:
             vehicle = player.vehicle
@@ -145,33 +135,29 @@ class DisplayManager:
                     self.display.fill_lane(vehicle.lane, LIGHT_PINK)
 
     def _render_start_of_track(self, game: Game):
-        lanes = getattr(game, 'lanes', [])
-        if not lanes and hasattr(game, 'lanes'):
-            lanes = game.lanes
+        lanes = game.lanes
 
         for lane in lanes:
             self.display.set_lane_pixel_by_ratio(lane, 0.0, GRAY)
 
     def _render_round_advance(self, game: Game):
-        players = getattr(game, 'players', [])
-        if not players and hasattr(game, 'players'):
-            players = game.players
+        players = game.players
 
         for player in players:
             vehicle = player.vehicle
-            pid = id(player)
-            if vehicle and pid in self.__vehicle_rounds and self.__vehicle_rounds[pid]["ticks_left"] > 0:
-                ticks_left = self.__vehicle_rounds[pid]["ticks_left"]
-                change_interv = self.config.round_advance_tick_color_change
-                if (ticks_left // change_interv) % 2 == 0:
-                    self.display.fill_lane(vehicle.lane, YELLOW)
-                else:
-                    self.display.fill_lane(vehicle.lane, WHITE)
+            
+            if vehicle.lane is not None:
+                pid = id(player)
+                if vehicle and pid in self.__vehicle_rounds and self.__vehicle_rounds[pid]["ticks_left"] > 0:
+                    ticks_left = self.__vehicle_rounds[pid]["ticks_left"]
+                    change_interv = self.config.round_advance_tick_color_change
+                    if (ticks_left // change_interv) % 2 == 0:
+                        self.display.fill_lane(vehicle.lane, YELLOW)
+                    else:
+                        self.display.fill_lane(vehicle.lane, WHITE)
 
     def _render_inactive_vehicles(self, game: Game):
-        players = getattr(game, 'players', [])
-        if not players and hasattr(game, 'players'):
-            players = game.players
+        players = game.players
 
         for player in players:
             vehicle = player.vehicle
@@ -180,15 +166,14 @@ class DisplayManager:
                     ticks = vehicle.respawn_ticks
                     change_interv = self.config.respawn_tick_color_change
                     color = WHITE if (ticks // change_interv) % 2 == 0 else GRAY
-                    lane_total = game.get_track_length_for_lane(vehicle.lane)
+                    # lane_total = game.get_track_length_for_lane(vehicle.lane)
+                    lane_total = game.__get_lane_track_length(vehicle.lane)
                     if lane_total > 0:
                         ratio = vehicle.position / lane_total
                         self.display.set_lane_pixel_by_ratio(vehicle.lane, ratio, color)
 
     def _render_active_vehicles(self, game: Game):
-        players = getattr(game, 'players', [])
-        if not players and hasattr(game, 'players'):
-            players = game.players
+        players = game.players
 
         for player in players:
             vehicle = player.vehicle
@@ -199,7 +184,8 @@ class DisplayManager:
                     if line:
                         dp = line.driving_profile
                         color = self._get_active_color(vehicle, dp)
-                        lane_total = game.get_track_length_for_lane(vehicle.lane)
+                        # lane_total = game.get_track_length_for_lane(vehicle.lane)
+                        lane_total = game.__get_lane_track_length(vehicle.lane)
                         if lane_total > 0:
                             ratio = vehicle.position / lane_total
                             self.display.set_lane_pixel_by_ratio(vehicle.lane, ratio, color)

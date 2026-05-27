@@ -155,6 +155,8 @@ class Display:
         Returns:
             None
         """
+        
+        # TODO: only send diff to led strip
         if not RPI_WS281X_AVAILABLE:
             return
 
