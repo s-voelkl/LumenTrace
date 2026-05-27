@@ -99,7 +99,7 @@ class MQTTLogger:
         if not self._active:
             print("MQTT-Logger: Skipping log:", message)
             return
-        print("MQTT-Logger: Log:", message)
+        # print("MQTT-Logger: Log:", message)
         self._publish(message, qos)
 
     def log_json(self, data: dict, qos: int = 1) -> None:
@@ -107,7 +107,7 @@ class MQTTLogger:
         if not self._active:
             print("MQTT-Logger: Skipping JSON log:", data)
             return
-        print("MQTT-Logger: Log JSON:", data)
+        # print("MQTT-Logger: Log JSON:", data)
         self._publish(json.dumps(data), qos)
 
     def stop(self) -> None:

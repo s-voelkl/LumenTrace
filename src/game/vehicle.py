@@ -1,7 +1,26 @@
 from src.game.lane import Lane
 
 class Vehicle:
-        
+    """Representation of a single vehicle in the simulation.
+
+    The vehicle maintains physical state (lane, position, speed and
+    acceleration) and various control flags used by higher-level game
+    logic (respawn, active/inactive state, lane-change state).
+
+    Attributes:
+        lane (Lane | None): Current lane or ``None`` if not placed.
+        position (float): Global position on the lane.
+        speed (float): Signed speed where negative values indicate
+            movement in the reverse direction.
+        acceleration (float): Current signed acceleration value.
+        round (int): Completed lap/round counter.
+        primary_color (tuple[int,int,int]): Default RGB color for the vehicle.
+        decelerate_color (tuple[int,int,int]): Color used when vehicle is
+            above the desired speed (warning to decelerate).
+        accelerate_color (tuple[int,int,int]): Color used when vehicle is
+            below the desired negative speed (warning to accelerate).
+    """
+
     def __init__(
         self,
         lane: Lane | None,
@@ -9,15 +28,51 @@ class Vehicle:
         speed: float = 0,
         acceleration: float = 0,
         round: int = 0,
-        style: list[int] = [],
+        primary_color: tuple[int, int, int] = (0, 255, 0),
+        decelerate_color: tuple[int, int, int] = (0, 0, 255),
+        accelerate_color: tuple[int, int, int] = (128, 0, 128),
     ):
-        self.__lane = lane 
+        """Initialize a Vehicle instance.
+
+        Args:
+            lane (Lane | None): Starting lane or None.
+            position (float): Initial position; negative values are clamped
+                to zero.
+            speed (float): Initial signed speed. Negative speeds are
+                supported to represent reverse movement.
+            acceleration (float): Initial signed acceleration value.
+            round (int): Initial completed rounds count.
+            primary_color (tuple[int,int,int]): Default display color.
+            decelerate_color (tuple[int,int,int]): Decelerate warning color. 
+                Shown when a vehicle should slow down or decelerate stronger, so the vehicle is too fast currently.
+            accelerate_color (tuple[int,int,int]): Accelerate warning color. 
+                Shown when a vehicle should go faster or accelerate stronger, so the vehicle is too slow currently.
+
+        Requires:
+            Higher-level game logic to manage activation and respawn state.
+        """
+
+        # Keep the lane as provided.
+        self.__lane = lane
+
+        # Position is a non-negative coordinate on the lane.
         self.__position = position if position >= 0 else 0
-        self.__speed = speed if speed >= 0 else 0
-        self.__acceleration = acceleration if acceleration >= 0 else 0
+
+        # Speed and acceleration are permitted to be signed values. The
+        # constructor must not silently clamp negative speeds because some
+        # driving profiles and tests rely on negative speeds being valid.
+        self.__speed = speed
+        self.__acceleration = acceleration
+
+        # Round counter must be non-negative.
         self.__round = round if round >= 0 else 0
-        self.__style = style if style else [0, 0, 0]
-        
+
+        # Color attributes used by the display logic.
+        self.__primary_color = primary_color
+        self.__decelerate_color = decelerate_color
+        self.__accelerate_color = accelerate_color
+
+        # Runtime state flags and timers.
         self.__respawn_ticks: int = 0
         self.__active: bool = True
         self.__line_change_ticks: int = 0
@@ -110,33 +165,46 @@ class Vehicle:
         elif self.__speed < -max_abs_speed:
             self.__speed = -max_abs_speed
             
-    def update_position(self, delta_position: float, lane_length: float):
+    def update_position(self, delta_position: float, lane_length: float) -> int:
         '''Updates the vehicle position along the track and wraps it around at the track length.
 
         Args:
             delta_position (float): The distance to move in this tick.
             lane_length (float): The total lane length used for wraparound.
+            
+        Returns:
+            int: The changed number of rounds completed 
+            (-n for n backward wraps, +n for n forward wrap, 0 for no wrap).
         '''
+        round_change = 0
         new_position = self.__position + delta_position
 
         if lane_length <= 0:
             self.__position = new_position if new_position >= 0 else 0
-            return
+            return round_change
 
         while new_position >= lane_length:
             new_position -= lane_length
             self.__round += 1
+            round_change += 1
 
         while new_position < 0 and self.__round > 0:
             new_position += lane_length
             self.__round -= 1
+            round_change -= 1
 
         self.__position = new_position if new_position >= 0 else 0
+        return round_change
 
     # Setter
-    def set_acceleration(self, acceleration: float):
-        self.__acceleration = acceleration
-        
+    def set_acceleration(self, acceleration: float, min_acceleration: float, max_acceleration: float):
+        if acceleration < min_acceleration:
+            self.__acceleration = min_acceleration
+        elif acceleration > max_acceleration:
+            self.__acceleration = max_acceleration
+        else:
+            self.__acceleration = acceleration
+
     def set_lane(self, lane: Lane | None):
         self.__lane = lane
 
@@ -179,10 +247,6 @@ class Vehicle:
         return self.__round
 
     @property
-    def style(self) -> list[int]:
-        return self.__style
-
-    @property
     def respawn_ticks(self) -> int:
         return self.__respawn_ticks
     
@@ -197,3 +261,15 @@ class Vehicle:
     @property
     def line_change_target(self) -> Lane | None:
         return self.__line_change_target
+
+    @property
+    def primary_color(self) -> tuple[int, int, int]:
+        return self.__primary_color
+
+    @property
+    def decelerate_color(self) -> tuple[int, int, int]:
+        return self.__decelerate_color
+
+    @property
+    def accelerate_color(self) -> tuple[int, int, int]:
+        return self.__accelerate_color
