@@ -1,5 +1,5 @@
 from src.controller.signal_receiver_mock import SignalReceiverMock
-from src.display.displayer import Displayer
+from src.display.led_display import LedDisplay
 from src.display.display_manager import DisplayManager
 from src.game.lane import Lane
 from src.logger.multi_logger import get_logger
@@ -119,7 +119,7 @@ def simple_game_setup():
         # )
     ]
     
-    display = Displayer({}, [])  # Empty display for dev testing without rendering dependency.
+    display = LedDisplay({}, [])  # Empty display for dev testing without rendering dependency.
     display_manager = DisplayManager(display=display) 
 
     # Build game instance.

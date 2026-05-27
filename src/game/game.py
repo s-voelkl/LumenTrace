@@ -3,17 +3,12 @@ import time
 from collections.abc import Callable
 from typing import Any, TypedDict
 
-from typing import TYPE_CHECKING
-
 from src.controller.signal_receiver_interface import SignalReceiverInterface
 from .lane import Lane
 from .player import Player
 from .settings import Settings
 from .track_module import TrackModule, TrackType
 from src.logger.multi_logger import get_logger
-
-if TYPE_CHECKING:
-    from src.display.display_manager import DisplayManager
 
 logger = get_logger()
 
@@ -42,7 +37,8 @@ class Game:
         track_modules: list[TrackModule],
         signal_receiver: SignalReceiverInterface,
         lanes: list[Lane],
-        display_manager: DisplayManager | None = None):
+        display_manager # explicitly not imported to avoid circular dependency
+        ):
         
         self.__players = players if players else []
         self.__settings = settings

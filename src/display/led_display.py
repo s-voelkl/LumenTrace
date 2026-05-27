@@ -51,7 +51,7 @@ class VirtualLedStrip:
         ratio = max(0.0, min(1.0, position_ratio))
         return self.min_index + int(ratio * (self.length - 1))
 
-class Displayer:
+class LedDisplay:
     """
     Holds the internal array representing the LEDs, and pushes updates to physical strips.
     
@@ -63,7 +63,7 @@ class Displayer:
         virtual_strips (list[VirtualLedStrip]): List of virtual strips mapped to lanes.
         virtual_arrays (dict[int, list[tuple[int, int, int]]]): Internal RGB color arrays per lane ID.
     """
-    def __init__(self, real_strips: dict[int, PixelStrip], virtual_strips: list[VirtualLedStrip]):
+    def __init__(self, real_strips: dict[int, PixelStrip], virtual_strips: list[VirtualLedStrip]): # type: ignore
         """
         Initialize the Display instance.
         

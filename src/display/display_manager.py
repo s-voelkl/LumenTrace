@@ -2,7 +2,7 @@ from src.game.game import Game
 from src.game.track_module import TrackType
 from src.game.vehicle import Vehicle
 from src.game.driving_profile import DrivingProfile
-from src.display.displayer import Displayer
+from src.display.led_display import LedDisplay
 from src.display.config import DisplayConfig
 from src.display.color_constants import *
 
@@ -41,7 +41,7 @@ class DisplayManager:
         config (DisplayConfig | None): Configuration settings for the display manager.
     """
     
-    def __init__(self, display: Displayer, config: DisplayConfig | None = None):
+    def __init__(self, display: LedDisplay, config: DisplayConfig | None = None):
         """
         Initialize the DisplayManager.
         

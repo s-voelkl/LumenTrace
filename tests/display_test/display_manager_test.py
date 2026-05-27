@@ -1,10 +1,10 @@
-from src.display.displayer import Displayer, VirtualLedStrip
+from src.display.led_display import LedDisplay, VirtualLedStrip
 from src.display.display_manager import DisplayManager
 from src.display.color_constants import (
     GREEN, BLUE, PURPLE, WHITE, GRAY, LIGHT_PINK, LIGHT_GRAY, YELLOW, BLACK
 )
-from src.game.lane import Lane
 from src.display.config import DisplayConfig
+from src.game.lane import Lane
 from src.game.vehicle import Vehicle
 from src.game.driving_profile import DrivingProfile
 from src.game.track_module import TrackModule, TrackType
@@ -46,7 +46,7 @@ def test_display_manager_hierarchy():
     game = MockGame([player], [lane1], [tm1])
     
     vs = VirtualLedStrip(lane1, 0, 0, 9)
-    display = Displayer({}, [vs])
+    display = LedDisplay({}, [vs])
     manager = DisplayManager(display, config)
 
     # 1. Active Vehicle at pos 50 out of 100 -> ratio 0.5 -> index 4
@@ -104,7 +104,7 @@ def test_display_manager_active_color_interpolation():
     game = MockGame([player], [lane1], [tm1])
     
     vs = VirtualLedStrip(lane1, 0, 0, 9)
-    display = Displayer({}, [vs])
+    display = LedDisplay({}, [vs])
     manager = DisplayManager(display, config)
 
     # test center speed (no interp)
@@ -139,7 +139,7 @@ def test_display_manager_inactive_blinking():
     game = MockGame([player], [lane1], [tm1])
     
     vs = VirtualLedStrip(lane1, 0, 0, 9)
-    display = Displayer({}, [vs])
+    display = LedDisplay({}, [vs])
     manager = DisplayManager(display, config)
     
     vehicle.set_active(False)

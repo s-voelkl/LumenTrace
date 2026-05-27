@@ -1,4 +1,11 @@
-from .displayer import Displayer, VirtualLedStrip
+from .led_display import LedDisplay, VirtualLedStrip
 from .display_manager import DisplayManager
+from .color_constants import *
+from .config import DisplayConfig
 
-__all__ = ["Displayer", "VirtualLedStrip", "DisplayManager"]
+__all__ = [
+    "LedDisplay", 
+    "VirtualLedStrip", 
+    "DisplayManager",
+    "DisplayConfig",
+]
