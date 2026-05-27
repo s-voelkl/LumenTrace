@@ -3,8 +3,6 @@ import time
 from collections.abc import Callable
 from typing import Any, TypedDict
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from src.controller.signal_receiver_interface import SignalReceiverInterface
@@ -15,7 +13,7 @@ from .track_module import TrackModule, TrackType
 from src.logger.multi_logger import get_logger
 
 if TYPE_CHECKING:
-    from src.display.display import Display
+    from src.display.display_manager import DisplayManager
 
 logger = get_logger()
 
@@ -44,14 +42,15 @@ class Game:
         track_modules: list[TrackModule],
         signal_receiver: SignalReceiverInterface,
         lanes: list[Lane],
-        display: Display | None = None):
+        display_manager: DisplayManager | None = None):
+        
         self.__players = players if players else []
         self.__settings = settings
         self.__track_modules = track_modules if track_modules else []
         self.__length = sum([tm.length for tm in track_modules]) if track_modules else 0
         self.__signal_receiver = signal_receiver
         self.__lanes = lanes if lanes else []
-        self.__display = display
+        self.__display_manager = display_manager
         self.__lane_change_states: dict[Player, LaneChangeState] = {}
         self.__event_history: list[dict[str, Any]] = []
         self.__event_history_limit = 200
@@ -147,7 +146,7 @@ class Game:
         self,
         *,
         fetch_data: bool = True,
-        display: bool = False,
+        show_display: bool = False,
         game_tick_interval_s: float | None = None,
     ) -> None:
         """Run one deterministic game tick.
@@ -157,7 +156,7 @@ class Game:
 
         Args:
             fetch_data (bool, optional): Whether input receiver should be polled first.
-            display (bool, optional): Whether to call ``display`` after tick update.
+            show_display (bool, optional): Whether to call ``display`` after tick update.
             game_tick_interval_s (float | None, optional): Tick duration used by
                 movement integration. ``None`` keeps the current configured value.
         """
@@ -169,16 +168,13 @@ class Game:
 
         self.__game_loop()
 
-        if display:
+        if show_display:
             self.display()
 
     def display(self):
-        if hasattr(self, "log_fully"):
-            self.log_fully()
-        if hasattr(self, "_Game__display") and self.__display is not None:
-            self.__display.update(self)
-        elif hasattr(self, "_display") and self._display is not None:
-            self._display.update(self)
+        self.log_fully()
+        if self.__display_manager is not None:
+            self.__display_manager.update(self)
 
     # Helpers
     def __get_lane_track_length(self, lane: Lane) -> float:
@@ -238,7 +234,7 @@ class Game:
             global_position += self.__track_modules[idx].get_line_length_for_lane(lane)
         return max(0.0, global_position + max(0.0, module_local_position))
 
-    def __get_track_module_for_lane_position(self, lane: Lane, position: float) -> tuple[TrackModule | None, float]:
+    def get_track_module_for_lane_position(self, lane: Lane, position: float) -> tuple[TrackModule | None, float]:
         """Resolve a lane position to its module and local offset inside that module.
 
         The vehicle position is interpreted as a continuous coordinate on the selected lane.
@@ -377,7 +373,7 @@ class Game:
         if lane is None:
             return False
 
-        module, _ = self.__get_track_module_for_lane_position(lane, player.vehicle.position)
+        module, _ = self.get_track_module_for_lane_position(lane, player.vehicle.position)
         if module is None:
             return False
 
@@ -595,7 +591,7 @@ class Game:
         if player.vehicle.lane is None:
             return True
 
-        track_module, _ = self.__get_track_module_for_lane_position(
+        track_module, _ = self.get_track_module_for_lane_position(
             player.vehicle.lane,
             player.vehicle.position,
         )
@@ -644,12 +640,6 @@ class Game:
             if player.vehicle.active:
                 self.__fall_player(player, reason)
 
-    # Further methods
-    def display(self):
-        self.log_fully()
-        if self.__display is not None:
-            self.__display.update(self)
-
     def __game_loop(self):
         """Execute one simulation tick for all players.
 
@@ -681,7 +671,7 @@ class Game:
 
             self.__start_lane_change_if_requested(player)
 
-            track_module, _ = self.__get_track_module_for_lane_position(
+            track_module, _ = self.get_track_module_for_lane_position(
                 vehicle.lane,
                 vehicle.position,
             ) if vehicle.lane is not None else (None, 0.0)
@@ -716,7 +706,7 @@ class Game:
             if not vehicle.active:
                 continue
 
-            track_module_after, _ = self.__get_track_module_for_lane_position(
+            track_module_after, _ = self.get_track_module_for_lane_position(
                 vehicle.lane,
                 vehicle.position,
             ) if vehicle.lane is not None else (None, 0.0)
@@ -752,7 +742,9 @@ class Game:
                     "speed": player.vehicle.speed,
                     "acceleration": player.vehicle.acceleration,
                     "round": player.vehicle.round,
-                    "style": player.vehicle.style
+                    "primary_color": player.vehicle.primary_color,
+                    "decelerate_color": player.vehicle.decelerate_color,
+                    "accelerate_color": player.vehicle.accelerate_color
                 },
                 "controller": {
                     "forward_press": player.controller.forward_press,

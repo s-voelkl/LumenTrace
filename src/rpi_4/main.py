@@ -1,7 +1,7 @@
 from src.controller.signal_receiver import SignalReceiver
 from src.controller.player_controller import PlayerController
 from src.logger.multi_logger import get_logger
-from src.display.display import Display
+from src.display.displayer import Displayer
 from src.display.display_manager import DisplayManager
 from src.display.color_constants import *
 from src.game.game import Game
@@ -54,7 +54,7 @@ def build_game() -> Game:
     signal_receiver = SignalReceiver(controllers=[player_controller_1, player_controller_2])
     
     # Optional: Configure the Display and DisplayManager
-    display = Display({}, []) # Provide physical and virtual strips here when available
+    display = Displayer({}, []) # Provide physical and virtual strips here when available
     display_manager = DisplayManager(display)
     max_speed = 100.0
     settings = Settings(
@@ -135,7 +135,7 @@ def build_game() -> Game:
         settings=settings,
         signal_receiver=signal_receiver,
         lanes=[lane_1, lane_2],
-        display=display,
+        display_manager=display_manager,
     )
 
     return game

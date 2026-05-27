@@ -1,7 +1,5 @@
 """Helpers for the configured Python logger."""
 
-from __future__ import annotations
-
 import logging
 import logging.config
 from pathlib import Path

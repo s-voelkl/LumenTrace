@@ -51,7 +51,7 @@ class VirtualLedStrip:
         ratio = max(0.0, min(1.0, position_ratio))
         return self.min_index + int(ratio * (self.length - 1))
 
-class Display:
+class Displayer:
     """
     Holds the internal array representing the LEDs, and pushes updates to physical strips.
     
@@ -155,6 +155,8 @@ class Display:
         Returns:
             None
         """
+        
+        # TODO: only send diff to led strip
         if not RPI_WS281X_AVAILABLE:
             return
 
@@ -162,6 +164,8 @@ class Display:
             strip = self.real_strips.get(vs.real_strip_id)
             if strip:
                 arr = self.virtual_arrays.get(vs.lane.lane_id, [])
+                if Color is None:
+                    continue
                 for i, color in enumerate(arr):
                     real_idx = vs.min_index + i
                     strip.setPixelColor(real_idx, Color(color[0], color[1], color[2]))

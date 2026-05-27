@@ -32,7 +32,7 @@ def test_simulation_signal_receiver_emits_deterministic_payload() -> None:
 def test_terminal_renderer_frame_contains_required_sections() -> None:
     """Rendered frame should include settings, players, modules, and visual track."""
     game = create_simulation_game()
-    game.tick_once(fetch_data=True, display=False, game_tick_interval_s=0.05)
+    game.tick_once(fetch_data=True, show_display=False, game_tick_interval_s=0.05)
 
     renderer = TerminalSimulationRenderer(track_width_chars=40)
     frame = renderer.render_frame(game, tick=1)
@@ -52,7 +52,7 @@ def test_tick_once_moves_vehicle_forward_for_positive_input() -> None:
     start_position = vehicle.position
 
     for _ in range(5):
-        game.tick_once(fetch_data=True, display=False, game_tick_interval_s=0.05)
+        game.tick_once(fetch_data=True, show_display=False, game_tick_interval_s=0.05)
 
     assert vehicle.position >= start_position
 
@@ -89,13 +89,13 @@ def test_renderer_event_log_persists_events_across_ticks() -> None:
 
     # Force an immediate profile violation so a fall event is produced.
     game.players[0].controller.update_input("adc_0", 500.0)
-    game.tick_once(fetch_data=False, display=False, game_tick_interval_s=0.05)
+    game.tick_once(fetch_data=False, show_display=False, game_tick_interval_s=0.05)
     frame_after_fall = renderer.render_frame(game, tick=1)
     assert "EVENT LOG" in frame_after_fall
     assert "player_fell" in frame_after_fall
 
     # Run another tick and ensure the event is still listed in the persistent panel.
-    game.tick_once(fetch_data=False, display=False, game_tick_interval_s=0.05)
+    game.tick_once(fetch_data=False, show_display=False, game_tick_interval_s=0.05)
     frame_after_next_tick = renderer.render_frame(game, tick=2)
     assert "player_fell" in frame_after_next_tick
 
@@ -105,7 +105,7 @@ def test_player_fall_event_contains_reason_string() -> None:
     game = create_simulation_game()
     game.players[0].controller.update_input("adc_0", 500.0)
 
-    game.tick_once(fetch_data=False, display=False, game_tick_interval_s=0.05)
+    game.tick_once(fetch_data=False, show_display=False, game_tick_interval_s=0.05)
 
     fall_events = [event for event in game.recent_events if event.get("event") == "player_fell"]
     assert fall_events
@@ -143,7 +143,7 @@ def test_middle_lane_player_can_initiate_lane_change_in_three_lane_module() -> N
         lanes=[lane_1, lane_2, lane_3],
     )
 
-    game.tick_once(fetch_data=False, display=False, game_tick_interval_s=0.05)
+    game.tick_once(fetch_data=False, show_display=False, game_tick_interval_s=0.05)
     assert player.vehicle.lane == lane_3
 
 
