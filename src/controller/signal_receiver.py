@@ -71,15 +71,17 @@ class SignalReceiver(SignalReceiverInterface):
                     controller_id = controller_data.get("controller_id")
                     if controller_id is not None:
                         self.__update_controller(controller_id, controller_data)
-                        logger.log(
-                            f"Updated controller {controller_id} with data: {controller_data}"
-                        )
+                        # logger.log(
+                        #     f"Updated controller {controller_id} with data: {controller_data}"
+                        # )
 
         except json.JSONDecodeError as e:
-            logger.log(f"JSON decode error: {e}")
+            # logger.log(f"JSON decode error: {e}")
+            pass
 
         except Exception as e:
-            logger.log(f"Receiver error: {e}")
+            # logger.log(f"Receiver error: {e}")
+            pass
 
     def receive_signal_old(self):
         '''Receives the UART signal, decodes it, and updates the corresponding controllers.
@@ -114,7 +116,7 @@ class SignalReceiver(SignalReceiverInterface):
                             controller_id = controller_data.get('controller_id')
                             if controller_id is not None:
                                 self.__update_controller(controller_id, controller_data)
-                                logger.log(f"Updated controller {controller_id} with data: {controller_data}")
+                                # logger.log(f"Updated controller {controller_id} with data: {controller_data}")
 
             except json.JSONDecodeError as e:
                 logger.log(f"JSON decode error: {e}")
