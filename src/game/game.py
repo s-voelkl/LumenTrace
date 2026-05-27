@@ -728,6 +728,8 @@ class Game:
                     "player": player.name,
                     "change": round_change,
                     "new_round_value": vehicle.round,
+                    "speed": vehicle.speed,
+                    "acceleration": vehicle.acceleration,
                 })
 
             self.__advance_lane_change(player)

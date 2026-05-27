@@ -69,9 +69,23 @@ class DisplayManager:
         Returns:
             None
         """
+        # NOTE: The display update logic follows a strict rendering hierarchy.
+        # Lower-priority layers are applied first so that higher-priority
+        # rendering actions can override them by writing into the same virtual
+        # buffer positions. The order implemented here (applied in update()):
+        #  - intersection module (base color for intersection segments)
+        #  - intersection animation (when a vehicle is currently on an intersection)
+        #  - start of track marker (first pixel of each lane)
+        #  - round advance animation (blinks lane on round increment)
+        #  - inactive vehicles (respawn blinking marker)
+        #  - active vehicles (final override for vehicle position / speed color)
+        
         self.display.clear()
         
         self._update_round_ticks(game)
+        # Render the low-priority base track module visuals first so higher
+        # priority layers (intersections, vehicles, etc.) can override them.
+        self._render_track_modules(game)
         self._render_intersection_modules(game)
         self._render_intersection_animations(game)
         self._render_start_of_track(game)
@@ -81,17 +95,58 @@ class DisplayManager:
 
         self.display.render()
 
+    def _get_vehicle_pixel_count(self, game: Game) -> int:
+        """Derive the vehicle sprite width from the crash-distance setting."""
+        pixel_count = int(round(game.settings.vehicle_crash_distance))
+        if pixel_count < 1:
+            pixel_count = 1
+        if pixel_count % 2 == 0:
+            pixel_count += 1
+        return pixel_count
+
+    def _render_vehicle_pixel_window(
+        self,
+        game: Game,
+        lane,
+        position: float,
+        color: tuple[int, int, int],
+        pixel_count: int,
+    ):
+        lane_total = game.get_lane_track_length(lane)
+        if lane_total <= 0:
+            return
+
+        relative_position = position / lane_total
+        self.display.set_lane_pixel_window_by_relative_position(
+            lane,
+            relative_position,
+            color,
+            pixel_count=pixel_count,
+        )
+
     def _update_round_ticks(self, game: Game):
+        """
+        Track and decrement per-player round-advance tick timers.
+
+        This method inspects all players and records when a player's
+        `vehicle.round` increases. When a round advance is detected a
+        per-player counter is seeded from the configuration and decremented
+        on each update call. The counters are used by the round advance
+        renderer.
+
+        Args:
+            game (Game): Current game instance providing player list.
+        """
         players = game.players
-            
+
         for player in players:
-            pid = id(player)
+            player_id = id(player)
             vehicle = player.vehicle
             if vehicle:
-                if pid not in self.__vehicle_rounds:
-                    self.__vehicle_rounds[pid] = {"round": vehicle.round, "ticks_left": 0}
+                if player_id not in self.__vehicle_rounds:
+                    self.__vehicle_rounds[player_id] = {"round": vehicle.round, "ticks_left": 0}
                 
-                state = self.__vehicle_rounds[pid]
+                state = self.__vehicle_rounds[player_id]
                 
                 # Check if round advanced
                 if vehicle.round > state["round"]:
@@ -103,42 +158,147 @@ class DisplayManager:
                     state["ticks_left"] -= 1
 
     def _render_intersection_modules(self, game: Game):
+        """
+        Paint base color for track modules that are intersections.
+
+        This paints a LIGHT_GRAY base colour for the region of each lane
+        that belongs to a module with type `TrackType.INTERSECTION`. The
+        physical-to-virtual mapping is calculated using lane-relative
+        ratios derived from module line lengths.
+
+        Args:
+            game (Game): Current game instance exposing lanes and modules.
+        """
         lanes = game.lanes
         track_modules = game.track_modules
         lane_lengths = {lane: 0.0 for lane in lanes}
         
         for module in track_modules:
-            is_intersection = (module.track_type == TrackType.INTERSECTION)
             for lane in lanes:
+                line = module.get_line_for_lane(lane)
+                lane_change_allowed = bool(line and line.driving_profile.lane_change_allowed)
                 line_length = module.get_line_length_for_lane(lane)
                 start_pos = lane_lengths[lane]
                 end_pos = start_pos + line_length
                 
-                if is_intersection and line_length > 0:
+                if lane_change_allowed and line_length > 0:
                     # lane_total = game.get_track_length_for_lane(lane)
                     lane_total = game.get_lane_track_length(lane)
                     if lane_total > 0:
-                        start_ratio = start_pos / lane_total
-                        end_ratio = end_pos / lane_total
-                        self.display.fill_lane_section_by_ratio(lane, start_ratio, end_ratio, LIGHT_GRAY)
+                        start_relative_position = start_pos / lane_total
+                        end_relative_position = end_pos / lane_total
+                        self.display.fill_lane_section_by_relative_position(
+                            lane,
+                            start_relative_position,
+                            end_relative_position,
+                            DARK_GRAY,
+                            color_ratio=0.1,
+                        )
                         
                 lane_lengths[lane] = end_pos
 
+    def _render_track_modules(self, game: Game):
+        """
+        Paint a subtle base color across the whole track and emphasize the
+        first pixel of each track module.
+
+        - By default the entire lane is painted DARK_GRAY at a low ratio
+          (`color_ratio=0.05`).
+        - Additionally each module's first pixel is painted with DARK_GRAY at
+          a higher ratio (`color_ratio=0.1`) to make module boundaries visible.
+        """
+        lanes = game.lanes
+        track_modules = game.track_modules
+
+        # Fill entire lanes with a faint dark gray base.
+        for lane in lanes:
+            self.display.fill_lane(lane, DARK_PURPLE, color_ratio=0.04)
+
+        # Highlight the first pixel of each module to improve visibility.
+        lane_start_positions = {lane: 0.0 for lane in lanes}
+        for module in track_modules:
+            for lane in lanes:
+                line_length = module.get_line_length_for_lane(lane)
+                if line_length <= 0:
+                    # Advance start position regardless so later modules are placed correctly.
+                    lane_start_positions[lane] += line_length
+                    continue
+
+                lane_total = game.get_lane_track_length(lane)
+                if lane_total <= 0:
+                    lane_start_positions[lane] += line_length
+                    continue
+
+                start_pos = lane_start_positions[lane]
+                # Paint the module's leading pixel slightly brighter than the base.
+                self.display.set_lane_pixel_by_relative_position(
+                    lane,
+                    start_pos / lane_total,
+                    DARK_PURPLE,
+                    color_ratio=0.15,
+                )
+
+                lane_start_positions[lane] += line_length
+
     def _render_intersection_animations(self, game: Game):
+        """
+        Overlay animation for vehicles currently on an intersection.
+
+        If a vehicle is resolved to a module with type `INTERSECTION`, the
+        entire lane is painted `LIGHT_PINK`. This runs before active
+        vehicle rendering so single-pixel vehicle markers can still
+        override the animation when applicable.
+
+        Args:
+            game (Game): Current game instance exposing players.
+        """
         players = game.players
 
         for player in players:
             vehicle = player.vehicle
             if vehicle and vehicle.lane:
                 module, _ = game.get_track_module_for_lane_position(vehicle.lane, vehicle.position)
-                if module and module.track_type == TrackType.INTERSECTION:
-                    self.display.fill_lane(vehicle.lane, LIGHT_PINK)
+                line = module.get_line_for_lane(vehicle.lane) if module else None
+                lane_change_allowed = bool(line and line.driving_profile.lane_change_allowed)
+                if module and lane_change_allowed:
+                    lane = vehicle.lane
+                    lane_total = game.get_lane_track_length(lane)
+                    if lane_total <= 0:
+                        continue
+
+                    module_start_position = 0.0
+                    for track_module in game.track_modules:
+                        line_length = track_module.get_line_length_for_lane(lane)
+                        module_end_position = module_start_position + line_length
+
+                        if track_module is module and line_length > 0:
+                            self.display.fill_lane_section_by_relative_position(
+                                lane,
+                                module_start_position / lane_total,
+                                module_end_position / lane_total,
+                                DARK_GRAY,
+                                color_ratio=0.2,
+                            )
+                            break
+
+                        module_start_position = module_end_position
 
     def _render_start_of_track(self, game: Game):
+        """
+        Mark the start position of every lane.
+
+        The first pixel of every lane is marked `GRAY` to indicate the
+        start / end line of the track. This is intentionally a low-level
+        visual and therefore applied early so higher-priority effects may
+        override it.
+
+        Args:
+            game (Game): Current game instance exposing lane list.
+        """
         lanes = game.lanes
 
         for lane in lanes:
-            self.display.set_lane_pixel_by_ratio(lane, 0.0, GRAY)
+            self.display.set_lane_pixel_by_relative_position(lane, 0.0, GRAY)
 
     def _render_round_advance(self, game: Game):
         players = game.players
@@ -147,33 +307,59 @@ class DisplayManager:
             vehicle = player.vehicle
             
             if vehicle.lane is not None:
-                pid = id(player)
-                if vehicle and pid in self.__vehicle_rounds and self.__vehicle_rounds[pid]["ticks_left"] > 0:
-                    ticks_left = self.__vehicle_rounds[pid]["ticks_left"]
-                    change_interv = self.config.round_advance_tick_color_change
-                    if (ticks_left // change_interv) % 2 == 0:
-                        self.display.fill_lane(vehicle.lane, YELLOW)
+                player_id = id(player)
+                if vehicle and player_id in self.__vehicle_rounds and self.__vehicle_rounds[player_id]["ticks_left"] > 0:
+                    ticks_left = self.__vehicle_rounds[player_id]["ticks_left"]
+                    change_interval = self.config.round_advance_tick_color_change
+                    if (ticks_left // change_interval) % 2 == 0:
+                        color = YELLOW
                     else:
-                        self.display.fill_lane(vehicle.lane, WHITE)
+                        color = WHITE
+
+                    # Only pulse the start pixel so the lap-change indicator stays subtle.
+                    self.display.set_lane_pixel_by_relative_position(vehicle.lane, 0.0, color)
 
     def _render_inactive_vehicles(self, game: Game):
         players = game.players
+        vehicle_pixel_count = self._get_vehicle_pixel_count(game)
 
         for player in players:
             vehicle = player.vehicle
             if vehicle and vehicle.lane:
+                # Inactive or respawning vehicles are shown as a blinking marker.
+                # The blink logic uses the configured interval and splits the
+                # interval into two halves. The remainder of `respawn_ticks %
+                # change_interv` selects which half is currently active. This
+                # matches the specification which defines the first half of the
+                # interval as WHITE and the second half as GRAY.
                 if not vehicle.active or vehicle.respawn_ticks > 0:
                     ticks = vehicle.respawn_ticks
-                    change_interv = self.config.respawn_tick_color_change
-                    color = WHITE if (ticks // change_interv) % 2 == 0 else GRAY
-                    # lane_total = game.get_track_length_for_lane(vehicle.lane)
-                    lane_total = game.get_lane_track_length(vehicle.lane)
-                    if lane_total > 0:
-                        ratio = vehicle.position / lane_total
-                        self.display.set_lane_pixel_by_ratio(vehicle.lane, ratio, color)
+                    change_interval = self.config.respawn_tick_color_change
+
+                    # Protect against invalid or zero configuration values.
+                    if change_interval <= 0:
+                        # Fallback to WHITE if configuration is invalid.
+                        color = WHITE
+                    else:
+                        # Use modulo to determine position inside the configured
+                        # interval and split that interval in half to pick the
+                        # displayed color. For odd intervals the lower half is
+                        # chosen for WHITE.
+                        mod = ticks % change_interval
+                        half = change_interval // 2
+                        color = WHITE if mod < half else GRAY
+
+                    self._render_vehicle_pixel_window(
+                        game,
+                        vehicle.lane,
+                        vehicle.position,
+                        color,
+                        vehicle_pixel_count,
+                    )
 
     def _render_active_vehicles(self, game: Game):
         players = game.players
+        vehicle_pixel_count = self._get_vehicle_pixel_count(game)
 
         for player in players:
             vehicle = player.vehicle
@@ -184,11 +370,13 @@ class DisplayManager:
                     if line:
                         dp = line.driving_profile
                         color = self._get_active_color(vehicle, dp)
-                        # lane_total = game.get_track_length_for_lane(vehicle.lane)
-                        lane_total = game.get_lane_track_length(vehicle.lane)
-                        if lane_total > 0:
-                            ratio = vehicle.position / lane_total
-                            self.display.set_lane_pixel_by_ratio(vehicle.lane, ratio, color)
+                        self._render_vehicle_pixel_window(
+                            game,
+                            vehicle.lane,
+                            vehicle.position,
+                            color,
+                            vehicle_pixel_count,
+                        )
 
     def _get_active_color(self, vehicle: Vehicle, dp: DrivingProfile) -> tuple[int,int,int]:
         """

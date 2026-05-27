@@ -1,7 +1,26 @@
 from src.game.lane import Lane
 
 class Vehicle:
-        
+    """Representation of a single vehicle in the simulation.
+
+    The vehicle maintains physical state (lane, position, speed and
+    acceleration) and various control flags used by higher-level game
+    logic (respawn, active/inactive state, lane-change state).
+
+    Attributes:
+        lane (Lane | None): Current lane or ``None`` if not placed.
+        position (float): Global position on the lane.
+        speed (float): Signed speed where negative values indicate
+            movement in the reverse direction.
+        acceleration (float): Current signed acceleration value.
+        round (int): Completed lap/round counter.
+        primary_color (tuple[int,int,int]): Default RGB color for the vehicle.
+        decelerate_color (tuple[int,int,int]): Color used when vehicle is
+            above the desired speed (warning to decelerate).
+        accelerate_color (tuple[int,int,int]): Color used when vehicle is
+            below the desired negative speed (warning to accelerate).
+    """
+
     def __init__(
         self,
         lane: Lane | None,
@@ -13,16 +32,47 @@ class Vehicle:
         decelerate_color: tuple[int, int, int] = (0, 0, 255),
         accelerate_color: tuple[int, int, int] = (128, 0, 128),
     ):
-        self.__lane = lane 
+        """Initialize a Vehicle instance.
+
+        Args:
+            lane (Lane | None): Starting lane or None.
+            position (float): Initial position; negative values are clamped
+                to zero.
+            speed (float): Initial signed speed. Negative speeds are
+                supported to represent reverse movement.
+            acceleration (float): Initial signed acceleration value.
+            round (int): Initial completed rounds count.
+            primary_color (tuple[int,int,int]): Default display color.
+            decelerate_color (tuple[int,int,int]): Decelerate warning color. 
+                Shown when a vehicle should slow down or decelerate stronger, so the vehicle is too fast currently.
+            accelerate_color (tuple[int,int,int]): Accelerate warning color. 
+                Shown when a vehicle should go faster or accelerate stronger, so the vehicle is too slow currently.
+
+        Requires:
+            Higher-level game logic to manage activation and respawn state.
+        """
+
+        # Keep the lane as provided.
+        self.__lane = lane
+
+        # Position is a non-negative coordinate on the lane.
         self.__position = position if position >= 0 else 0
-        self.__speed = speed if speed >= 0 else 0
-        self.__acceleration = acceleration if acceleration >= 0 else 0
+
+        # Speed and acceleration are permitted to be signed values. The
+        # constructor must not silently clamp negative speeds because some
+        # driving profiles and tests rely on negative speeds being valid.
+        self.__speed = speed
+        self.__acceleration = acceleration
+
+        # Round counter must be non-negative.
         self.__round = round if round >= 0 else 0
-        
+
+        # Color attributes used by the display logic.
         self.__primary_color = primary_color
         self.__decelerate_color = decelerate_color
         self.__accelerate_color = accelerate_color
-        
+
+        # Runtime state flags and timers.
         self.__respawn_ticks: int = 0
         self.__active: bool = True
         self.__line_change_ticks: int = 0

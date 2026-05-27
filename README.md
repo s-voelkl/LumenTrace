@@ -49,7 +49,7 @@ Track layout used by the simulation:
 
 ### Acceleration and Friction
 
-- Controller input `forward_press` is mapped to vehicle acceleration each game tick.
+- Controller input `forward_press` is mapped to vehicle acceleration each game tick. The mapping is configured as inputs [42000, 65536] to outputs [0, 100] with linear interpolation.
 - Friction is applied continuously and reduces current speed by a configurable percentage.
 - Positive and negative movement are supported. If acceleration would invert speed direction in one step, speed is clamped to `0` first to keep transitions stable.
 
@@ -115,3 +115,8 @@ The architecture is designed to be modular and extensible, with clear separation
 - `Display` package manages the LED effects and visual feedback for the game.
 
 ![Architecture Diagram](docs/architecture.png)
+
+## LED Implementation
+
+Using library example: https://github.com/richardghirst/rpi_ws281x/blob/master/python/examples/strandtest.py
+LED GPIOs: 18 (PWM0) and 19 (PWM1) for up to 2 independent LED strips.

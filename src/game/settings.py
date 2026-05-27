@@ -8,6 +8,7 @@ class Settings:
         friction_percent: float = 0.02,
         acceleration_multiplier: float = 0.03,
         lane_change_ticks: int = 25,
+        vehicle_crash_distance: float = 5.0,
     ):
         self.__max_speed = max_speed if max_speed > 0 else 100.0
         self.__min_acceleration = min_acceleration if min_acceleration < 0 else -100.0
@@ -16,7 +17,7 @@ class Settings:
         self.__friction_percent = friction_percent if friction_percent > 0 else 0.02
         self.__acceleration_multiplier = acceleration_multiplier if acceleration_multiplier > 0 else 0.03
         self.__lane_change_ticks = lane_change_ticks if lane_change_ticks > 0 else 25
-        self.__vehicle_crash_distance: float = 20.0
+        self.__vehicle_crash_distance = vehicle_crash_distance if vehicle_crash_distance > 0 else 5.0
 
 
     # Getters

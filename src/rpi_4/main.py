@@ -24,6 +24,7 @@ logger = get_logger()
 def main():
     """
     Entrypoint for Raspberry Pi 4 execution.
+    Run with: ``sudo .venv/bin/python -m src.rpi_4.main``
     
     Sets up the player controllers, signal receiver, and components for
     the display, then builds the game instance and starts the game loop.
@@ -56,9 +57,9 @@ def build_game() -> Game:
         Game: The configured Game instance ready to be started.
     """
     player_controller_1 = PlayerController()
-    # player_controller_2 = PlayerController()
-    # signal_receiver = SignalReceiver(controllers=[player_controller_1, player_controller_2])
-    signal_receiver = SignalReceiver(controllers=[player_controller_1])
+    player_controller_2 = PlayerController()
+    signal_receiver = SignalReceiver(controllers=[player_controller_1, player_controller_2])
+    # signal_receiver = SignalReceiver(controllers=[player_controller_1])
     
     lane_1 = Lane()
     lane_2 = Lane()
@@ -87,7 +88,7 @@ def build_game() -> Game:
             freq_hz=800_000,
             dma=10,
             invert=False,
-            brightness=int(255 * 0.2), # safety with slightly dimmed brightness
+            brightness=int(255), # safety with slightly dimmed brightness
             channel=1, # needed for gpio 19
         )
         strip0.begin()
@@ -109,28 +110,31 @@ def build_game() -> Game:
     
     display = LedDisplay(real_strips, virtual_strips) # Provide physical and virtual strips here when available
     display_config = DisplayConfig(
-        respawn_tick_color_change = 10,
-        round_advance_ticks = 20,
-        round_advance_tick_color_change = 5
+        respawn_tick_color_change = 20,
+        round_advance_ticks = 200,
+        round_advance_tick_color_change = 20
     )
     display_manager = DisplayManager(display)
     
     # settings
+    max_speed: int = 40
     settings = Settings(
-        respawn_ticks=50,
+        max_speed=max_speed,
+        respawn_ticks=200,
         friction_percent=0.02,
-        acceleration_multiplier=0.015,
-        lane_change_ticks=100,
+        acceleration_multiplier=0.01,
+        lane_change_ticks=50,
+        vehicle_crash_distance=3.0,
     )
 
     player_1 = Player(
         controller=player_controller_1,
-        vehicle=Vehicle(lane=lane_1, primary_color=GREEN, accelerate_color=PURPLE, decelerate_color=BLUE)
+        vehicle=Vehicle(lane=lane_1, primary_color=GREEN, accelerate_color=PURPLE, decelerate_color=RED)
     )
-    # player_2 = Player(
-    #     controller=player_controller_2,
-    #     vehicle=Vehicle(lane=lane_2, primary_color=PINK, accelerate_color=ORANGE, decelerate_color=RED)
-    # )
+    player_2 = Player(
+        controller=player_controller_2,
+        vehicle=Vehicle(lane=lane_2, primary_color=BLUE, accelerate_color=PURPLE, decelerate_color=RED)
+    )
 
     track_modules: list[TrackModule] = [
         TrackModule(
@@ -138,12 +142,28 @@ def build_game() -> Game:
             part_length=50,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(lane_change_allowed=True),
+                    driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_1,
                     line_length=50,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(lane_change_allowed=True),
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_2,
+                    line_length=50
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.INTERSECTION,
+            part_length=20,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.8, lane_change_allowed=True),
+                    lane=lane_1,
+                    line_length=50,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.8, lane_change_allowed=True),
                     lane=lane_2,
                     line_length=50
                 ),
@@ -154,12 +174,13 @@ def build_game() -> Game:
             part_length=30,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=65, lane_change_allowed=False),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.7),
                     lane=lane_1,
                     line_length=28,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=75, lane_change_allowed=False),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.8),
+                    
                     lane=lane_2,
                     line_length=32
                 ),
@@ -170,12 +191,12 @@ def build_game() -> Game:
             part_length=50,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=85, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.6),
                     lane=lane_1,
                     line_length=55,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=75, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.5),
                     lane=lane_2,
                     line_length=45
                 ),
@@ -184,8 +205,8 @@ def build_game() -> Game:
     ]
 
     game = Game(
-        # players=[player_1, player_2],
-        players=[player_1],
+        players=[player_1, player_2],
+        # players=[player_1],
         track_modules=track_modules,
         settings=settings,
         signal_receiver=signal_receiver,
