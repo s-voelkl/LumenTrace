@@ -1,8 +1,14 @@
 from src.controller.signal_receiver import SignalReceiver
 from src.controller.player_controller import PlayerController
 from src.logger.multi_logger import get_logger
-from src.display.led_display import LedDisplay
+from src.display.led_display import (
+    LedDisplay,
+    VirtualLedStrip,
+    PixelStrip,
+    RPI_WS281X_AVAILABLE,
+)
 from src.display.display_manager import DisplayManager
+from src.display.config import DisplayConfig
 from src.display.color_constants import *
 from src.game.game import Game
 from src.game.lane import Lane
@@ -50,33 +56,81 @@ def build_game() -> Game:
         Game: The configured Game instance ready to be started.
     """
     player_controller_1 = PlayerController()
-    player_controller_2 = PlayerController()
-    signal_receiver = SignalReceiver(controllers=[player_controller_1, player_controller_2])
+    # player_controller_2 = PlayerController()
+    # signal_receiver = SignalReceiver(controllers=[player_controller_1, player_controller_2])
+    signal_receiver = SignalReceiver(controllers=[player_controller_1])
     
-    # Optional: Configure the Display and DisplayManager
-    display = LedDisplay({}, []) # Provide physical and virtual strips here when available
-    display_manager = DisplayManager(display)
-    max_speed = 100.0
-    settings = Settings(
-        max_speed=max_speed,
-        respawn_ticks=200,
-        friction_percent=0.02,
-        acceleration_multiplier=0.015,
-        special_1_threshold=0.5,
-        lane_change_ticks=25,
-    )
-
     lane_1 = Lane()
     lane_2 = Lane()
+    
+    # Configuring display and display manager
+    led_strip_length_m: int = 5
+    leds_per_meter: int = 50
+    led_count = led_strip_length_m * leds_per_meter
+    real_strips = {}
+    virtual_strips = []
+    
+    
+    if RPI_WS281X_AVAILABLE and PixelStrip is not None:
+        strip0 = PixelStrip(
+            num=led_count, 
+            pin=18,
+            freq_hz=800_000,
+            dma=10,
+            invert=False,
+            brightness=255,
+            channel=0, # needed for gpio 18
+        )
+        strip1 = PixelStrip(
+            num=led_count,
+            pin=19,
+            freq_hz=800_000,
+            dma=10,
+            invert=False,
+            brightness=int(255 * 0.2), # safety with slightly dimmed brightness
+            channel=1, # needed for gpio 19
+        )
+        strip0.begin()
+        strip1.begin()
+
+        real_strips = {
+            0: strip0,
+            1: strip1,
+        }
+    
+    virtual_strips = [
+        VirtualLedStrip(
+            lane=lane_1, real_strip_id=0, min_index=0, 
+            max_index=led_count - 1),
+        VirtualLedStrip(
+            lane=lane_2, real_strip_id=1, min_index=0, 
+            max_index=led_count - 1),
+    ]
+    
+    display = LedDisplay(real_strips, virtual_strips) # Provide physical and virtual strips here when available
+    display_config = DisplayConfig(
+        respawn_tick_color_change = 10,
+        round_advance_ticks = 20,
+        round_advance_tick_color_change = 5
+    )
+    display_manager = DisplayManager(display)
+    
+    # settings
+    settings = Settings(
+        respawn_ticks=50,
+        friction_percent=0.02,
+        acceleration_multiplier=0.015,
+        lane_change_ticks=100,
+    )
 
     player_1 = Player(
         controller=player_controller_1,
         vehicle=Vehicle(lane=lane_1, primary_color=GREEN, accelerate_color=PURPLE, decelerate_color=BLUE)
     )
-    player_2 = Player(
-        controller=player_controller_2,
-        vehicle=Vehicle(lane=lane_2, primary_color=PINK, accelerate_color=ORANGE, decelerate_color=RED)
-    )
+    # player_2 = Player(
+    #     controller=player_controller_2,
+    #     vehicle=Vehicle(lane=lane_2, primary_color=PINK, accelerate_color=ORANGE, decelerate_color=RED)
+    # )
 
     track_modules: list[TrackModule] = [
         TrackModule(
@@ -84,12 +138,12 @@ def build_game() -> Game:
             part_length=50,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=100, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(lane_change_allowed=True),
                     lane=lane_1,
                     line_length=50,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=90, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(lane_change_allowed=True),
                     lane=lane_2,
                     line_length=50
                 ),
@@ -130,7 +184,8 @@ def build_game() -> Game:
     ]
 
     game = Game(
-        players=[player_1, player_2],
+        # players=[player_1, player_2],
+        players=[player_1],
         track_modules=track_modules,
         settings=settings,
         signal_receiver=signal_receiver,
