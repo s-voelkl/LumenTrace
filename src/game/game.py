@@ -3,8 +3,6 @@ import time
 from collections.abc import Callable
 from typing import Any, TypedDict
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from src.controller.signal_receiver_interface import SignalReceiverInterface
@@ -173,12 +171,8 @@ class Game:
             self.display()
 
     def display(self):
-        if hasattr(self, "log_fully"):
-            self.log_fully()
-        if hasattr(self, "_Game__display") and self.__display is not None:
-            self.__display.update(self)
-        elif hasattr(self, "_display") and self._display is not None:
-            self._display.update(self)
+        self.log_fully()
+        self.__display.update(self)
 
     # Helpers
     def __get_lane_track_length(self, lane: Lane) -> float:
@@ -752,7 +746,9 @@ class Game:
                     "speed": player.vehicle.speed,
                     "acceleration": player.vehicle.acceleration,
                     "round": player.vehicle.round,
-                    "style": player.vehicle.style
+                    "primary_color": player.vehicle.primary_color,
+                    "decelerate_color": player.vehicle.decelerate_color,
+                    "accelerate_color": player.vehicle.accelerate_color
                 },
                 "controller": {
                     "forward_press": player.controller.forward_press,

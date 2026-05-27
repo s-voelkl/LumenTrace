@@ -1,7 +1,5 @@
 """Terminal renderer for live game simulation state."""
 
-from __future__ import annotations
-
 from src.game.game import Game
 from src.game.lane import Lane
 from src.game.track_module import TrackModule

@@ -1,7 +1,5 @@
 """Runtime orchestration for terminal simulation."""
 
-from __future__ import annotations
-
 import time
 
 from src.game.game import Game

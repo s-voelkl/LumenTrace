@@ -1,7 +1,5 @@
 """Local terminal simulation entrypoint for game logic validation."""
 
-from __future__ import annotations
-
 from src.controller.player_controller import PlayerController
 from src.game.driving_profile import DrivingProfile
 from src.game.game import Game
@@ -192,8 +190,8 @@ def create_simulation_game() -> Game:
         lane_change_ticks=2,
     )
 
-    player_1 = Player(controller=PlayerController(), vehicle=Vehicle(lane=lane_1, position=0, style=[255, 40, 40]))
-    player_2 = Player(controller=PlayerController(), vehicle=Vehicle(lane=lane_3, position=10, style=[40, 120, 255]))
+    player_1 = Player(controller=PlayerController(), vehicle=Vehicle(lane=lane_1, position=0))
+    player_2 = Player(controller=PlayerController(), vehicle=Vehicle(lane=lane_3, position=10))
 
     track_modules = build_simulation_track(lane_1, lane_2, lane_3)
     signal_receiver = SimulationSignalReceiver(
