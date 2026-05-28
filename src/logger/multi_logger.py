@@ -1,7 +1,5 @@
 """Combined logger that writes to stdout/file and MQTT."""
 
-from __future__ import annotations
-
 import json
 from typing import Any
 

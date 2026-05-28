@@ -1,5 +1,6 @@
 pyserial
 RPi.GPIO
+rpi-ws281x
 pytest
 paho-mqtt
 pytest-cov

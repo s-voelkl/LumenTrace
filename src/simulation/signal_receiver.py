@@ -4,8 +4,6 @@ This module provides a scripted replacement for hardware UART input so local
 simulation runs are repeatable and easy to inspect.
 """
 
-from __future__ import annotations
-
 import random
 
 from src.controller.player_controller import PlayerController

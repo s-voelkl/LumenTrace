@@ -1,7 +1,5 @@
 """Helpers for the configured Python logger."""
 
-from __future__ import annotations
-
 import logging
 import logging.config
 from pathlib import Path
@@ -26,7 +24,7 @@ def _configure_pylogger() -> None:
 	_CONFIGURED = True
 
 
-def get_pylogger(name: str = "pylogger_example") -> logging.Logger:
+def get_pylogger(name: str = "pylogger") -> logging.Logger:
 	"""Return a configured stdlib logger."""
 	_configure_pylogger()
 	return logging.getLogger(name)
