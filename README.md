@@ -153,6 +153,7 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 
 - configuration of parameters for the game
 - full sound implementation
+- fixing lane change controlls
 - game state control (rounds done, LCD display for information, start button)
 - LED display adjustments (colors, effects), e.g. when a round advance is made, when a crash happens, when reaching a too high speed, ...
 - placing the LED strips on the physical track modules of the track.
