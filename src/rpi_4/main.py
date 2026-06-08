@@ -47,7 +47,10 @@ def main():
     # 2s: all LEDs yellow.
     # 1s: all LEDs green.
     # 0s: all LEDs off, as game loop starts
-    # Additionally, a
+    # Additionally, a "3,2,1, GO!" sound effect should be played at the start of the game loop,
+    # in parallel to the LED animation.
+
+    # startup condition checker
 
     game = build_game()
 
