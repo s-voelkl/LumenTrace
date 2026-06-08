@@ -173,3 +173,10 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 <!-- TODO: Hardware details -->
 <!-- TODO: Picture of the hardware setup -->
 <!-- TODO: Picture of the running LED Strip -->
+
+## Sound Effects Sources
+
+- Car Engine Sound: TODO
+- Collision Sound: TODO
+- Lap Completion Sound: TODO
+- Start Signal (3,2,1, GO!): <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
