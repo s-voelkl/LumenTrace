@@ -2,6 +2,15 @@
 
 A high-performance MCU-based LED racing simulator. Bringing the classic slot car experience to the world of addressable LEDs with real-time physics and advanced light effects.
 
+## Startup Instructions
+
+Using docker with the files ``src/Dockerfile``, ``src/.dockerignore`` and ``src/docker-compose.yaml``, the project can be built and run with:
+
+```bash
+docker compose -f src/docker-compose.yaml build
+docker compose -f src/docker-compose.yaml up
+```
+
 ## Used Technologies
 
 - Microcontrollers: Raspberry Pi Pico and Raspberry Pi 3 with an micro-SD card for data storage.
