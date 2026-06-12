@@ -11,6 +11,21 @@ _DEFAULT_CHANNELS = 2
 _DEFAULT_SAMPLE_RATE = 44100
 _EASING_FACTOR = 0.05
 
+# Catalog of available sound files mapped from their logical names.
+# Based on README.md sound effect sources.
+AVAILABLE_SOUNDS = {
+    "engine": "assets/sound/base_engine.wav",
+    "bump": "assets/sound/bump.wav",
+    "start_signal": "assets/sound/startup_sound_321go.mp3",
+    "car_crash_1": "assets/sound/car_cras.mp3",
+    "car_crash_2": "assets/sound/car_crash_2.mp3",
+    "car_lap_1": "assets/sound/car_lap_1.mp3",
+    "car_lap_2": "assets/sound/car_lap_2.mp3",
+    "race_finish": "assets/sound/race_finish.mp3",
+    "plopp": "assets/sound/plopp.mp3",
+    "coin_1": "assets/sound/coin_1.mp3",
+}
+
 class PlaybackInstance:
     """
     Represents an individual sound being played.
@@ -82,9 +97,12 @@ class SoundManager:
         # Active sounds currently playing
         self._active_sounds: Dict[str, PlaybackInstance] = {}
 
-    def _load_wav(self, file_path: str) -> np.ndarray:
-        """Loads and caches audio data from a WAV file, converting to mono internally."""
+    def _load_audio(self, file_path_or_name: str) -> np.ndarray:
+        """Loads and caches audio data from a WAV or MP3 file (or logical name), converting to mono internally."""
+        file_path = AVAILABLE_SOUNDS.get(file_path_or_name, file_path_or_name)
+
         if file_path not in self._audio_cache:
+            # Soundfile >= 1.2.0 supports MP3 directly from libsndfile.
             data, fs = sf.read(file_path, dtype='float32')  # type: ignore
             if len(data.shape) > 1:
                 # Convert stereo to mono for easier independent panning
@@ -166,7 +184,7 @@ class SoundManager:
 
     def play(
         self,
-        file_path: str,
+        sound_name_or_path: str,
         loop: bool = False,
         pitch: float = 1.0,
         volume: float = 100.0,
@@ -174,9 +192,9 @@ class SoundManager:
         right_volume: float = 100.0
     ) -> str:
         """
-        Starts playing a sound file.
+        Starts playing a sound file or logical sound name.
         
-        :param file_path: Path to the WAV file.
+        :param sound_name_or_path: Logical name from AVAILABLE_SOUNDS or path to the audio file (WAV/MP3).
         :param loop: Whether the sound should loop endlessly.
         :param pitch: Speed/pitch multiplier (1.0 = normal).
         :param volume: Overall volume of this sound (0-100).
@@ -184,7 +202,7 @@ class SoundManager:
         :param right_volume: Right speaker modifier (0-100).
         :return: Unique string ID identifying the playback instance.
         """
-        audio_data = self._load_wav(file_path)
+        audio_data = self._load_audio(sound_name_or_path)
         instance = PlaybackInstance(
             audio_data=audio_data,
             loop=loop,
@@ -253,6 +271,7 @@ class SoundManager:
             self._stream.close()
             self._stream = None
 
+# example run scripts
 if __name__ == "__main__":
     import time
     
@@ -286,10 +305,10 @@ if __name__ == "__main__":
         time.sleep(2)
 
         print("Playing a second sound over overlapping the first (both speakers, pitched up)...")
-        # 4. Play a second sound overlapping the first
+        # 4. Play a second sound overlapping the first using its logical name
         try:
             sound2_id = manager.play(
-                file_path=dummy_wav,
+                sound_name_or_path="bump",  # Resolved automatically via AVAILABLE_SOUNDS
                 loop=False, 
                 pitch=1.5,
                 volume=60.0,
@@ -298,6 +317,22 @@ if __name__ == "__main__":
             )
         except Exception:
             pass
+
+        time.sleep(1)
+
+        print("Playing a third sound (MP3 format) on the left speaker...")
+        # 4.5 Play an MP3 sound (assuming the file exists)
+        try:
+            sound3_id = manager.play(
+                sound_name_or_path="start_signal", 
+                loop=False, 
+                pitch=1.0,
+                volume=80.0,
+                left_volume=100.0,
+                right_volume=0.0
+            )
+        except Exception:
+            print("Start signal MP3 not found, skipping...")
 
         time.sleep(2)
 

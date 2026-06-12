@@ -145,7 +145,7 @@ def build_game() -> Game:
         friction_percent=0.02,
         acceleration_multiplier=0.01,
         lane_change_ticks=50,
-        vehicle_crash_distance=3.0,
+        vehicle_crash_distance=30.0,
     )
 
     player_1 = Player(
