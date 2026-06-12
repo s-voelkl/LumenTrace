@@ -4,11 +4,11 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 
 ## Startup Instructions
 
-Using docker with the files ``src/Dockerfile``, ``src/.dockerignore`` and ``src/docker-compose.yaml``, the project can be built and run with:
+Using docker with the files ``Dockerfile``, ``.dockerignore`` and ``docker-compose.yaml``, the project can be built and run with:
 
 ```bash
-sudo docker compose -f src/docker-compose.yaml build
-sudo docker compose -f src/docker-compose.yaml up
+sudo docker compose -f docker-compose.yaml build
+sudo docker compose -f docker-compose.yaml up
 ```
 
 ## Used Technologies
