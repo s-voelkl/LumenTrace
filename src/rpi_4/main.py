@@ -10,6 +10,7 @@ from src.display.led_display import (
 from src.display.display_manager import DisplayManager
 from src.display.config import DisplayConfig
 from src.display.color_constants import *
+from src.sound.sound_manager import SoundManager, GameSound
 from src.game.game import Game
 from src.game.lane import Lane
 from src.game.player import Player
@@ -18,6 +19,7 @@ from src.game.track_module import TrackModule, TrackType
 from src.game.line import Line
 from src.game.driving_profile import DrivingProfile
 from src.game.settings import Settings
+import time
 
 logger = get_logger()
 
@@ -27,8 +29,9 @@ def main():
     Entrypoint for Raspberry Pi 4 execution.
     Run with: ``sudo .venv/bin/python -m src.rpi_4.main``
 
-    Sets up the player controllers, signal receiver, and components for
-    the display, then builds the game instance and starts the game loop.
+    Sets up the sound manager, builds the game and its display, waits for the
+    players' start signal, plays the 3-2-1-GO start sequence and then runs the
+    game loop.
 
     Args:
         None
@@ -38,31 +41,147 @@ def main():
     """
     logger.log("Raspberry Pi 4: Main script running.")
 
-    # game startup:
-    # the game waits for an initial signal of all player controllers pressing
-    # their button ``player.PlayerController.special_1 = 1`` for at least 1 second.
-    # Then, the game ticks down: 3, 2, 1, GO! and starts the game loop.
-    # The start sequence should also start a led animation on the first track module:
-    # 3s: all LEDs red.
-    # 2s: all LEDs yellow.
-    # 1s: all LEDs green.
-    # 0s: all LEDs off, as game loop starts
-    # Additionally, a "3,2,1, GO!" sound effect should be played at the start of the game loop,
-    # in parallel to the LED animation.
+    sound_manager = SoundManager()
+    sound_manager.start()
 
-    # startup condition checker
-
-    game = build_game()
+    game, display = build_game(sound_manager)
 
     logger.log(
-        "Setup of Game, SignalReceiver, and PlayerController complete. Starting game loop."
-    )
-    game.start_game(
-        fetch_interval_s=0.02, display_interval_s=0.02, game_tick_interval_s=0.02
+        "Setup of Game, SignalReceiver, and PlayerController complete. "
+        "Waiting for all players to press their start button."
     )
 
+    # Game startup:
+    # The game waits for an initial signal of all player controllers pressing
+    # their button (``PlayerController.special_1``) for at least one second.
+    # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
+    # effect plays in parallel, before the game loop is started.
+    wait_for_start_signal(game)
 
-def build_game() -> Game:
+    logger.log("Start signal received. Running start sequence.")
+    run_start_sequence(display, game, sound_manager)
+
+    logger.log("Start sequence complete. Starting game loop.")
+    try:
+        game.start_game(
+            fetch_interval_s=0.02, display_interval_s=0.02, game_tick_interval_s=0.02
+        )
+    finally:
+        sound_manager.stop_all()
+
+
+def wait_for_start_signal(
+    game: Game,
+    hold_seconds: float = 1.0,
+    poll_interval_s: float = 0.02,
+) -> None:
+    """Block until all players hold their start button for ``hold_seconds``.
+
+    The function continuously polls the signal receiver and tracks how long all
+    players have simultaneously held their ``special_1`` button. As soon as the
+    button has been held continuously for ``hold_seconds`` the function returns.
+
+    Args:
+        game (Game): Game instance providing the players and the signal poller.
+        hold_seconds (float): Required continuous hold duration in seconds.
+        poll_interval_s (float): Delay between consecutive signal polls.
+
+    Returns:
+        None
+    """
+    players = game.players
+    held_since: float | None = None
+
+    while True:
+        game.fetch_data()
+
+        all_pressed = bool(players) and all(
+            player.controller.special_1 for player in players
+        )
+        now = time.perf_counter()
+
+        if all_pressed:
+            if held_since is None:
+                held_since = now
+            elif now - held_since >= hold_seconds:
+                return
+        else:
+            held_since = None
+
+        time.sleep(poll_interval_s)
+
+
+def fill_first_track_module(
+    display: LedDisplay,
+    game: Game,
+    color: tuple[int, int, int],
+) -> None:
+    """Paint the first track module section of every lane in a single color.
+
+    The first module occupies the lane range ``[0, segment / total]`` where
+    ``segment`` is the module's line length on the lane and ``total`` is the
+    lane's full length. The painted buffers are pushed to the strips immediately.
+
+    Args:
+        display (LedDisplay): Display whose virtual buffers are updated.
+        game (Game): Game providing track modules, lanes and lane lengths.
+        color (tuple[int, int, int]): RGB color used to fill the section.
+
+    Returns:
+        None
+    """
+    track_modules = game.track_modules
+    if not track_modules:
+        return
+
+    first_module = track_modules[0]
+    for lane in game.lanes:
+        total_length = game.get_lane_track_length(lane)
+        segment_length = first_module.get_line_length_for_lane(lane)
+        if total_length <= 0 or segment_length <= 0:
+            display.fill_lane(lane, color)
+            continue
+
+        end_ratio = min(1.0, segment_length / total_length)
+        display.fill_lane_section_by_relative_position(lane, 0.0, end_ratio, color)
+
+    display.render()
+
+
+def run_start_sequence(
+    display: LedDisplay,
+    game: Game,
+    sound_manager: SoundManager,
+    step_seconds: float = 1.0,
+) -> None:
+    """Run the 3-2-1-GO start animation together with the start sound.
+
+    The "3, 2, 1, GO!" sound effect is started first so that it plays in
+    parallel with the LED animation. The first track module then cycles through
+    red (3s), yellow (2s) and green (1s) before being cleared as the game loop
+    takes over the display.
+
+    Args:
+        display (LedDisplay): Display used for the countdown animation.
+        game (Game): Game providing the track layout for the animation.
+        sound_manager (SoundManager): Manager used to play the start sound.
+        step_seconds (float): Duration of each countdown step in seconds.
+
+    Returns:
+        None
+    """
+    # Start the start signal sound so it plays alongside the LED animation.
+    sound_manager.play(GameSound.START_SIGNAL)
+
+    for color in (RED, YELLOW, GREEN):
+        fill_first_track_module(display, game, color)
+        time.sleep(step_seconds)
+
+    # GO! Clear the animation so the game loop fully owns the display.
+    fill_first_track_module(display, game, BLACK)
+
+
+def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     """
     Builds and configures the Game object with lanes, players, and track modules.
 
@@ -71,8 +190,13 @@ def build_game() -> Game:
     Game object along with its base settings. It also configures the display units
     and the display manager for the game simulation.
 
+    Args:
+        sound_manager (SoundManager): Shared audio manager passed to the game so
+            it can trigger sound effects and per-player engine sounds.
+
     Returns:
-        Game: The configured Game instance ready to be started.
+        tuple[Game, LedDisplay]: The configured Game instance and the LED display
+            used by the start sequence animation.
     """
     player_controller_1 = PlayerController()
     player_controller_2 = PlayerController()
@@ -171,6 +295,7 @@ def build_game() -> Game:
         TrackModule(
             track_type=TrackType.STRAIGHT,
             part_length=50,
+            sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
@@ -187,6 +312,7 @@ def build_game() -> Game:
         TrackModule(
             track_type=TrackType.INTERSECTION,
             part_length=20,
+            sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(
@@ -207,6 +333,7 @@ def build_game() -> Game:
         TrackModule(
             track_type=TrackType.CURVE_LEFT,
             part_length=30,
+            sound_stereo_ratio_left=0.85,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed * 0.7),
@@ -223,6 +350,7 @@ def build_game() -> Game:
         TrackModule(
             track_type=TrackType.CURVE_RIGHT,
             part_length=50,
+            sound_stereo_ratio_left=0.15,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed * 0.6),
@@ -246,9 +374,10 @@ def build_game() -> Game:
         signal_receiver=signal_receiver,
         lanes=[lane_1, lane_2],
         display_manager=display_manager,
+        sound_manager=sound_manager,
     )
 
-    return game
+    return game, display
 
 
 if __name__ == "__main__":
