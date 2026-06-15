@@ -30,10 +30,12 @@ def run_game_tick_for_test(game: Game) -> None:
     tick_fn()
 
 
-def set_controller_input(controller: PlayerController, *, forward_press: float = 0.0, special_1: float = 0.0) -> None:
+def set_controller_input(
+    controller: PlayerController, *, forward_press: float = 0.0, special_1: float = 0.0
+) -> None:
     """Set controller values through production input-mapping API."""
     controller.update_input("adc_0", forward_press)
-    controller.update_input("adc_1", special_1)
+    controller.update_input("dig_0", special_1)
 
 
 def make_track_modules(
@@ -77,7 +79,10 @@ def make_track_modules(
         modules.append(
             TrackModule(
                 track_type=TrackType.STRAIGHT,
-                part_length=max([length for length in lane_lengths if length is not None], default=0.0),
+                part_length=max(
+                    [length for length in lane_lengths if length is not None],
+                    default=0.0,
+                ),
                 lines=lines,
             )
         )
@@ -98,9 +103,9 @@ def make_game(
             respawn_ticks=5,
             friction_percent=0.02,
             acceleration_multiplier=0.015,
-            lane_change_ticks=2,
+            lane_change_window=20.0,
+            vehicle_crash_distance=20.0,
         )
-
     return Game(
         players=players,
         settings=settings,
@@ -112,33 +117,8 @@ def make_game(
 
 
 def run_ticks(game: Game, tick_count: int) -> None:
-    """Run a deterministic number of internal ticks for scenario tests."""
     for _ in range(tick_count):
         run_game_tick_for_test(game)
-
-
-def assert_lane_after_exact_ticks(
-    game: Game,
-    player: Player,
-    expected_lane: Lane,
-    *,
-    ticks_until_completion: int,
-) -> None:
-    """Assert lane-change timing boundaries exactly.
-
-    This helper validates that the lane does not switch one tick too early and does
-    switch on the exact completion tick. It is useful for review because it clearly
-    verifies edge behavior around off-by-one timing bugs.
-    """
-    if ticks_until_completion > 1:
-        run_ticks(game, ticks_until_completion - 1)
-        assert player.vehicle.lane != expected_lane
-
-    run_ticks(game, 1)
-    assert player.vehicle.lane == expected_lane
-
-
-def test_vehicle_physics_basics_friction_speed_position_and_round():
     """Validate core vehicle kinematics rules independent from Game orchestration.
 
     Why this exists:
@@ -162,136 +142,125 @@ def test_vehicle_physics_basics_friction_speed_position_and_round():
     assert vehicle.round == 1
 
 
-def test_lane_change_is_timed_multi_hop_and_reaches_final_lane():
-    """Lane change from leftmost to rightmost should proceed in timed adjacent hops."""
+def test_lane_change_immediately_moves_to_middle_lane_when_button_pressed_in_window():
+    """Lane change switches immediately to the middle lane if button is pressed in the first 20 units."""
     lanes = [Lane(), Lane(), Lane()]
-    modules = make_track_modules(lanes, [[60.0, 60.0, 60.0]], lane_change_allowed=True)
+    modules = make_track_modules(
+        lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True
+    )
+    settings = Settings(lane_change_window=20.0)
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
-    game = make_game(lanes, [player], modules)
+    # Position = 10.0, within the 20.0 window
+    player = Player(
+        controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0)
+    )
+    game = make_game(lanes, [player], modules, settings=settings)
 
-    run_game_tick_for_test(game)
     run_game_tick_for_test(game)
     assert player.vehicle.lane == lanes[1]
 
+
+def test_lane_change_is_ignored_if_button_pressed_outside_window():
+    """Lane change must be blocked if button is pressed AFTER the first 20 units."""
+    lanes = [Lane(), Lane(), Lane()]
+    modules = make_track_modules(
+        lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True
+    )
+    settings = Settings(lane_change_window=20.0)
+
+    controller = PlayerController()
+    set_controller_input(controller, special_1=1.0)
+    # Position = 30.0, outside the 20.0 window
+    player = Player(
+        controller=controller, vehicle=Vehicle(lane=lanes[0], position=30.0)
+    )
+    game = make_game(lanes, [player], modules, settings=settings)
+
     run_game_tick_for_test(game)
+    assert player.vehicle.lane == lanes[0]
+
+
+def test_lane_change_finishes_automatically_near_end_of_middle_lane():
+    """Vehicle automatically switches to the final lane 20 units before the end of the middle lane."""
+    lanes = [Lane(), Lane(), Lane()]
+    modules = make_track_modules(
+        lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True
+    )
+    settings = Settings(lane_change_window=20.0, max_speed=10.0)
+
+    controller = PlayerController()
+    player = Player(
+        controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0)
+    )
+    game = make_game(lanes, [player], modules, settings=settings)
+
+    # Press button within the first 20 units
+    set_controller_input(controller, special_1=1.0)
     run_game_tick_for_test(game)
+    assert player.vehicle.lane == lanes[1]
+
+    # Stop pressing button
+    set_controller_input(controller, special_1=0.0)
+
+    # Move strictly near the end of the module
+    # Middle lane length is 100. The change is triggered when distance_to_end <= 20.0
+    # Thus, when local_position >= 80.0
+    player.vehicle.set_speed(0.0)
+    player.vehicle.set_position(79.0)
+    run_game_tick_for_test(game)
+    assert player.vehicle.lane == lanes[1]  # Still middle lane since distance is 21.0
+
+    player.vehicle.set_position(81.0)
+    run_game_tick_for_test(game)
+    # Distance is 19.0 <= 20.0, so it automatically jumps to the right lane (2)
     assert player.vehicle.lane == lanes[2]
-    assert player.vehicle.line_change_ticks == 0
-    assert player.vehicle.line_change_target is None
-
-
-def test_lane_change_two_lanes_left_to_right_takes_exactly_25_ticks():
-    """Lane change from leftmost to rightmost lane in 2-lane setup must take 25 ticks."""
-    lanes = [Lane(), Lane()]
-    modules = make_track_modules(lanes, [[100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25)
-
-    controller = PlayerController()
-    set_controller_input(controller, special_1=1.0)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
-    game = make_game(lanes, [player], modules, settings=settings)
-
-    assert_lane_after_exact_ticks(game, player, lanes[1], ticks_until_completion=25)
-
-
-def test_lane_change_two_lanes_right_to_left_takes_exactly_25_ticks():
-    """Lane change from rightmost to leftmost lane in 2-lane setup must take 25 ticks."""
-    lanes = [Lane(), Lane()]
-    modules = make_track_modules(lanes, [[100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25)
-
-    controller = PlayerController()
-    set_controller_input(controller, special_1=1.0)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[1], position=10.0))
-    game = make_game(lanes, [player], modules, settings=settings)
-
-    assert_lane_after_exact_ticks(game, player, lanes[0], ticks_until_completion=25)
-
-
-def test_lane_change_three_lanes_left_to_right_takes_50_ticks_total():
-    """Three-lane full crossing should use two adjacent hops, each with 25 ticks."""
-    lanes = [Lane(), Lane(), Lane()]
-    modules = make_track_modules(lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25)
-
-    controller = PlayerController()
-    set_controller_input(controller, special_1=1.0)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
-    game = make_game(lanes, [player], modules, settings=settings)
-
-    # First hop reaches middle lane after exactly 25 ticks.
-    assert_lane_after_exact_ticks(game, player, lanes[1], ticks_until_completion=25)
-    # Second hop reaches right lane after another 25 ticks.
-    assert_lane_after_exact_ticks(game, player, lanes[2], ticks_until_completion=25)
-
-
-def test_lane_change_three_lanes_right_to_left_takes_50_ticks_total():
-    """Reverse direction in three lanes should mirror timing and adjacency."""
-    lanes = [Lane(), Lane(), Lane()]
-    modules = make_track_modules(lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25)
-
-    controller = PlayerController()
-    set_controller_input(controller, special_1=1.0)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[2], position=10.0))
-    game = make_game(lanes, [player], modules, settings=settings)
-
-    assert_lane_after_exact_ticks(game, player, lanes[1], ticks_until_completion=25)
-    assert_lane_after_exact_ticks(game, player, lanes[0], ticks_until_completion=25)
-
-
-def test_lane_change_four_lanes_left_to_right_takes_75_ticks_total():
-    """Four-lane full crossing should perform three timed adjacent hops (3 * 25)."""
-    lanes = [Lane(), Lane(), Lane(), Lane()]
-    modules = make_track_modules(lanes, [[100.0, 100.0, 100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25)
-
-    controller = PlayerController()
-    set_controller_input(controller, special_1=1.0)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
-    game = make_game(lanes, [player], modules, settings=settings)
-
-    assert_lane_after_exact_ticks(game, player, lanes[1], ticks_until_completion=25)
-    assert_lane_after_exact_ticks(game, player, lanes[2], ticks_until_completion=25)
-    assert_lane_after_exact_ticks(game, player, lanes[3], ticks_until_completion=25)
 
 
 def test_lane_change_requires_lane_change_allowed_profile():
     """Lane change must be blocked on lines that disallow lane changes."""
-    lanes = [Lane(), Lane()]
-    modules = make_track_modules(lanes, [[50.0, 50.0]], lane_change_allowed=False)
+    lanes = [Lane(), Lane(), Lane()]
+    modules = make_track_modules(lanes, [[50.0, 50.0, 50.0]], lane_change_allowed=False)
+    settings = Settings(lane_change_window=20.0)
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
-    game = make_game(lanes, [player], modules)
-
-    for _ in range(5):
-        run_game_tick_for_test(game)
-
-    assert player.vehicle.lane == lanes[0]
-    assert player.vehicle.line_change_ticks == 0
-    assert player.vehicle.line_change_target is None
-
-
-def test_lane_change_converts_module_position_proportionally():
-    """Lane hop should preserve module progress by proportional conversion."""
-    lanes = [Lane(), Lane()]
-    modules = make_track_modules(lanes, [[40.0, 80.0]], lane_change_allowed=True)
-
-    controller = PlayerController()
-    set_controller_input(controller, special_1=1.0)
-    settings = Settings(lane_change_ticks=1)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=20.0))
+    player = Player(
+        controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0)
+    )
     game = make_game(lanes, [player], modules, settings=settings)
 
     run_game_tick_for_test(game)
 
+    assert player.vehicle.lane == lanes[0]
+
+
+def test_lane_change_converts_module_position_proportionally():
+    """Lane hop from middle to target should preserve module progress by proportional conversion."""
+    lanes = [Lane(), Lane(), Lane()]
+    # Middle lane is 80 units long, target lane is 40 units long
+    modules = make_track_modules(lanes, [[100.0, 80.0, 40.0]], lane_change_allowed=True)
+    settings = Settings(lane_change_window=20.0, max_speed=0.0)
+
+    controller = PlayerController()
+    player = Player(
+        controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0)
+    )
+    game = make_game(lanes, [player], modules, settings=settings)
+
+    # Initiate change, move to middle lane
+    set_controller_input(controller, special_1=1.0)
+    run_game_tick_for_test(game)
     assert player.vehicle.lane == lanes[1]
-    assert player.vehicle.position == pytest.approx(40.0)
+
+    # We are on middle lane (length 80), switch triggers at distance <= 20, so at position >= 60
+    # Let's set position to 60 (75% of middle lane length)
+    player.vehicle.set_position(60.0)
+    run_game_tick_for_test(game)
+    # Should switch to right lane (length 40). 75% of 40 is 30.0
+    assert player.vehicle.lane == lanes[2]
+    assert player.vehicle.position == pytest.approx(30.0)
 
 
 def test_player_falls_on_driving_profile_violation():
@@ -335,8 +304,8 @@ def test_player_falls_on_acceleration_profile_violation():
     )
 
     controller = PlayerController()
-    # The game copies forward_press directly into vehicle.acceleration before validation.
-    set_controller_input(controller, forward_press=5.0)
+    # forward_press uses thresholds [42000, 65536]. 45000 yields ~12.7 acc, which violates max 2.0
+    set_controller_input(controller, forward_press=45000.0)
     player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], speed=1.0))
     settings = Settings(respawn_ticks=9)
     game = make_game(lanes, [player], modules, settings=settings)
@@ -366,13 +335,23 @@ def test_no_fall_when_speed_and_acceleration_stay_in_bounds_across_two_modules()
         lane_change_allowed=False,
     )
     modules = [
-        TrackModule(track_type=TrackType.STRAIGHT, part_length=50.0, lines=[Line(low_limit_profile, lane, 50.0)]),
-        TrackModule(track_type=TrackType.STRAIGHT, part_length=50.0, lines=[Line(high_limit_profile, lane, 50.0)]),
+        TrackModule(
+            track_type=TrackType.STRAIGHT,
+            part_length=50.0,
+            lines=[Line(low_limit_profile, lane, 50.0)],
+        ),
+        TrackModule(
+            track_type=TrackType.STRAIGHT,
+            part_length=50.0,
+            lines=[Line(high_limit_profile, lane, 50.0)],
+        ),
     ]
 
     controller = PlayerController()
     set_controller_input(controller, forward_press=0.0)
-    player = Player(controller=controller, vehicle=Vehicle(lane=lane, position=49.0, speed=4.0))
+    player = Player(
+        controller=controller, vehicle=Vehicle(lane=lane, position=49.0, speed=4.0)
+    )
     settings = Settings(friction_percent=0.0, respawn_ticks=6)
     game = make_game([lane], [player], modules, settings=settings)
     setattr(game, "_Game__game_tick_interval_s", 1.0)
@@ -446,8 +425,14 @@ def test_collision_makes_front_vehicle_fall():
     set_controller_input(rear_controller, forward_press=0.0)
     set_controller_input(front_controller, forward_press=0.0)
 
-    rear_player = Player(controller=rear_controller, vehicle=Vehicle(lane=lanes[0], position=0.0, speed=0.0))
-    front_player = Player(controller=front_controller, vehicle=Vehicle(lane=lanes[0], position=15.0, speed=0.0))
+    rear_player = Player(
+        controller=rear_controller,
+        vehicle=Vehicle(lane=lanes[0], position=0.0, speed=0.0),
+    )
+    front_player = Player(
+        controller=front_controller,
+        vehicle=Vehicle(lane=lanes[0], position=15.0, speed=0.0),
+    )
     game = make_game(lanes, [rear_player, front_player], modules)
 
     run_game_tick_for_test(game)
@@ -467,8 +452,14 @@ def test_collision_front_vehicle_falls_when_rear_player_closes_gap():
     set_controller_input(rear_controller, forward_press=0.0)
     set_controller_input(front_controller, forward_press=0.0)
 
-    rear_player = Player(controller=rear_controller, vehicle=Vehicle(lane=lanes[0], position=0.0, speed=1.0))
-    front_player = Player(controller=front_controller, vehicle=Vehicle(lane=lanes[0], position=20.0, speed=0.0))
+    rear_player = Player(
+        controller=rear_controller,
+        vehicle=Vehicle(lane=lanes[0], position=0.0, speed=1.0),
+    )
+    front_player = Player(
+        controller=front_controller,
+        vehicle=Vehicle(lane=lanes[0], position=20.0, speed=0.0),
+    )
     game = make_game(lanes, [rear_player, front_player], modules)
     setattr(game, "_Game__game_tick_interval_s", 1.0)
 
@@ -503,7 +494,9 @@ def test_respawn_on_single_track_without_other_players():
 def test_respawn_uses_free_lane_on_first_module_without_changing_round():
     """Respawn should select an available lane at module zero and keep lap count unchanged."""
     lanes = [Lane(), Lane()]
-    modules = make_track_modules(lanes, [[50.0, 50.0], [50.0, 50.0]], lane_change_allowed=False)
+    modules = make_track_modules(
+        lanes, [[50.0, 50.0], [50.0, 50.0]], lane_change_allowed=False
+    )
 
     occupied_controller = PlayerController()
     falling_controller = PlayerController()
@@ -514,7 +507,9 @@ def test_respawn_uses_free_lane_on_first_module_without_changing_round():
 
     respawning_vehicle = Vehicle(lane=lanes[0], position=5.0, round=3)
     respawning_vehicle.trigger_respawn(1)
-    respawning_player = Player(controller=falling_controller, vehicle=respawning_vehicle)
+    respawning_player = Player(
+        controller=falling_controller, vehicle=respawning_vehicle
+    )
 
     game = make_game(lanes, [occupied_player, respawning_player], modules)
     run_game_tick_for_test(game)
@@ -531,7 +526,9 @@ def test_respawn_uses_free_lane_on_first_module_without_changing_round():
 def test_respawn_uses_first_lane_when_second_lane_is_occupied():
     """If lane 2 is occupied in first module, respawn should select lane 1."""
     lanes = [Lane(), Lane()]
-    modules = make_track_modules(lanes, [[50.0, 50.0], [50.0, 50.0]], lane_change_allowed=False)
+    modules = make_track_modules(
+        lanes, [[50.0, 50.0], [50.0, 50.0]], lane_change_allowed=False
+    )
 
     occupied_controller = PlayerController()
     waiting_controller = PlayerController()
@@ -560,7 +557,9 @@ def test_respawn_stays_inactive_when_single_lane_is_occupied_on_first_module():
 
     blocker_controller = PlayerController()
     waiting_controller = PlayerController()
-    blocker = Player(controller=blocker_controller, vehicle=Vehicle(lane=lane, position=10.0))
+    blocker = Player(
+        controller=blocker_controller, vehicle=Vehicle(lane=lane, position=10.0)
+    )
 
     waiting_vehicle = Vehicle(lane=lane, position=0.0)
     waiting_vehicle.trigger_respawn(1)
@@ -582,7 +581,9 @@ def test_respawn_retries_until_first_module_lane_becomes_free():
     blocker_controller = PlayerController()
     waiting_controller = PlayerController()
 
-    blocker = Player(controller=blocker_controller, vehicle=Vehicle(lane=lanes[0], position=10.0))
+    blocker = Player(
+        controller=blocker_controller, vehicle=Vehicle(lane=lanes[0], position=10.0)
+    )
     waiting_vehicle = Vehicle(lane=lanes[0], position=0.0)
     waiting_vehicle.trigger_respawn(1)
     waiting = Player(controller=waiting_controller, vehicle=waiting_vehicle)
@@ -599,17 +600,18 @@ def test_respawn_retries_until_first_module_lane_becomes_free():
     assert waiting.vehicle.position == 0.0
     assert waiting.vehicle.lane == lanes[0]
 
+
 def test_forward_press_mapping_to_acceleration():
     """Test the mapping of forward_press to acceleration."""
     # Test values below the minimum threshold
-    assert Game.map_forward_press_to_acceleration(0) == 0.
-    assert Game.map_forward_press_to_acceleration(41999) == 0.
-    
+    assert Game.map_forward_press_to_acceleration(0) == 0.0
+    assert Game.map_forward_press_to_acceleration(41999) == 0.0
+
     # Test values at the minimum threshold
-    assert Game.map_forward_press_to_acceleration(42000) == 0.
-    
+    assert Game.map_forward_press_to_acceleration(42000) == 0.0
+
     # Test values between the minimum and maximum thresholds
-    assert Game.map_forward_press_to_acceleration(53768) == 50 # middle value
-    
+    assert Game.map_forward_press_to_acceleration(53768) == 50  # middle value
+
     # Test values at the maximum threshold
-    assert Game.map_forward_press_to_acceleration(65536) == 100.
+    assert Game.map_forward_press_to_acceleration(65536) == 100.0
