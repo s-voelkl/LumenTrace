@@ -212,3 +212,6 @@ __marimo__/
 
 # Draw.io
 .bkp
+
+# docker
+get-docker.sh

@@ -4,11 +4,11 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 
 ## Startup Instructions
 
-Using docker with the files ``src/Dockerfile``, ``src/.dockerignore`` and ``src/docker-compose.yaml``, the project can be built and run with:
+Using docker with the files ``Dockerfile``, ``.dockerignore`` and ``docker-compose.yaml``, the project can be built and run with:
 
 ```bash
-docker compose -f src/docker-compose.yaml build
-docker compose -f src/docker-compose.yaml up
+sudo docker compose -f docker-compose.yaml build
+sudo docker compose -f docker-compose.yaml up
 ```
 
 ## Used Technologies
@@ -39,7 +39,6 @@ available at `src/dev/simulation.py`.
 - Input script: `src/simulation/signal_receiver.py`
 
 ![Simulation Terminal Screenshot](docs/Simulation_Example_1.png)
-
 
 The simulation dashboard displays:
 
@@ -176,7 +175,12 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 
 ## Sound Effects Sources
 
-- Car Engine Sound: TODO
-- Collision Sound: TODO
-- Lap Completion Sound: TODO
-- Start Signal (3,2,1, GO!): <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
+- base-engine.wav
+- startup-sound.mp3: <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
+- car-crash-1.mp3: <a href="https://pixabay.com/de/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=376874">DRAGON-STUDIO</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=376874">Pixabay</a>
+- car-crash-2.mp3: <a href="https://pixabay.com/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=450447">DRAGON-STUDIO</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=450447">Pixabay</a>
+- car-lap-1.mp3: <a href="https://pixabay.com/users/moeeza3-39561198/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=395038">Moeez Ahmad</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=395038">Pixabay</a>
+- car-lap-2.mp3: <a href="https://pixabay.com/users/soundreality-31074404/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=151963">Jurij</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=151963">Pixabay</a>
+- race-finish.mp3: <a href="https://pixabay.com/users/bombinsound-54782632/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=537796">Bomb Sound</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=537796">Pixabay</a>
+- coin-1.mp3: <a href="https://pixabay.com/de/users/u_u9ahoqos39-45535899/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=233860">u_u9ahoqos39</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=233860">Pixabay</a>
+- coin-2.mp3: <a href="https://pixabay.com/users/driken5482-45721595/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=236671">Driken Stan</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=236671">Pixabay</a>

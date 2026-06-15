@@ -10,7 +10,7 @@
 services:
   lumentrace:
     build:
-      context: ..
-      dockerfile: src/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     privileged: true # Admin (sudo) privileges for GPIO and hardware access
     restart: unless-stopped # Automatically restart on crash and on system boot

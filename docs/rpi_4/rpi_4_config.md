@@ -26,6 +26,20 @@
 - Optional pip packages installieren: ``pip install -r src/rpi_4/requirements.txt``
 - Code ausführen: ``sudo .venv/bin/python -m src.rpi_4.main`` (updated, wichtig für Memory-Zugriff durch die rpi_ws281x library)
 
+## Installationen
+
+Sound mit USB Soundkarte in den Geräteeinstellungen einstellen.
+
+### Docker installieren
+
+```shell
+sudo apt update && sudo apt upgrade -y
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+```
+
+Starte den Raspberry neu, dann mit ``docker --version`` überprüfen, ob die Installation erfolgreich war.
+Docker Compose auch mit ``docker compose version`` überprüfen.
 
 ## Hardware-Set
 
