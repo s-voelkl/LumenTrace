@@ -1,7 +1,7 @@
 import threading
 import time
 from collections.abc import Callable
-from typing import Any, TypedDict
+from typing import Any
 
 from src.controller.signal_receiver_interface import SignalReceiverInterface
 from .lane import Lane
@@ -520,39 +520,6 @@ class Game:
         ) // (input_max - input_min) + output_min
         return mapped_signal
 
-    def __get_lane_sequence_between(
-        self, source_lane: Lane, target_lane: Lane
-    ) -> list[Lane]:
-        """Return ordered adjacent lane path from source to target.
-
-        Args:
-            source_lane (Lane): Lane where the vehicle currently is.
-            target_lane (Lane): Requested final lane.
-
-        Returns:
-            list[Lane]: Inclusive ordered sequence of adjacent lanes.
-        """
-        source_index = self.__lanes.index(source_lane)
-        target_index = self.__lanes.index(target_lane)
-        if source_index <= target_index:
-            return self.__lanes[source_index : target_index + 1]
-        return list(reversed(self.__lanes[target_index : source_index + 1]))
-
-    def __is_lane_change_allowed(self, player: Player) -> bool:
-        """Check whether lane change is currently allowed on the active line."""
-        lane = player.vehicle.lane
-        if lane is None:
-            return False
-
-        module, _ = self.get_track_module_for_lane_position(
-            lane, player.vehicle.position
-        )
-        if module is None:
-            return False
-
-        line = module.get_line_for_lane(lane)
-        return bool(line and line.driving_profile.lane_change_allowed)
-
     def __handle_lane_change(self, player: Player, special_1_pressed: bool) -> None:
         """Handle new immediate and automatic lane changes for the given player."""
         vehicle = player.vehicle
@@ -697,9 +664,6 @@ class Game:
                     "player": player.name,
                 }
             )
-
-    # Respawn
-    # check tests for test details
 
     # Collision and Fall Detection
     def __detect_and_apply_collisions(self):

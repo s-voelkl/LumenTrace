@@ -20,7 +20,12 @@ class TerminalSimulationRenderer:
     _ANSI_RED_BOLD = "\x1b[1;31m"
     _ANSI_BLUE_BOLD = "\x1b[1;34m"
 
-    def __init__(self, track_width_chars: int = 72, max_event_lines: int = 18, use_color: bool = True) -> None:
+    def __init__(
+        self,
+        track_width_chars: int = 72,
+        max_event_lines: int = 18,
+        use_color: bool = True,
+    ) -> None:
         self.__track_width_chars = max(24, track_width_chars)
         self.__max_event_lines = max(5, max_event_lines)
         self.__use_color = use_color
@@ -37,7 +42,9 @@ class TerminalSimulationRenderer:
         """
         lines: list[str] = []
         lines.append("=" * 96)
-        lines.append(f"LumenTrace Terminal Simulation | tick={tick} | track_length={game.length:.2f}")
+        lines.append(
+            f"LumenTrace Terminal Simulation | tick={tick} | track_length={game.length:.2f}"
+        )
         lines.append("=" * 96)
         lines.extend(self.__render_settings(game))
         lines.append("")
@@ -67,8 +74,7 @@ class TerminalSimulationRenderer:
                 f"respawn_ticks={settings.respawn_ticks} | "
                 f"friction_percent={settings.friction_percent:.3f} | "
                 f"accel_multiplier={settings.acceleration_multiplier:.3f} | "
-                f"special_1_threshold={settings.special_1_threshold:.2f} | "
-                f"lane_change_ticks={settings.lane_change_ticks} | "
+                f"lane_change_window={settings.lane_change_window} | "
                 f"vehicle_crash_distance={settings.vehicle_crash_distance:.2f}"
             ),
         ]
@@ -77,7 +83,9 @@ class TerminalSimulationRenderer:
         out: list[str] = ["PLAYERS"]
         for index, player in enumerate(game.players, start=1):
             vehicle = player.vehicle
-            lane_label = f"L{vehicle.lane.lane_id}" if vehicle.lane is not None else "None"
+            lane_label = (
+                f"L{vehicle.lane.lane_id}" if vehicle.lane is not None else "None"
+            )
             module_text = "None"
             if vehicle.lane is not None:
                 module_index, local_position = self.__resolve_lane_module_position(
@@ -88,8 +96,7 @@ class TerminalSimulationRenderer:
                 if module_index is not None:
                     module = game.track_modules[module_index]
                     module_text = (
-                        f"{module_index}:{module.track_type.value}"
-                        f"@{local_position:.2f}"
+                        f"{module_index}:{module.track_type.value}@{local_position:.2f}"
                     )
 
             out.append(
@@ -107,7 +114,9 @@ class TerminalSimulationRenderer:
     def __render_track_modules(self, game: Game) -> list[str]:
         out: list[str] = ["TRACK MODULES"]
         for module_index, module in enumerate(game.track_modules):
-            out.append(f"  M{module_index} {module.track_type.value} length={module.length:.2f}")
+            out.append(
+                f"  M{module_index} {module.track_type.value} length={module.length:.2f}"
+            )
             for line in module.lines:
                 profile = line.driving_profile
                 out.append(
@@ -139,14 +148,18 @@ class TerminalSimulationRenderer:
             if module_index is None:
                 continue
 
-            line_length = game.track_modules[module_index].get_line_length_for_lane(lane)
+            line_length = game.track_modules[module_index].get_line_length_for_lane(
+                lane
+            )
             if line_length <= 0:
                 continue
 
             start, end = module_spans[module_index]
             segment_width = max(1, end - start)
             progress = max(0.0, min(local_position / line_length, 1.0))
-            char_index = start + min(segment_width - 1, int(progress * (segment_width - 1)))
+            char_index = start + min(
+                segment_width - 1, int(progress * (segment_width - 1))
+            )
             lane_symbols = player_symbols.setdefault(lane, {})
             lane_symbols[char_index] = self.__player_symbol(player_index)
 
@@ -164,7 +177,11 @@ class TerminalSimulationRenderer:
                     continue
 
                 segment_char = "=" if line.driving_profile.lane_change_allowed else "-"
-                segment_color = self._ANSI_GREEN if line.driving_profile.lane_change_allowed else self._ANSI_CYAN
+                segment_color = (
+                    self._ANSI_GREEN
+                    if line.driving_profile.lane_change_allowed
+                    else self._ANSI_CYAN
+                )
                 for index in range(start, end):
                     chars[index] = self.__colorize(segment_char, segment_color)
 
@@ -178,8 +195,12 @@ class TerminalSimulationRenderer:
             lane_bar = "".join(chars)
             out.append(f"  L{lane.lane_id} [{lane_bar}] len={lane_length:.2f}")
 
-        out.append("  legend: '|' module boundary, '=' lane-change allowed, '-' lane-change blocked")
-        out.append("          cyan=blocked lanes, green=lane-change lanes, red/blue=players")
+        out.append(
+            "  legend: '|' module boundary, '=' lane-change allowed, '-' lane-change blocked"
+        )
+        out.append(
+            "          cyan=blocked lanes, green=lane-change lanes, red/blue=players"
+        )
         return out
 
     def __render_event_log(self, game: Game) -> list[str]:
@@ -190,7 +211,7 @@ class TerminalSimulationRenderer:
             out.append("  no events yet")
             return out
 
-        for event in events[-self.__max_event_lines:]:
+        for event in events[-self.__max_event_lines :]:
             tick = event.get("tick", "?")
             event_name = event.get("event", "unknown")
             player = event.get("player")
@@ -256,7 +277,9 @@ class TerminalSimulationRenderer:
 
         if total_length <= 0:
             step = width / len(track_modules)
-            boundaries = [int(round(index * step)) for index in range(len(track_modules) + 1)]
+            boundaries = [
+                int(round(index * step)) for index in range(len(track_modules) + 1)
+            ]
         else:
             boundaries = [0]
             cumulative = 0.0
@@ -288,7 +311,9 @@ class TerminalSimulationRenderer:
         lane: Lane,
         position: float,
     ) -> tuple[int | None, float]:
-        lane_length = sum(module.get_line_length_for_lane(lane) for module in track_modules)
+        lane_length = sum(
+            module.get_line_length_for_lane(lane) for module in track_modules
+        )
         if lane_length <= 0:
             return None, 0.0
 
@@ -306,7 +331,9 @@ class TerminalSimulationRenderer:
 
         return None, normalized_position
 
-    def __module_boundaries_for_lane(self, track_modules: list[TrackModule], lane: Lane) -> list[int]:
+    def __module_boundaries_for_lane(
+        self, track_modules: list[TrackModule], lane: Lane
+    ) -> list[int]:
         lane_length = self.__lane_track_length(track_modules, lane)
         if lane_length <= 0:
             return []
@@ -319,7 +346,9 @@ class TerminalSimulationRenderer:
                 continue
 
             running_length += line_length
-            boundary_idx = int((running_length / lane_length) * (self.__track_width_chars - 1))
+            boundary_idx = int(
+                (running_length / lane_length) * (self.__track_width_chars - 1)
+            )
             boundaries.append(boundary_idx)
 
         return boundaries
