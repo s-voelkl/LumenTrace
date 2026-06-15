@@ -6,6 +6,9 @@ from typing import Dict, Optional, Union
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
+from src.logger.multi_logger import get_logger
+
+logger = get_logger()
 
 _MAX_VOLUME = 50.0
 _MIN_VOLUME = 0.0
@@ -178,7 +181,7 @@ class SoundManager:
         Callback used by sounddevice to fetch the next chunk of mixed audio.
         """
         if status:
-            print(f"Audio stream status: {status}")
+            logger.log(f"Audio stream status: {status}")
 
         # Initialize output buffer to zeros
         out = np.zeros((frames, _DEFAULT_CHANNELS), dtype="float32")
@@ -322,13 +325,17 @@ class SoundManager:
 
     def start(self) -> None:
         """Starts the audio output stream."""
-        if self._stream is None:
-            self._stream = sd.OutputStream(
-                samplerate=self._sample_rate,
-                channels=_DEFAULT_CHANNELS,
-                callback=self._audio_callback,
-            )
-            self._stream.start()  # type: ignore
+        try:
+            if self._stream is None:
+                self._stream = sd.OutputStream(
+                    samplerate=self._sample_rate,
+                    channels=_DEFAULT_CHANNELS,
+                    callback=self._audio_callback,
+                )
+                self._stream.start()  # type: ignore
+        except Exception as e:
+            logger.log(f"Error starting audio stream: {e}")
+            raise e
 
     def stop_all(self) -> None:
         """Stops the audio stream and clears all playing sounds."""
@@ -346,7 +353,7 @@ if __name__ == "__main__":
     import time
 
     def example_usage():
-        print("Initializing Sound Manager...")
+        logger.log("Initializing Sound Manager...")
         # 1. Initialize and start the global Sound Manager
         manager = SoundManager()
         manager.start()
@@ -354,7 +361,7 @@ if __name__ == "__main__":
         # 2. Adjust the global master volume
         manager.set_master_volume(80.0)
 
-        print("Playing first sound exclusively on the right speaker...")
+        logger.log("Playing first sound exclusively on the right speaker...")
         # 3. Play a sound exclusively on the right speaker
         # Make sure to provide a valid wav file for your environment
         dummy_wav = "assets/sound/base_engine.wav"
@@ -368,13 +375,13 @@ if __name__ == "__main__":
                 right_volume=100.0,
             )
         except Exception as e:
-            print(f"Could not load wave file {dummy_wav}: {e}")
+            logger.log(f"Could not load wave file {dummy_wav}: {e}")
             manager.stop_all()
             return
 
         time.sleep(2)
 
-        print(
+        logger.log(
             "Playing a second sound over overlapping the first (both speakers, pitched up)..."
         )
         # 4. Play a second sound overlapping the first using its logical name
@@ -387,12 +394,12 @@ if __name__ == "__main__":
                 left_volume=100.0,
                 right_volume=100.0,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.log(f"Could not play sound 'bump': {e}")
 
         time.sleep(1)
 
-        print("Playing a third sound (MP3 format) on the left speaker...")
+        logger.log("Playing a third sound (MP3 format) on the left speaker...")
         # 4.5 Play an MP3 sound (assuming the file exists)
         try:
             sound3_id = manager.play(
@@ -403,13 +410,13 @@ if __name__ == "__main__":
                 left_volume=100.0,
                 right_volume=0.0,
             )
-        except Exception:
-            print("Start signal MP3 not found, skipping...")
+        except Exception as e:
+            logger.log(f"Could not play sound 'start_signal': {e}")
 
         time.sleep(2)
 
         # 5. Dynamically change properties for the first sound without stopping it
-        print("Moving the first sound to the center and lowering pitch...")
+        logger.log("Moving the first sound to the center and lowering pitch...")
         manager.update_sound(
             sound1_id, pitch=0.8, left_volume=100.0, right_volume=100.0
         )
@@ -417,7 +424,7 @@ if __name__ == "__main__":
         time.sleep(2)
 
         # 6. Stop all sounds and shut down the output stream
-        print("Stopping all sounds.")
+        logger.log("Stopping all sounds.")
         manager.stop_all()
 
     example_usage()

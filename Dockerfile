@@ -25,6 +25,7 @@ RUN apt-get update \
         gcc \
         make \
         build-essential \
+        libportaudio2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
