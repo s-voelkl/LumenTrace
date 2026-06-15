@@ -173,6 +173,38 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 <!-- TODO: Picture of the hardware setup -->
 <!-- TODO: Picture of the running LED Strip -->
 
+## Sound Engineering
+
+LumenTrace features a real-time audio engine that turns the race into an immersive, spatial experience. All sound is mixed live on the Raspberry Pi and played back in stereo, so what you hear reflects what is happening on the track at every moment.
+
+### Real-time audio mixer
+
+A central sound manager (`src/sound/sound_manager.py`) mixes any number of sounds simultaneously through a single stereo output stream. Every sound can be controlled independently while it plays:
+
+- **Volume** – per-sound loudness plus a global master volume.
+- **Pitch** – dynamic speed/pitch shifting, used to make the engine rev up and down.
+- **Stereo panning** – independent left/right balance so sounds can be placed on the left or right side of the track.
+
+To keep playback smooth, the engine continuously eases every change (volume, pitch and panning) toward its target value instead of jumping, which avoids audible clicks and pops. All sounds are referenced through a named catalog (`GameSound`), so each effect has a clear, human-readable name and a single source path.
+
+### Engine sounds
+
+Each car has its own continuous engine sound (`src/sound/motor_sound.py`) that reacts to how it is being driven:
+
+- **Background rumble** follows the car's current **speed** – the faster the car, the higher and louder the engine note.
+- **Acceleration layer** adds extra power and volume while the car is actively **accelerating**, so pressing the throttle is clearly audible.
+- **Stereo position** follows the **track module** the car is currently on. Each track module defines a `sound_stereo_ratio_left` value (0.0 = fully right, 0.5 = centered, 1.0 = fully left), letting the engine sound travel between the left and right speakers as the car moves through left and right curves.
+
+### Event sounds
+
+On top of the engine, the game plays positional one-shot effects that respond to key race moments. Where it makes sense, these effects are panned to the position of the car that triggered them:
+
+- **Start sequence** – a "3, 2, 1, GO!" signal plays in sync with the red/yellow/green countdown lights when all players hold their start button.
+- **New lap** – a confirmation sound when a car completes a lap.
+- **Lane change** – a short cue when a player presses the lane-change button.
+- **Crash** – an impact sound when two cars collide or a car falls off the track.
+- **Warning** – an alert when a car's speed or acceleration gets close to the limits allowed by the current track module's driving profile, hinting that the car is about to fall.
+
 ## Sound Effects Sources
 
 - base-engine.wav

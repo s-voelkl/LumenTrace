@@ -72,8 +72,8 @@ def main():
 
 def wait_for_start_signal(
     game: Game,
-    hold_seconds: float = 1.0,
-    poll_interval_s: float = 0.02,
+    hold_seconds: float = 2.0,
+    poll_interval_s: float = 0.1,
 ) -> None:
     """Block until all players hold their start button for ``hold_seconds``.
 
@@ -170,9 +170,10 @@ def run_start_sequence(
     Returns:
         None
     """
-    # Start the start signal sound so it plays alongside the LED animation.
+    # sound for startup
     sound_manager.play(GameSound.START_SIGNAL)
 
+    # colors on first track module
     for color in (RED, YELLOW, GREEN):
         fill_first_track_module(display, game, color)
         time.sleep(step_seconds)
