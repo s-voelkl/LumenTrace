@@ -40,10 +40,15 @@ def main():
         None
     """
     logger.log("Raspberry Pi 4: Main script running.")
-
+    
     sound_manager = SoundManager()
-    sound_manager.start()
+    try:
+        sound_manager.start()
+    except Exception as e:
+        logger.log(f"Error starting SoundManager: {e}")
+        return
 
+    logger.log("SoundManager started successfully. Building game and display...")
     game, display = build_game(sound_manager)
 
     logger.log(

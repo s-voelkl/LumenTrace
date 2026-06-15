@@ -2,13 +2,28 @@
 
 A high-performance MCU-based LED racing simulator. Bringing the classic slot car experience to the world of addressable LEDs with real-time physics and advanced light effects.
 
-## Startup Instructions
+## Docker
 
-Using docker with the files ``Dockerfile``, ``.dockerignore`` and ``docker-compose.yaml``, the project can be built and run with:
+Docker is used to provide a consistent, isolated environment for running the LumenTrace application. 
+It automatically handles the installation of required system-level libraries 
+(like `libportaudio2` for audio and build tools for C extensions like `RPi.GPIO` and `rpi-ws281x`) 
+without modifying the host system. 
+Using `docker-compose` also guarantees that the application is granted the necessary 
+privileged access required for hardware GPIO, audio, and UART communication on the Raspberry Pi.
+
+### Startup Instructions
+
+Using docker with the files `Dockerfile`, `.dockerignore` and `docker-compose.yaml`, the project environment can be built and started with the following commands:
 
 ```bash
 sudo docker compose -f docker-compose.yaml build
 sudo docker compose -f docker-compose.yaml up
+```
+
+Stopping / Deleting the container:
+
+```bash
+sudo docker compose -f docker-compose.yaml down
 ```
 
 ## Used Technologies
