@@ -4,11 +4,11 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 
 ## Docker
 
-Docker is used to provide a consistent, isolated environment for running the LumenTrace application. 
-It automatically handles the installation of required system-level libraries 
-(like `libportaudio2` for audio and build tools for C extensions like `RPi.GPIO` and `rpi-ws281x`) 
-without modifying the host system. 
-Using `docker-compose` also guarantees that the application is granted the necessary 
+Docker is used to provide a consistent, isolated environment for running the LumenTrace application.
+It automatically handles the installation of required system-level libraries
+(like `libportaudio2` for audio and build tools for C extensions like `RPi.GPIO` and `rpi-ws281x`)
+without modifying the host system.
+Using `docker-compose` also guarantees that the application is granted the necessary
 privileged access required for hardware GPIO, audio, and UART communication on the Raspberry Pi.
 
 ### Startup Instructions
@@ -91,18 +91,19 @@ Track layout used by the simulation:
 - When position exceeds lane length, position wraps around and `round` is incremented and the position is reset.
 - Reverse movement is also handled, including safe behavior for negative movement near lap boundaries.
 
-### Lane Change (Timed Multi-Hop)
+### Lane Change
 
-- Lane changes are triggered by `special_1` using a configurable threshold (`special_1_threshold`).
-- The lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`.
-- A lane change is executed as one or more timed adjacent hops:
-  - Example rightward: `1 -> 2 -> 3 -> 4` (lane order is determined by the sorted list in `game.lanes` from left (first) to right (last))
-  - Example leftward: `1 <- 2 <- 3 <- 4`
-- Each hop takes a fixed configurable tick count (`lane_change_ticks`), during which the vehicle is in a transition state.
+- Lane changes are triggered by pressing the `special_1` button.
+- A lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`. This is typically used for intersection modules.
+- By default, there are two main lanes: the left lane and the right lane. Intersections introduce a temporary middle lane to facilitate the switch.
+- The lane change can only be initiated within a specific window at the beginning of the track module (e.g., the first 20 units, configured via `lane_change_window`).
+- If the player presses the button within this window, the vehicle immediately switches to the middle lane.
+- Once on the middle lane, manual lane changes are disabled.
+- The vehicle continues on the middle lane until it reaches the end of the module (specifically, `lane_change_window` units before the end). At that point, it automatically switches to the target outer lane, completing the lane change smoothly.
 
 ### Position Conversion During Lane Change
 
-- On each hop, the vehicle keeps its relative progress within the current track module.
+- When the vehicle switches to or from the middle lane, it keeps its relative progress within the current track module.
 - Conversion is proportional:
   - progress = `source_position / source_line_length`
   - target_position = `progress * target_line_length`
@@ -113,7 +114,6 @@ Track layout used by the simulation:
 - A vehicle falls immediately when its current speed or acceleration violates the driving profile of the active line:
   - `speed` must remain within `[min_speed, max_speed]`
   - `acceleration` must remain within `[min_acceleration, max_acceleration]`
-- A vehicle also falls when it moves into a lane gap, meaning the current lane has no valid continuation in the next/previous module for the movement direction.
 - Collision detection is evaluated for vehicles on the same lane.
   - If two vehicles are within collision distance, the vehicle in front falls.
   - The collision happens, if the position distance between the `settings.__vehicle_crash_distance` is violated.
