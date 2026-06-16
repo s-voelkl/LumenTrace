@@ -221,8 +221,11 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     real_strips = {}
     virtual_strips = []
 
-    strip_0_leds = 250 -32
-    strip_1_leds = 250 -33
+    strip_total_leds = 250
+    # strip_0_leds = strip_total_leds -32
+    strip_0_leds = strip_total_leds
+    # strip_1_leds = strip_total_leds -33
+    strip_1_leds = strip_total_leds
     
     if RPI_WS281X_AVAILABLE and PixelStrip is not None:
         strip0 = PixelStrip(
@@ -240,7 +243,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             freq_hz=800_000,
             dma=10,
             invert=False,
-            brightness=int(255),  # safety with slightly dimmed brightness
+            brightness=255,  # safety with slightly dimmed brightness
             channel=1,  # needed for gpio 19
         )
         strip0.begin()
@@ -255,6 +258,9 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         VirtualLedStrip(
             lane=lane_0, real_strip_id=0, min_index=0, max_index=strip_0_leds - 1
         ),
+        # VirtualLedStrip(
+        #     lane=lane_1, real_strip_id=1, min_index=strip_1_leds, max_index=strip_total_leds - 1
+        # ),
         VirtualLedStrip(
             lane=lane_2, real_strip_id=1, min_index=0, max_index=strip_1_leds - 1
         ),
