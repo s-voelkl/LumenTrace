@@ -13,4 +13,13 @@ services:
       context: .
       dockerfile: Dockerfile
     privileged: true # Admin (sudo) privileges for GPIO and hardware access
+    volumes:
+      - /dev:/dev
+    # "Your kernel does not support memory limit capabilities or the cgroup is 
+    # not mounted. Limitation discarded. 0.0s
+    # deploy:
+    #   resources
+    #     limits:
+    #       cpus: '3.0'
+    #       memory: 2G
     restart: unless-stopped # Automatically restart on crash and on system boot
