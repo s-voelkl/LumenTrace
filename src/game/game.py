@@ -504,19 +504,22 @@ class Game:
     @staticmethod
     def map_forward_press_to_acceleration(forward_press: float) -> float:
         input_min = 42000  # 70% of 65536 is 45875, but rounding down to 42000 to give some buffer for switch activation
-        input_max = 65536
+        # input_max = 65536 # TODO: revert this for better input quality again!
+        input_max = 45000
         output_min = 0
         output_max = 100
         if forward_press < input_min:
             return 0.0
         if forward_press > input_max:
             return 100.0
+        
 
         # calculation for the mapping: linear interpolation
         # $$f(x) = (x - \text{input\_min}) \cdot \frac{\text{output\_max} - \text{output\_min}}{\text{input\_max} - \text{input\_min}} + \text{output\_min}$$
         mapped_signal: float = (forward_press - input_min) * (
             output_max - output_min
         ) // (input_max - input_min) + output_min
+        # logger.log("Input: " + str(forward_press) + " -> " + str(mapped_signal))
         return mapped_signal
 
     def __handle_lane_change(self, player: Player, special_1_pressed: bool) -> None:
