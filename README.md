@@ -174,12 +174,7 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 
 ## Next steps
 
-- configuration of parameters for the game
-- full sound implementation
-- fixing lane change controlls
 - game state control (rounds done, LCD display for information, start button)
-- LED display adjustments (colors, effects), e.g. when a round advance is made, when a crash happens, when reaching a too high speed, ...
-- placing the LED strips on the physical track modules of the track.
 - handling the hardware and wires for long term stability
 
 ## Hardware
@@ -200,7 +195,7 @@ A central sound manager (`src/sound/sound_manager.py`) mixes any number of sound
 - **Pitch** – dynamic speed/pitch shifting, used to make the engine rev up and down.
 - **Stereo panning** – independent left/right balance so sounds can be placed on the left or right side of the track.
 
-To keep playback smooth, the engine continuously eases every change (volume, pitch and panning) toward its target value instead of jumping, which avoids audible clicks and pops. All sounds are referenced through a named catalog (`GameSound`), so each effect has a clear, human-readable name and a single source path.
+To keep playback smooth and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using NumPy array vectorization. Instead of iterating frame-by-frame, arrays are processed in blocks dynamically adapting pitch and volume targets across the entire chunk. The engine continuously eases every change (volume, pitch and panning) toward its target value, avoiding audible clicks and pops without stalling the processing thread. All sounds are referenced through a named catalog (`GameSound`), so each effect has a clear, human-readable name and a single source path.
 
 ### Engine sounds
 

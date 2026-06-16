@@ -109,17 +109,6 @@ class PlaybackInstance:
     def _clamp_volume(vol: float) -> float:
         return max(_MIN_VOLUME, min(_MAX_VOLUME, vol))
 
-    def update_easing(self) -> None:
-        """Smoothly transitions properties towards their target values to prevent audio clipping/popping."""
-        self.pitch += (self.target_pitch - self.pitch) * _EASING_FACTOR
-        self.volume += (self.target_volume - self.volume) * _EASING_FACTOR
-        self.left_volume += (
-            self.target_left_volume - self.left_volume
-        ) * _EASING_FACTOR
-        self.right_volume += (
-            self.target_right_volume - self.right_volume
-        ) * _EASING_FACTOR
-
 
 class SoundManager:
     """
@@ -180,63 +169,144 @@ class SoundManager:
         """
         Callback used by sounddevice to fetch the next chunk of mixed audio.
         """
-        # TODO: fix sound issue
-        # if status:
-        #     logger.log(f"Audio stream status: {status}")
+        if status:
+            logger.log(f"Audio stream status: {status}")
 
         # Initialize output buffer to zeros
         out = np.zeros((frames, _DEFAULT_CHANNELS), dtype="float32")
 
         with self._lock:
-            # Update master volume easing
-            self._master_volume += (
-                self._target_master_volume - self._master_volume
-            ) * _EASING_FACTOR
-            master_multiplier = self._master_volume / _MAX_VOLUME
+            # Update master volume easing for the block
+            start_master_vol = self._master_volume
+            easing_multiplier = (1.0 - _EASING_FACTOR) ** frames
+            self._master_volume = (
+                self._target_master_volume
+                - (self._target_master_volume - self._master_volume) * easing_multiplier
+            )
+            master_vols = (
+                np.linspace(
+                    start_master_vol, self._master_volume, frames, dtype=np.float32
+                )
+                / _MAX_VOLUME
+            )
 
             finished_keys = []
 
             for sound_id, instance in self._active_sounds.items():
                 if instance.is_finished:
-                    finished_keys.append(sound_id)
+                    if sound_id not in finished_keys:
+                        finished_keys.append(sound_id)
                     continue
 
                 data_len = len(instance.audio_data)
 
-                for i in range(frames):
-                    instance.update_easing()
+                # We calculate the block's start and end properties
+                start_pitch = instance.pitch
+                start_vol = instance.volume
+                start_left = instance.left_volume
+                start_right = instance.right_volume
 
-                    # Stop processing this sound if it has finished
-                    if not instance.loop and instance.position >= data_len - 1:
+                # Calculate end state after 'frames' easing ticks
+                instance.pitch = (
+                    instance.target_pitch
+                    - (instance.target_pitch - instance.pitch) * easing_multiplier
+                )
+                instance.volume = (
+                    instance.target_volume
+                    - (instance.target_volume - instance.volume) * easing_multiplier
+                )
+                instance.left_volume = (
+                    instance.target_left_volume
+                    - (instance.target_left_volume - instance.left_volume)
+                    * easing_multiplier
+                )
+                instance.right_volume = (
+                    instance.target_right_volume
+                    - (instance.target_right_volume - instance.right_volume)
+                    * easing_multiplier
+                )
+
+                pitches = np.linspace(
+                    start_pitch, instance.pitch, frames, dtype=np.float32
+                )
+                positions = instance.position + np.cumsum(pitches)
+
+                # Check for end of file
+                if not instance.loop and positions[-1] >= data_len - 1:
+                    valid_frames = np.searchsorted(
+                        positions, data_len - 1, side="right"
+                    )
+                    if valid_frames == 0:
                         instance.is_finished = True
-                        break
+                        if sound_id not in finished_keys:
+                            finished_keys.append(sound_id)
+                        continue
 
-                    # Linear interpolation for playback
-                    pos_int = int(instance.position)
-                    pos_frac = instance.position - pos_int
+                    positions = positions[:valid_frames]
+                    pitches = pitches[:valid_frames]
+                    vols = np.linspace(
+                        start_vol, instance.volume, valid_frames, dtype=np.float32
+                    )
+                    lefts = np.linspace(
+                        start_left, instance.left_volume, valid_frames, dtype=np.float32
+                    )
+                    rights = np.linspace(
+                        start_right,
+                        instance.right_volume,
+                        valid_frames,
+                        dtype=np.float32,
+                    )
+                    m_vols = master_vols[:valid_frames]
 
-                    idx1 = pos_int % data_len
-                    idx2 = (pos_int + 1) % data_len
+                    instance.is_finished = True
+                    if sound_id not in finished_keys:
+                        finished_keys.append(sound_id)
+                else:
+                    valid_frames = frames
+                    vols = np.linspace(
+                        start_vol, instance.volume, frames, dtype=np.float32
+                    )
+                    lefts = np.linspace(
+                        start_left, instance.left_volume, frames, dtype=np.float32
+                    )
+                    rights = np.linspace(
+                        start_right, instance.right_volume, frames, dtype=np.float32
+                    )
+                    m_vols = master_vols
+
+                instance.position = (
+                    positions[-1] if valid_frames > 0 else instance.position
+                )
+                if instance.loop:
+                    instance.position %= data_len
+
+                if valid_frames > 0:
+                    pos_int = positions.astype(np.int32)
+                    pos_frac = positions - pos_int
+
+                    if instance.loop:
+                        idx1 = pos_int % data_len
+                        idx2 = (pos_int + 1) % data_len
+                    else:
+                        idx1 = np.minimum(pos_int, data_len - 1)
+                        idx2 = np.minimum(pos_int + 1, data_len - 1)
 
                     val1 = instance.audio_data[idx1]
                     val2 = instance.audio_data[idx2]
 
-                    sample_val = val1 * (1.0 - pos_frac) + val2 * pos_frac
+                    sample_vals = val1 * (1.0 - pos_frac) + val2 * pos_frac
 
-                    # Apply combined volumes (Master * Instance * Channel)
-                    base_vol = master_multiplier * (instance.volume / _MAX_VOLUME)
-                    left_mult = base_vol * (instance.left_volume / _MAX_VOLUME)
-                    right_mult = base_vol * (instance.right_volume / _MAX_VOLUME)
+                    base_vols = m_vols * (vols / _MAX_VOLUME)
+                    left_mults = base_vols * (lefts / _MAX_VOLUME)
+                    right_mults = base_vols * (rights / _MAX_VOLUME)
 
-                    # Mix into output block
-                    out[i, 0] += sample_val * left_mult
-                    out[i, 1] += sample_val * right_mult
-
-                    instance.position += instance.pitch
+                    out[:valid_frames, 0] += sample_vals * left_mults
+                    out[:valid_frames, 1] += sample_vals * right_mults
 
             # Cleanup finished sounds
             for key in finished_keys:
-                del self._active_sounds[key]
+                if key in self._active_sounds:
+                    del self._active_sounds[key]
 
         outdata[:] = out
 
