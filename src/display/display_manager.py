@@ -191,7 +191,7 @@ class DisplayManager:
                             lane,
                             start_relative_position,
                             end_relative_position,
-                            DARK_GRAY,
+                            PINK,
                             color_ratio=0.1,
                         )
                         
@@ -276,7 +276,7 @@ class DisplayManager:
                                 lane,
                                 module_start_position / lane_total,
                                 module_end_position / lane_total,
-                                DARK_GRAY,
+                                PINK,
                                 color_ratio=0.2,
                             )
                             break
