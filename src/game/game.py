@@ -36,13 +36,17 @@ class Game:
         settings: Settings,
         track_modules: list[TrackModule],
         signal_receiver: SignalReceiverInterface,
-        lanes: list[Lane]):
+        lanes: list[Lane],
+        display_manager # explicitly not imported to avoid circular dependency
+        ):
+        
         self.__players = players if players else []
         self.__settings = settings
         self.__track_modules = track_modules if track_modules else []
         self.__length = sum([tm.length for tm in track_modules]) if track_modules else 0
         self.__signal_receiver = signal_receiver
         self.__lanes = lanes if lanes else []
+        self.__display_manager = display_manager
         self.__lane_change_states: dict[Player, LaneChangeState] = {}
         self.__event_history: list[dict[str, Any]] = []
         self.__event_history_limit = 200
@@ -92,6 +96,7 @@ class Game:
                 args=(self.__game_loop, game_tick_interval_s),
                 daemon=False,
             ),
+            # sound logic
         ]
 
         for thread in self.__threads:
@@ -132,12 +137,13 @@ class Game:
         if len(self.__event_history) > self.__event_history_limit:
             self.__event_history = self.__event_history[-self.__event_history_limit:]
         logger.log_json(event)
+        print(event)
 
     def tick_once(
         self,
         *,
         fetch_data: bool = True,
-        display: bool = False,
+        show_display: bool = False,
         game_tick_interval_s: float | None = None,
     ) -> None:
         """Run one deterministic game tick.
@@ -147,7 +153,7 @@ class Game:
 
         Args:
             fetch_data (bool, optional): Whether input receiver should be polled first.
-            display (bool, optional): Whether to call ``display`` after tick update.
+            show_display (bool, optional): Whether to call ``display`` after tick update.
             game_tick_interval_s (float | None, optional): Tick duration used by
                 movement integration. ``None`` keeps the current configured value.
         """
@@ -159,11 +165,16 @@ class Game:
 
         self.__game_loop()
 
-        if display:
+        if show_display:
             self.display()
 
+    def display(self):
+        # self.log_fully()
+        if self.__display_manager is not None:
+            self.__display_manager.update(self)
+
     # Helpers
-    def __get_lane_track_length(self, lane: Lane) -> float:
+    def get_lane_track_length(self, lane: Lane) -> float:
         """Return total drivable length for one lane across all configured modules.
 
         Args:
@@ -186,7 +197,7 @@ class Game:
                 The matched module index and local position in that module.
                 Returns ``(None, 0.0)`` if no lane segment can be resolved.
         """
-        lane_length = self.__get_lane_track_length(lane)
+        lane_length = self.get_lane_track_length(lane)
         if lane_length <= 0:
             return None, 0.0
 
@@ -220,7 +231,7 @@ class Game:
             global_position += self.__track_modules[idx].get_line_length_for_lane(lane)
         return max(0.0, global_position + max(0.0, module_local_position))
 
-    def __get_track_module_for_lane_position(self, lane: Lane, position: float) -> tuple[TrackModule | None, float]:
+    def get_track_module_for_lane_position(self, lane: Lane, position: float) -> tuple[TrackModule | None, float]:
         """Resolve a lane position to its module and local offset inside that module.
 
         The vehicle position is interpreted as a continuous coordinate on the selected lane.
@@ -336,6 +347,22 @@ class Game:
             return f"acceleration ({acceleration:.2f}) < {profile.min_acceleration:.2f}"
 
         return None
+    
+    @staticmethod
+    def map_forward_press_to_acceleration(forward_press: float) -> float:
+        input_min = 42000 # 70% of 65536 is 45875, but rounding down to 42000 to give some buffer for switch activation
+        input_max = 65536
+        output_min = 0
+        output_max = 100
+        if forward_press < input_min:
+            return 0.0
+        if forward_press > input_max:
+            return 100.0
+        
+        # calculation for the mapping: linear interpolation
+        # $$f(x) = (x - \text{input\_min}) \cdot \frac{\text{output\_max} - \text{output\_min}}{\text{input\_max} - \text{input\_min}} + \text{output\_min}$$
+        mapped_signal: float = (forward_press - input_min) * (output_max - output_min) // (input_max - input_min) + output_min
+        return mapped_signal
 
     def __get_lane_sequence_between(self, source_lane: Lane, target_lane: Lane) -> list[Lane]:
         """Return ordered adjacent lane path from source to target.
@@ -359,7 +386,7 @@ class Game:
         if lane is None:
             return False
 
-        module, _ = self.__get_track_module_for_lane_position(lane, player.vehicle.position)
+        module, _ = self.get_track_module_for_lane_position(lane, player.vehicle.position)
         if module is None:
             return False
 
@@ -381,7 +408,7 @@ class Game:
             return
         if vehicle.line_change_ticks != 0 or vehicle.line_change_target is not None:
             return
-        if player.controller.special_1 < self.__settings.special_1_threshold:
+        if player.controller.special_1 == 0:
             return
         if not self.__is_lane_change_allowed(player):
             return
@@ -534,7 +561,7 @@ class Game:
             player.vehicle.set_lane(lane)
             player.vehicle.set_position(0)
             player.vehicle.set_speed(0)
-            player.vehicle.set_acceleration(0)
+            player.vehicle.set_acceleration(0, self.__settings.min_acceleration, self.__settings.max_acceleration)
             player.vehicle.set_respawn_ticks(0)
             player.vehicle.set_active(True)
             self.__record_event({
@@ -577,7 +604,7 @@ class Game:
         if player.vehicle.lane is None:
             return True
 
-        track_module, _ = self.__get_track_module_for_lane_position(
+        track_module, _ = self.get_track_module_for_lane_position(
             player.vehicle.lane,
             player.vehicle.position,
         )
@@ -609,7 +636,7 @@ class Game:
             if len(lane_players) < 2:
                 continue
 
-            lane_length = self.__get_lane_track_length(lane)
+            lane_length = self.get_lane_track_length(lane)
             if lane_length <= 0:
                 continue
 
@@ -625,13 +652,6 @@ class Game:
         for player, reason in players_to_fall.items():
             if player.vehicle.active:
                 self.__fall_player(player, reason)
-
-    # Further methods
-    def display(self):
-        # Display current game state to lcd, led, log, ...
-        # TODO: implement display logic
-        self.log_fully()
-        pass
 
     def __game_loop(self):
         """Execute one simulation tick for all players.
@@ -655,7 +675,13 @@ class Game:
                 self.__handle_inactive_player_tick(player)
                 continue
 
-            vehicle.set_acceleration(player.controller.forward_press)
+            # map the input to acceleration and apply it
+            vehicle_acceleration = self.map_forward_press_to_acceleration(player.controller.forward_press)
+            vehicle.set_acceleration(
+                vehicle_acceleration,
+                self.__settings.min_acceleration,
+                self.__settings.max_acceleration
+            )
             vehicle.apply_friction(self.__settings.friction_percent)
             vehicle.update_speed(
                 self.__settings.max_speed,
@@ -664,7 +690,7 @@ class Game:
 
             self.__start_lane_change_if_requested(player)
 
-            track_module, _ = self.__get_track_module_for_lane_position(
+            track_module, _ = self.get_track_module_for_lane_position(
                 vehicle.lane,
                 vehicle.position,
             ) if vehicle.lane is not None else (None, 0.0)
@@ -692,14 +718,25 @@ class Game:
                 self.__fall_player(player, "lane is ended: vehicle lane is None after movement")
                 continue
 
-            lane_track_length = self.__get_lane_track_length(vehicle.lane)
-            vehicle.update_position(delta_position, lane_track_length)
+            lane_track_length = self.get_lane_track_length(vehicle.lane)
+            
+            # handle possible round changes as an event trigger
+            round_change = vehicle.update_position(delta_position, lane_track_length)
+            if round_change != 0:
+                self.__record_event({
+                    "event": "round_change",
+                    "player": player.name,
+                    "change": round_change,
+                    "new_round_value": vehicle.round,
+                    "speed": vehicle.speed,
+                    "acceleration": vehicle.acceleration,
+                })
 
             self.__advance_lane_change(player)
             if not vehicle.active:
                 continue
 
-            track_module_after, _ = self.__get_track_module_for_lane_position(
+            track_module_after, _ = self.get_track_module_for_lane_position(
                 vehicle.lane,
                 vehicle.position,
             ) if vehicle.lane is not None else (None, 0.0)
@@ -735,7 +772,9 @@ class Game:
                     "speed": player.vehicle.speed,
                     "acceleration": player.vehicle.acceleration,
                     "round": player.vehicle.round,
-                    "style": player.vehicle.style
+                    "primary_color": player.vehicle.primary_color,
+                    "decelerate_color": player.vehicle.decelerate_color,
+                    "accelerate_color": player.vehicle.accelerate_color
                 },
                 "controller": {
                     "forward_press": player.controller.forward_press,
@@ -763,10 +802,11 @@ class Game:
             } for tm in self.__track_modules],
             "settings": {
                 "max_speed": self.settings.max_speed,
+                "min_acceleration": self.settings.min_acceleration,
+                "max_acceleration": self.settings.max_acceleration,
                 "respawn_ticks": self.settings.respawn_ticks,
                 "friction_percent": self.settings.friction_percent,
                 "acceleration_multiplier": self.settings.acceleration_multiplier,
-                "special_1_threshold": self.settings.special_1_threshold,
                 "lane_change_ticks": self.settings.lane_change_ticks,
                 "vehicle_crash_distance": self.settings.vehicle_crash_distance,
             },

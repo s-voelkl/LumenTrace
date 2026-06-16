@@ -2,6 +2,15 @@
 
 A high-performance MCU-based LED racing simulator. Bringing the classic slot car experience to the world of addressable LEDs with real-time physics and advanced light effects.
 
+## Startup Instructions
+
+Using docker with the files ``src/Dockerfile``, ``src/.dockerignore`` and ``src/docker-compose.yaml``, the project can be built and run with:
+
+```bash
+docker compose -f src/docker-compose.yaml build
+docker compose -f src/docker-compose.yaml up
+```
+
 ## Used Technologies
 
 - Microcontrollers: Raspberry Pi Pico and Raspberry Pi 3 with an micro-SD card for data storage.
@@ -49,7 +58,7 @@ Track layout used by the simulation:
 
 ### Acceleration and Friction
 
-- Controller input `forward_press` is mapped to vehicle acceleration each game tick.
+- Controller input `forward_press` is mapped to vehicle acceleration each game tick. The mapping is configured as inputs [42000, 65536] to outputs [0, 100] with linear interpolation.
 - Friction is applied continuously and reduces current speed by a configurable percentage.
 - Positive and negative movement are supported. If acceleration would invert speed direction in one step, speed is clamped to `0` first to keep transitions stable.
 
@@ -115,3 +124,52 @@ The architecture is designed to be modular and extensible, with clear separation
 - `Display` package manages the LED effects and visual feedback for the game.
 
 ![Architecture Diagram](docs/architecture.png)
+
+## LED Color Management
+
+This project separates LED rendering into two responsibilities: color/buffer management and hardware rendering.
+
+- `src/display/led_display.py`: Maintains per-lane virtual LED buffers and maps them onto physical `PixelStrip` instances. Implements helpers to set single pixels, windows and fill sections with a configurable color ratio.
+- `src/display/display_manager.py`: Game-state -> visual logic. Implements the display hierarchy and writes colors into the virtual buffers maintained by the LED display.
+- `src/display/color_constants.py`: Central RGB color constants used across the display code.
+- `src/display/config.py` (and `DisplayConfig`): Runtime parameters that control blink intervals, round advance timing and other display tuning.
+
+Display hierarchy (applied from low priority -> high priority):
+
+1. Track module base: entire lanes are painted a faint dark gray (ratio ~0.05) and each module's first pixel is emphasized (ratio ~0.1) to make module boundaries visible.
+2. Intersection module: track modules with allowed lane changes are painted with a light gray base.
+3. Intersection animation: when a vehicle is currently on an intersection the lane is temporarily overlaid (light color) to indicate the interaction.
+4. Start of the track: the first pixel of every lane is marked as a start/end line (gray).
+5. Round advance: when a vehicle completes a lap the start pixel blinks between yellow/white for a configured number of ticks.
+6. Inactive vehicles (respawn): vehicles that are inactive or respawning blink between white and track-start color according to `respawn_tick_color_change`.
+7. Active vehicle: final override — vehicle sprite is drawn centered on the vehicle position. Color depends on the driving profile and vehicle speed. Speeds near zero use the vehicle's primary color; values beyond thresholds interpolate toward accelerate/decelerate warning colors.
+
+How the strips are controlled
+
+- Physical output uses the `rpi_ws281x` library (`PixelStrip`, `Color`). Two GPIO channels are supported by default: `18` and `19` ([see Library on GitHub](https://github.com/richardghirst/rpi_ws281x))
+- The code uses `VirtualLedStrip` instances to map parts of a physical strip to logical lanes. This allows a single long strip to be split into multiple virtual lanes (useful for intersections or modules that need extra pixels).
+- At each game tick `Game.display()` calls `DisplayManager.update(game)`. The display manager updates the virtual buffers by writing RGB tuples. Finally `LedDisplay.render()` translates virtual buffers to the physical `PixelStrip` objects and calls `show()`.
+
+Tuning and configuration
+
+- Colors are defined in `src/display/color_constants.py` so they can be changed globally.
+- Timing and blinking behavior is configurable via `DisplayConfig` (e.g. `respawn_tick_color_change`, `round_advance_ticks`, `round_advance_tick_color_change`).
+- Module boundary brightness and base-track ratio are implemented as small color ratios applied when filling lanes and pixels.
+
+A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
+
+## Next steps
+
+- configuration of parameters for the game
+- full sound implementation
+- fixing lane change controlls
+- game state control (rounds done, LCD display for information, start button)
+- LED display adjustments (colors, effects), e.g. when a round advance is made, when a crash happens, when reaching a too high speed, ...
+- placing the LED strips on the physical track modules of the track.
+- handling the hardware and wires for long term stability
+
+## Hardware
+
+<!-- TODO: Hardware details -->
+<!-- TODO: Picture of the hardware setup -->
+<!-- TODO: Picture of the running LED Strip -->

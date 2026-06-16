@@ -98,7 +98,6 @@ def make_game(
             respawn_ticks=5,
             friction_percent=0.02,
             acceleration_multiplier=0.015,
-            special_1_threshold=0.5,
             lane_change_ticks=2,
         )
 
@@ -108,6 +107,7 @@ def make_game(
         track_modules=track_modules,
         signal_receiver=SignalReceiverMock([player.controller for player in players]),
         lanes=lanes,
+        display_manager=None,
     )
 
 
@@ -187,7 +187,7 @@ def test_lane_change_two_lanes_left_to_right_takes_exactly_25_ticks():
     """Lane change from leftmost to rightmost lane in 2-lane setup must take 25 ticks."""
     lanes = [Lane(), Lane()]
     modules = make_track_modules(lanes, [[100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25, special_1_threshold=0.5)
+    settings = Settings(lane_change_ticks=25)
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
@@ -201,7 +201,7 @@ def test_lane_change_two_lanes_right_to_left_takes_exactly_25_ticks():
     """Lane change from rightmost to leftmost lane in 2-lane setup must take 25 ticks."""
     lanes = [Lane(), Lane()]
     modules = make_track_modules(lanes, [[100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25, special_1_threshold=0.5)
+    settings = Settings(lane_change_ticks=25)
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
@@ -215,7 +215,7 @@ def test_lane_change_three_lanes_left_to_right_takes_50_ticks_total():
     """Three-lane full crossing should use two adjacent hops, each with 25 ticks."""
     lanes = [Lane(), Lane(), Lane()]
     modules = make_track_modules(lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25, special_1_threshold=0.5)
+    settings = Settings(lane_change_ticks=25)
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
@@ -232,7 +232,7 @@ def test_lane_change_three_lanes_right_to_left_takes_50_ticks_total():
     """Reverse direction in three lanes should mirror timing and adjacency."""
     lanes = [Lane(), Lane(), Lane()]
     modules = make_track_modules(lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25, special_1_threshold=0.5)
+    settings = Settings(lane_change_ticks=25)
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
@@ -247,7 +247,7 @@ def test_lane_change_four_lanes_left_to_right_takes_75_ticks_total():
     """Four-lane full crossing should perform three timed adjacent hops (3 * 25)."""
     lanes = [Lane(), Lane(), Lane(), Lane()]
     modules = make_track_modules(lanes, [[100.0, 100.0, 100.0, 100.0]], lane_change_allowed=True)
-    settings = Settings(lane_change_ticks=25, special_1_threshold=0.5)
+    settings = Settings(lane_change_ticks=25)
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
@@ -284,7 +284,7 @@ def test_lane_change_converts_module_position_proportionally():
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
-    settings = Settings(lane_change_ticks=1, special_1_threshold=0.5)
+    settings = Settings(lane_change_ticks=1)
     player = Player(controller=controller, vehicle=Vehicle(lane=lanes[0], position=20.0))
     game = make_game(lanes, [player], modules, settings=settings)
 
@@ -598,3 +598,18 @@ def test_respawn_retries_until_first_module_lane_becomes_free():
     assert waiting.vehicle.active
     assert waiting.vehicle.position == 0.0
     assert waiting.vehicle.lane == lanes[0]
+
+def test_forward_press_mapping_to_acceleration():
+    """Test the mapping of forward_press to acceleration."""
+    # Test values below the minimum threshold
+    assert Game.map_forward_press_to_acceleration(0) == 0.
+    assert Game.map_forward_press_to_acceleration(41999) == 0.
+    
+    # Test values at the minimum threshold
+    assert Game.map_forward_press_to_acceleration(42000) == 0.
+    
+    # Test values between the minimum and maximum thresholds
+    assert Game.map_forward_press_to_acceleration(53768) == 50 # middle value
+    
+    # Test values at the maximum threshold
+    assert Game.map_forward_press_to_acceleration(65536) == 100.
