@@ -40,7 +40,7 @@ def main():
         None
     """
     logger.log("Raspberry Pi 4: Main script running.")
-    
+
     sound_manager = SoundManager()
     try:
         sound_manager.start()
@@ -260,12 +260,13 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     display = LedDisplay(
         real_strips, virtual_strips
     )  # Provide physical and virtual strips here when available
+
     display_config = DisplayConfig(
         respawn_tick_color_change=20,
         round_advance_ticks=200,
         round_advance_tick_color_change=20,
     )
-    display_manager = DisplayManager(display)
+    display_manager = DisplayManager(display, display_config)
 
     # settings
     max_speed: int = 40
@@ -274,7 +275,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         respawn_ticks=200,
         friction_percent=0.02,
         acceleration_multiplier=0.01,
-        lane_change_ticks=50,
+        lane_change_window=20,
         vehicle_crash_distance=30.0,
     )
 

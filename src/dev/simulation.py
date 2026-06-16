@@ -191,8 +191,9 @@ def create_simulation_game() -> Game:
         max_speed=100,
         respawn_ticks=5,
         friction_percent=0.02,
-        acceleration_multiplier=0.03,
+        acceleration_multiplier=0.01,
         lane_change_window=20.0,
+        vehicle_crash_distance=3.0,
     )
 
     player_1 = Player(
@@ -226,7 +227,7 @@ def main() -> None:
     orchestrator = SimulationOrchestrator(
         game=game,
         renderer=renderer,
-        game_tick_interval_s=0.5,
+        game_tick_interval_s=0.25,
         display_interval_ticks=1,
     )
 
