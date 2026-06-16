@@ -211,9 +211,9 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     )
     # signal_receiver = SignalReceiver(controllers=[player_controller_1])
 
-    lane_0 = Lane() # 0
-    lane_1 = Lane() # 1 middle lane
-    lane_2 = Lane() # 2
+    lane_0 = Lane()  # 0
+    lane_1 = Lane()  # 1 middle lane
+    lane_2 = Lane()  # 2
 
     # Configuring display and display manager
     led_strip_length_m: int = 5
@@ -273,11 +273,11 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     max_speed: int = 40
     settings = Settings(
         max_speed=max_speed,
-        respawn_ticks=200,
-        friction_percent=0.02,
-        acceleration_multiplier=0.01,
+        respawn_ticks=6,
+        friction_percent=0.05,
+        acceleration_multiplier=0.1,
         lane_change_window=20,
-        vehicle_crash_distance=30.0,
+        vehicle_crash_distance=3.0,
     )
 
     player_1 = Player(
@@ -323,12 +323,12 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.75),
                     lane=lane_0,
                     line_length=22.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.85),
                     lane=lane_2,
                     line_length=32.0,
                 ),
@@ -347,7 +347,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_1,
-                    line_length=45.5, # TODO: edit this intersection!
+                    line_length=45.5,  # TODO: edit this intersection!
                 ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
@@ -357,24 +357,24 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             ],
         ),
         TrackModule(
-            track_type=TrackType.CURVE_RIGHT, 
+            track_type=TrackType.CURVE_RIGHT,
             part_length=80.5,
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.75),
                     lane=lane_0,
                     line_length=94.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.65),
                     lane=lane_2,
                     line_length=66.5,
                 ),
             ],
         ),
         TrackModule(
-            track_type=TrackType.STRAIGHT, 
+            track_type=TrackType.STRAIGHT,
             part_length=45.7,
             sound_stereo_ratio_left=0.5,
             lines=[
@@ -391,24 +391,28 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             ],
         ),
         TrackModule(
-            track_type=TrackType.LOOPING, 
+            track_type=TrackType.LOOPING,
             part_length=103.0,
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed * 0.95, min_speed=max_speed * 0.6
+                    ),
                     lane=lane_0,
                     line_length=103.0,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed * 0.95, min_speed=max_speed * 0.6
+                    ),
                     lane=lane_2,
                     line_length=103.0,
                 ),
             ],
         ),
         TrackModule(
-            track_type=TrackType.INTERSECTION, 
+            track_type=TrackType.INTERSECTION,
             part_length=34.2,
             sound_stereo_ratio_left=0.5,
             lines=[
@@ -420,7 +424,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_1,
-                    line_length=34.2, # TODO: edit this intersection!
+                    line_length=34.2,  # TODO: edit this intersection!
                 ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
@@ -435,12 +439,12 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.90),
                     lane=lane_0,
                     line_length=41.1,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.95),
                     lane=lane_2,
                     line_length=57.6,
                 ),
