@@ -1,0 +1,249 @@
+\documentclass[conference,a4paper,flushend]{cs-techrep} % (based on IEEEtran.cls)
+
+% The class iaria.cls loads biblatex/biber with correct IARIA settings
+% as well as a set of common packages (times, inputenc[utf8], fontenc[T1],
+% graphicx, xcolor, url, orcidlink, hyperref, extdash[shortcuts])
+
+% Packages (self-added, not included in cs-techrep.cls):
+\usepackage[shortlabels]{enumitem} % Verbesserte Einstellungsmöglichkeiten von Listen. Nicht bei Beamer anwendbar
+% \setlist{itemsep=1ex, topsep=1em}
+% \usepackage{graphicx} % Required for inserting images
+\usepackage{csquotes} % Korrekte Anführungszeichen setzen. Sprachspezifisch möglich. mit \setquotestyle{style} und \enquote{}.
+% \usepackage[american]{babel} % Ändert die Darstellung des Datums in amerikanische Darstellung.
+\usepackage{hyperref}
+\usepackage[capitalise,nameinlink,noabbrev]{cleveref} % Referenzen besser machen. z.B. mit \cref{}. needs hyperref defined before it.
+% \usepackage[backend=biber, style=ieee, alldates=iso]{biblatex} % Zitieren
+% \usepackage{array} % Tabellen mit \begin{tabular}
+\usepackage{multirow} % Mehrere Zeilen in eine zusammenfassen. für Spalten einfach \multicolumn benutzen
+\usepackage{booktabs} % Hübschere Tabellen mit \top/mid/cmid/bottomrule
+\usepackage{minted} % Neuere Bibliothek für Code-Blöcke, mit \begin{listing oder minted}
+\usepackage{amsmath} % American Mathematical Society für mathematische Formeln, z.B. mit \begin{equation}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{siunitx}
+\usepackage{array}
+\usepackage{tabularx}
+
+\addbibresource{references.bib}
+% \addbibresource{xampl.bib} % (xampl file provided by the BibTEX base files)
+% ======================================================================
+% EDIT THESE:
+\cstechrepAuthorListTex{Simon Völkl, Erik Dombrowsky, Simon Frey\,\orcidlink{0000-0002-1175-2668}}
+\cstechrepAuthorListBib{Simon Völkl and Erik Dombrowsky and Simon Frey}
+% Capitalization: https://capitalizemytitle.com/style/Chicago/
+\cstechrepTitleTex{LumenTrace: A high-performance MCU-based LED racing simulator} % TODO: title revision?
+ % IF you need manual linebreaks in the title, then clone the title without linebreaks for BibTeX:
+\cstechrepTitleBib{{\cstechrepTitleTex}}
+\cstechrepDepartment{Department of Electrical Engineering, Media, and Computer Science}
+\cstechrepInstitution{Ostbayerische Technische Hochschule Amberg\-/Weiden}
+\cstechrepAddress{Amberg, Germany}
+\cstechrepSeries{Technical Reports}
+\cstechrepYear{2026}
+\cstechrepMonth{7}
+\cstechrepNumber{CL-\cstechrepYear{}-42}
+\cstechrepLang{english}  % en-US
+% ======================================================================
+% DO NOT DELETE AND DO NOT MODIFY THIS:
+\filecontentsForceExpansion|[] % force command expansion inside a filecontents* environment
+\begin{filecontents*}[overwrite]{selfref.bib}
+    @TECHREPORT{selfref,
+        author = {|cstechrepAuthorListBib},
+        title  = {\cstechrepTitleBib},
+        institution = {\cstechrepInstitution, \cstechrepDepartment},
+        series = {\cstechrepSeries},
+        number = {\cstechrepNumber},
+        year   = {|cstechrepYear},
+        month  = {|cstechrepMonth},
+        langid  = {|cstechrepLang},
+    }
+\end{filecontents*}
+
+\begin{document}
+\selectlanguage{\cstechrepLang}
+\maketitle
+\begin{abstract}
+    % TODO: abstract
+    Background: tbd
+    Methods: tbd
+
+    Conclusion: tbd
+\end{abstract}
+\begin{IEEEkeywords}
+    MCU, LED, neonpixel, WS2812, racing simulator, Raspberry Pi % TODO: keywords
+\end{IEEEkeywords}
+
+% STRUCTURE OF THE TECHNICAL REPORT:
+% 1. Introduction
+% Motivation: Wieso klassische Slot-Cars durch LEDs ersetzen? (Immersion, Flexibilität, Hardwareverschleiß).
+% Unique Selling Point / Contributions: Was macht LumenTrace besonders? (High-Speed Serial Comms, Echtes Physics-Model auf LED-Basis).
+% Outline: Kurzer Überblick über den Rest des Reports.
+
+% 2. Related Work
+% Welche ähnlichen Ansätze gibt es bereits? (z.B. Open-Source LED Strips Games, kommerzielle digitale Slotcar-Systeme wie Scalextric/Carrera Digital).
+
+% 3. System Architecture & Requirements
+% (Hierhin wandern die Requirements, aber deutlich technischer formuliert!)
+% Funktionale und nicht-funktionale Systemanforderungen (z.B. Echtzeit-Fähigkeit, 60fps Rendering).
+% High-Level Architektur (ähnlich deinem architecture.drawio und der Grafik im README): Trennung von Game Logic (RPI), Controller-Eingaben und und LED-Rendering (Pico).
+
+% 4. Hardware Implementation
+% Microcontroller-Setup: Raspberry Pi (4) als Host, Raspberry Pi Pico als MCU für Hardware-IO.
+% Kommunikation: UART Protocol (Latenzen, Baud-Raten, Datenpakete).
+% Signaltechnik & Controller-Aufbau.
+
+% 5. Software Implementation & Game Mechanics (basierend auf README)
+% Core Loop: Game-Tick-Implementierung, Speed Update & Limits.
+% Physics & Lane Handling: Reibung, Beschleunigung, Lane-Hops und Kollisionserkennung.
+% Dev/Simulation Environment: Der Terminal-Emulator in Python (simulation.py), warum er essenziell für die Logik-Validierung war, bevor geflasht wurde.
+
+% 6. Evaluation (Performance & Results)
+% Performance-Auswertung: Wie schnell läuft der Game Loop? (z.B. Python Performance auf dem RPI4).
+% Latenz: Delay zwischen Knopfdruck am Controller über den Pico zum RPI und zurück zur LED-Aktualisierung.
+% Herausforderungen: Reibungsverluste bei schnellen Updates oder Tearing/Timing-Probleme bei WS2812-Ansteuerung.
+
+% 7. Conclusion & Future Work
+% Zusammenfassung des Erreichten.
+% Was steht noch auf der Todo-Liste? (z.B. mehr Track-Module, WiFi/MQTT Leaderboards).
+
+\section{Introduction}\label{sec:introduction}
+
+\subsection{Motivation}\label{sec:motivation}
+% Wieso klassische Slot-Cars durch LEDs ersetzen? (Immersion, Flexibilität, Hardwareverschleiß).
+tbd
+
+\subsection{Unique Selling Point \& Contributions}\label{sec:unique_selling_point}
+% Was macht LumenTrace besonders? (High-Speed Serial Comms, Echtes Physics-Model auf LED-Basis).
+tbd
+
+\subsection{Outline}\label{sec:outline}
+% Kurzer Überblick über den Rest des Reports.
+tbd
+
+\section{Related Work}\label{sec:related_work}
+% Welche ähnlichen Ansätze gibt es bereits? (z.B. Open-Source LED Strips Games, kommerzielle digitale Slotcar-Systeme wie Scalextric/Carrera Digital).
+tbd
+
+\section{System Architecture \& Requirements}\label{sec:system_architecture}
+
+\subsection{Functional and Non-Functional Requirements}\label{sec:requirements}
+% Funktionale und nicht-funktionale Systemanforderungen (z.B. Echtzeit-Fähigkeit, 60fps Rendering).
+tbd
+
+\subsection{High-Level Architecture}\label{sec:architecture}
+% Trennung von Game Logic (RPI), Controller-Eingaben und und LED-Rendering (Pico).
+tbd
+
+\section{Hardware Implementation}\label{sec:hardware_implementation}
+
+\subsection{Microcontroller Setup}\label{sec:mcu_setup}
+% Raspberry Pi (4) als Host, Raspberry Pi Pico als MCU für Hardware-IO.
+tbd
+
+\subsection{Communication}\label{sec:communication}
+% UART Protocol (Latenzen, Baud-Raten, Datenpakete).
+tbd
+
+\subsection{Signal Processing \& Controller}\label{sec:signal_processing}
+% Signaltechnik & Controller-Aufbau.
+tbd
+
+\section{Software Implementation \& Game Mechanics}\label{sec:software_implementation}
+
+\subsection{Core Loop}\label{sec:core_loop}
+% Game-Tick-Implementierung, Speed Update & Limits.
+tbd
+
+\subsection{Physics \& Lane Handling}\label{sec:physics}
+% Reibung, Beschleunigung, Lane-Hops und Kollisionserkennung.
+tbd
+
+\subsection{Dev/Simulation Environment}\label{sec:simulation}
+% Der Terminal-Emulator in Python (simulation.py), warum er essenziell für die Logik-Validierung war, bevor geflasht wurde.
+tbd
+
+\section{Evaluation}\label{sec:evaluation}
+
+\subsection{Performance}\label{sec:performance}
+% Wie schnell läuft der Game Loop? (z.B. Python Performance auf dem RPI4).
+tbd
+
+\subsection{Latency}\label{sec:latency}
+% Delay zwischen Knopfdruck am Controller über den Pico zum RPI und zurück zur LED-Aktualisierung.
+tbd
+
+\subsection{Challenges}\label{sec:challenges}
+% Reibungsverluste bei schnellen Updates oder Tearing/Timing-Probleme bei WS2812-Ansteuerung.
+tbd
+
+\section{Conclusion and Future Work}\label{sec:conclusion}
+% Zusammenfassung des Erreichten.
+% Was steht noch auf der Todo-Liste? (z.B. mehr Track-Module, WiFi/MQTT Leaderboards).
+tbd
+
+% ======================================================================
+% TEMPLATES FÜR LATEX ELEMENTE
+% ======================================================================
+% --- Description Template ---
+% \begin{description}
+%     \item[Item 1] Description 1
+%     \item[Item 2] Description 2
+% \end{description}
+%
+% --- Itemize/List Template ---
+% \begin{itemize}
+%     \item Item 1
+%     \item Item 2
+% \end{itemize}
+%
+% --- Listing/Code Template ---
+% \begin{lstlisting}[language=json, float, caption={example listing}, label={lst:listing}]
+% {}
+% \end{lstlisting}
+%
+% --- Figure Template ---
+% \begin{figure*}[!htb]
+%   \centering
+%   \includegraphics[width=\linewidth]{img}
+%   \caption{caption}
+%   \label{fig:figure}
+% \end{figure*}
+%
+% --- Table Template 1 (Standard with Tabularx) ---
+% \begin{table}[!h]
+%     \centering
+%     \caption{Table Caption}
+%     \label{tab:table_label1}
+%     \begin{tabularx}{0.9\linewidth}{>{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}X}
+%         \toprule
+%         \textbf{Category} & \textbf{Content} \\
+%         \midrule
+%         yada & yada \\
+%         \bottomrule
+%     \end{tabularx}
+% \end{table}
+%
+% --- Table Template 2 (Full Width Costs Table) ---
+% \begin{table*}[!htb]
+%     \centering
+%     \caption{Costs}
+%     \label{tab:costs}
+%     \begin{tabularx}{0.8\textwidth}{>{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}r >{\raggedright\arraybackslash}r}
+%         \toprule
+%         \textbf{Component} & \textbf{Usage/Quantity} & \textbf{A} & \textbf{B} \\
+%         \midrule
+%         Yada & yada & 1 & 2 \\
+%         \midrule
+%         \textbf{Total} & & \textbf{\(\sim\)\$0.00} & \textbf{\(\sim\)\$0.00} \\ 
+%         \bottomrule
+%     \end{tabularx}
+% \end{table*}
+
+% ======== References =========
+\sloppy
+\printbibliography[notcategory=selfref]
+% \printbibliography
+
+\end{document}
