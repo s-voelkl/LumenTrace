@@ -27,6 +27,11 @@
 - Pip package list checken: ``pip list``
 - Code ausführen: ``sudo .venv/bin/python -m src.rpi_4.main`` (updated, wichtig für Memory-Zugriff durch die rpi_ws281x library)
 
+```shell
+source .venv/bin/activate
+sudo .venv/bin/python -m src.rpi_4.main
+```
+
 ## Installationen
 
 Sound mit USB Soundkarte in den Geräteeinstellungen einstellen.
