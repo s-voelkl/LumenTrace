@@ -431,7 +431,9 @@ class Game:
         ratio_left = self.__get_stereo_ratio_left_for_player(player)
         left_volume, right_volume = self.__stereo_ratio_to_channel_volumes(ratio_left)
         self.__sound_manager.play(
-            sound,
+            sound_name_or_path=sound,
+            # loop=False,
+            # pitch=1.0,
             volume=volume,
             left_volume=left_volume,
             right_volume=right_volume,
@@ -512,7 +514,6 @@ class Game:
             return 0.0
         if forward_press > input_max:
             return 100.0
-        
 
         # calculation for the mapping: linear interpolation
         # $$f(x) = (x - \text{input\_min}) \cdot \frac{\text{output\_max} - \text{output\_min}}{\text{input\_max} - \text{input\_min}} + \text{output\_min}$$

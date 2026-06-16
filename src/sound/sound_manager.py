@@ -435,13 +435,13 @@ if __name__ == "__main__":
         logger.log("Playing first sound exclusively on the right speaker...")
         # 3. Play a sound exclusively on the right speaker
         # Make sure to provide a valid wav file for your environment
-        dummy_wav = "assets/sound/base_engine.wav"
+        dummy_wav = "assets/sound/base-engine.wav"
         try:
             sound1_id = manager.play(
                 sound_name_or_path=dummy_wav,
                 loop=True,
                 pitch=1.0,
-                volume=100.0,
+                volume=10.0,
                 left_volume=0.0,
                 right_volume=100.0,
             )
@@ -455,42 +455,44 @@ if __name__ == "__main__":
         logger.log(
             "Playing a second sound over overlapping the first (both speakers, pitched up)..."
         )
+
         # 4. Play a second sound overlapping the first using its logical name
+        coin2 = GameSound.COIN_2
         try:
-            sound2_id = manager.play(
-                sound_name_or_path="bump",  # Resolved automatically via AVAILABLE_SOUNDS
+            manager.play(
+                sound_name_or_path=coin2,  # Resolved automatically via AVAILABLE_SOUNDS
                 loop=False,
                 pitch=1.5,
-                volume=60.0,
+                volume=100.0,
                 left_volume=100.0,
                 right_volume=100.0,
             )
         except Exception as e:
-            logger.log(f"Could not play sound 'bump': {e}")
+            logger.log(f"Could not play sound '{coin2.display_name}': {e}")
 
         time.sleep(1)
 
         logger.log("Playing a third sound (MP3 format) on the left speaker...")
+
         # 4.5 Play an MP3 sound (assuming the file exists)
+        coin1 = GameSound.COIN_1
         try:
-            sound3_id = manager.play(
-                sound_name_or_path="start_signal",
+            manager.play(
+                sound_name_or_path=coin1,  # Resolved automatically via AVAILABLE_SOUNDS
                 loop=False,
                 pitch=1.0,
-                volume=80.0,
+                volume=100.0,
                 left_volume=100.0,
                 right_volume=0.0,
             )
         except Exception as e:
-            logger.log(f"Could not play sound 'start_signal': {e}")
+            logger.log(f"Could not play sound '{coin1.display_name}': {e}")
 
         time.sleep(2)
 
         # 5. Dynamically change properties for the first sound without stopping it
         logger.log("Moving the first sound to the center and lowering pitch...")
-        manager.update_sound(
-            sound1_id, pitch=0.8, left_volume=100.0, right_volume=100.0
-        )
+        manager.update_sound(sound1_id, pitch=0.8, left_volume=30.0, right_volume=30.0)
 
         time.sleep(2)
 
