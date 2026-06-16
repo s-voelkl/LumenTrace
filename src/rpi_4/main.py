@@ -51,20 +51,22 @@ def main():
     logger.log("SoundManager started successfully. Building game and display...")
     game, display = build_game(sound_manager)
 
-    logger.log(
-        "Setup of Game, SignalReceiver, and PlayerController complete. "
-        "Waiting for all players to press their start button."
-    )
+    # logger.log(
+    #     "Setup of Game, SignalReceiver, and PlayerController complete. "
+    #     "Waiting for all players to press their start button."
+    # )
 
     # Game startup:
     # The game waits for an initial signal of all player controllers pressing
     # their button (``PlayerController.special_1``) for at least one second.
     # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
     # effect plays in parallel, before the game loop is started.
-    wait_for_start_signal(game)
+    # uncomment for immediate startup
+    # wait_for_start_signal(game)
 
-    logger.log("Start signal received. Running start sequence.")
-    run_start_sequence(display, game, sound_manager)
+    # uncomment for start sequence
+    # logger.log("Start signal received. Running start sequence.")
+    # run_start_sequence(display, game, sound_manager)
 
     logger.log("Start sequence complete. Starting game loop.")
     try:
@@ -77,7 +79,7 @@ def main():
 
 def wait_for_start_signal(
     game: Game,
-    hold_seconds: float = 2.0,
+    hold_seconds: float = 0.2,
     poll_interval_s: float = 0.1,
 ) -> None:
     """Block until all players hold their start button for ``hold_seconds``.
@@ -216,15 +218,15 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     lane_2 = Lane()  # 2
 
     # Configuring display and display manager
-    led_strip_length_m: int = 5
-    leds_per_meter: int = 50
-    led_count = led_strip_length_m * leds_per_meter
     real_strips = {}
     virtual_strips = []
 
+    strip_0_leds = 250 -32
+    strip_1_leds = 250 -33
+    
     if RPI_WS281X_AVAILABLE and PixelStrip is not None:
         strip0 = PixelStrip(
-            num=led_count,
+            num=strip_0_leds,
             pin=18,
             freq_hz=800_000,
             dma=10,
@@ -233,7 +235,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             channel=0,  # needed for gpio 18
         )
         strip1 = PixelStrip(
-            num=led_count,
+            num=strip_1_leds,
             pin=19,
             freq_hz=800_000,
             dma=10,
@@ -251,10 +253,10 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
 
     virtual_strips = [
         VirtualLedStrip(
-            lane=lane_0, real_strip_id=0, min_index=0, max_index=led_count - 1
+            lane=lane_0, real_strip_id=0, min_index=0, max_index=strip_0_leds - 1
         ),
         VirtualLedStrip(
-            lane=lane_2, real_strip_id=1, min_index=0, max_index=led_count - 1
+            lane=lane_2, real_strip_id=1, min_index=0, max_index=strip_1_leds - 1
         ),
     ]
 
@@ -262,21 +264,17 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         real_strips, virtual_strips
     )  # Provide physical and virtual strips here when available
 
-    display_config = DisplayConfig(
-        respawn_tick_color_change=20,
-        round_advance_ticks=200,
-        round_advance_tick_color_change=20,
-    )
+    display_config = DisplayConfig()
     display_manager = DisplayManager(display, display_config)
 
     # settings
-    max_speed: int = 40
+    max_speed: int = 120
     settings = Settings(
         max_speed=max_speed,
-        respawn_ticks=6,
-        friction_percent=0.05,
-        acceleration_multiplier=0.1,
-        lane_change_window=20,
+        respawn_ticks=50,
+        friction_percent=0.04,
+        acceleration_multiplier=0.06,
+        lane_change_window=5,
         vehicle_crash_distance=3.0,
     )
 
@@ -340,17 +338,17 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
                     lane=lane_0,
                     line_length=45.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
                     lane=lane_1,
                     line_length=45.5,  # TODO: edit this intersection!
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
                     lane=lane_2,
                     line_length=45.5,
                 ),
@@ -391,23 +389,23 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             ],
         ),
         TrackModule(
-            track_type=TrackType.LOOPING,
-            part_length=103.0,
+            track_type=TrackType.LOOPING, 
+            part_length=110.0,
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed * 0.95, min_speed=max_speed * 0.6
+                        max_speed=max_speed, min_speed=max_speed * 0.6
                     ),
                     lane=lane_0,
-                    line_length=103.0,
+                    line_length=110.0,
                 ),
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed * 0.95, min_speed=max_speed * 0.6
+                        max_speed=max_speed, min_speed=max_speed * 0.6
                     ),
                     lane=lane_2,
-                    line_length=103.0,
+                    line_length=110.0,
                 ),
             ],
         ),
@@ -417,17 +415,17 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
                     lane=lane_0,
                     line_length=34.0,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
                     lane=lane_1,
                     line_length=34.2,  # TODO: edit this intersection!
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
                     lane=lane_2,
                     line_length=34.3,
                 ),
@@ -476,7 +474,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         signal_receiver=signal_receiver,
         lanes=[lane_0, lane_1, lane_2],
         display_manager=display_manager,
-        sound_manager=sound_manager,
+        # sound_manager=sound_manager,
     )
 
     return game, display

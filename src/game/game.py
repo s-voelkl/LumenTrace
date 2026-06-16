@@ -171,7 +171,6 @@ class Game:
         if len(self.__event_history) > self.__event_history_limit:
             self.__event_history = self.__event_history[-self.__event_history_limit :]
         logger.log_json(event)
-        print(event)
 
     def tick_once(
         self,
@@ -547,7 +546,7 @@ class Game:
                 special_1_pressed
                 and local_position <= self.__settings.lane_change_window
             ):
-                print("DEBUG: changing to middle lane!!!")
+                logger.log("DEBUG: changing to middle lane!!!")
                 target_outer_lane = right_lane if lane == left_lane else left_lane
                 self.__lane_change_targets[player] = target_outer_lane
 
