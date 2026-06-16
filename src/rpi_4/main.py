@@ -211,8 +211,9 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     )
     # signal_receiver = SignalReceiver(controllers=[player_controller_1])
 
-    lane_1 = Lane()
-    lane_2 = Lane()
+    lane_0 = Lane() # 0
+    lane_1 = Lane() # 1 middle lane
+    lane_2 = Lane() # 2
 
     # Configuring display and display manager
     led_strip_length_m: int = 5
@@ -250,7 +251,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
 
     virtual_strips = [
         VirtualLedStrip(
-            lane=lane_1, real_strip_id=0, min_index=0, max_index=led_count - 1
+            lane=lane_0, real_strip_id=0, min_index=0, max_index=led_count - 1
         ),
         VirtualLedStrip(
             lane=lane_2, real_strip_id=1, min_index=0, max_index=led_count - 1
@@ -282,7 +283,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     player_1 = Player(
         controller=player_controller_1,
         vehicle=Vehicle(
-            lane=lane_1,
+            lane=lane_0,
             primary_color=GREEN,
             accelerate_color=PURPLE,
             decelerate_color=RED,
@@ -301,73 +302,164 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     track_modules: list[TrackModule] = [
         TrackModule(
             track_type=TrackType.STRAIGHT,
-            part_length=50,
+            part_length=34.3,
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
-                    lane=lane_1,
-                    line_length=50,
+                    lane=lane_0,
+                    line_length=34.0,
                 ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_2,
-                    line_length=50,
-                ),
-            ],
-        ),
-        TrackModule(
-            track_type=TrackType.INTERSECTION,
-            part_length=20,
-            sound_stereo_ratio_left=0.5,
-            lines=[
-                Line(
-                    driving_profile=DrivingProfile(
-                        max_speed=max_speed * 0.8, lane_change_allowed=True
-                    ),
-                    lane=lane_1,
-                    line_length=50,
-                ),
-                Line(
-                    driving_profile=DrivingProfile(
-                        max_speed=max_speed * 0.8, lane_change_allowed=True
-                    ),
-                    lane=lane_2,
-                    line_length=50,
+                    line_length=34.6,
                 ),
             ],
         ),
         TrackModule(
             track_type=TrackType.CURVE_LEFT,
-            part_length=30,
-            sound_stereo_ratio_left=0.85,
+            part_length=27.3,
+            sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.7),
-                    lane=lane_1,
-                    line_length=28,
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_0,
+                    line_length=22.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.8),
+                    driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_2,
-                    line_length=32,
+                    line_length=32.0,
                 ),
             ],
         ),
         TrackModule(
-            track_type=TrackType.CURVE_RIGHT,
-            part_length=50,
-            sound_stereo_ratio_left=0.15,
+            track_type=TrackType.INTERSECTION,
+            part_length=45.5,
+            sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.6),
-                    lane=lane_1,
-                    line_length=55,
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_0,
+                    line_length=45.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.5),
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_1,
+                    line_length=45.5, # TODO: edit this intersection!
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_2,
-                    line_length=45,
+                    line_length=45.5,
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.CURVE_RIGHT, 
+            part_length=80.5,
+            sound_stereo_ratio_left=0.5,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_0,
+                    line_length=94.5,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_2,
+                    line_length=66.5,
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.STRAIGHT, 
+            part_length=45.7,
+            sound_stereo_ratio_left=0.5,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_0,
+                    line_length=45.7,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_2,
+                    line_length=45.7,
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.LOOPING, 
+            part_length=103.0,
+            sound_stereo_ratio_left=0.5,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_0,
+                    line_length=103.0,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_2,
+                    line_length=103.0,
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.INTERSECTION, 
+            part_length=34.2,
+            sound_stereo_ratio_left=0.5,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_0,
+                    line_length=34.0,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_1,
+                    line_length=34.2, # TODO: edit this intersection!
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_2,
+                    line_length=34.3,
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.CURVE_RIGHT_BENDED,
+            part_length=49.4,
+            sound_stereo_ratio_left=0.5,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_0,
+                    line_length=41.1,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_2,
+                    line_length=57.6,
+                ),
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.STRAIGHT,
+            part_length=11.4,
+            sound_stereo_ratio_left=0.5,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_0,
+                    line_length=11.4,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    lane=lane_2,
+                    line_length=11.4,
                 ),
             ],
         ),
@@ -375,11 +467,10 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
 
     game = Game(
         players=[player_1, player_2],
-        # players=[player_1],
         track_modules=track_modules,
         settings=settings,
         signal_receiver=signal_receiver,
-        lanes=[lane_1, lane_2],
+        lanes=[lane_0, lane_1, lane_2],
         display_manager=display_manager,
         sound_manager=sound_manager,
     )

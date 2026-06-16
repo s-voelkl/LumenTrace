@@ -21,9 +21,10 @@
 ## Codeausführung
 
 - Ordner finden: ``cd ./documents/repos/lumentrace``
+- Enviroment erstellen: ``python3 -m venv .venv``
 - Environment aktivieren: ``source .venv/bin/activate``
+- Pip packages installieren: ``pip install -r ./src/rpi_4/requirements.txt``
 - Pip package list checken: ``pip list``
-- Optional pip packages installieren: ``pip install -r src/rpi_4/requirements.txt``
 - Code ausführen: ``sudo .venv/bin/python -m src.rpi_4.main`` (updated, wichtig für Memory-Zugriff durch die rpi_ws281x library)
 
 ## Installationen
