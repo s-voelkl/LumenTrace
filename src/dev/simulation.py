@@ -14,6 +14,7 @@ from src.simulation import (
     SimulationSignalReceiver,
     TerminalSimulationRenderer,
 )
+from src.sound.sound_manager import SoundManager
 
 
 def build_simulation_track(
@@ -229,6 +230,9 @@ def create_simulation_game() -> Game:
         lane_change_period_ticks=12,
     )
 
+    # sound manager
+    sound_manager = SoundManager()
+
     # Include temporary lane in lane order so intersection routing can be exercised.
     return Game(
         players=[player_1, player_2],
@@ -237,6 +241,7 @@ def create_simulation_game() -> Game:
         signal_receiver=signal_receiver,
         lanes=[lane_0, lane_1, lane_2],
         display_manager=None,
+        sound_manager=sound_manager,
     )
 
 

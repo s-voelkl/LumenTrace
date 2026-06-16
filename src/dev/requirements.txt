@@ -9,3 +9,5 @@ pytest
 pytest-cov
 mpremote
 numpy
+sounddevice
+soundfile
