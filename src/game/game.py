@@ -61,7 +61,7 @@ class Game:
         self.__warning_active: dict[Player, bool] = {}
         if self.__sound_manager is not None and MotorSound is not None:
             for player in self.__players:
-                self.__motor_sounds[player] = MotorSound(self.__sound_manager)
+                self.__motor_sounds[player] = MotorSound(self.__sound_manager, max_volume=25, idle_volume=7)
 
         self.__stop_event = threading.Event()
         self.__threads: list[threading.Thread] = []
@@ -102,12 +102,15 @@ class Game:
                 self.__previous_special_1.get(player, 0) == 0 and current_special_1 != 0
             )
             self.__previous_special_1[player] = current_special_1
+            
+            # logger.log("special_1_pressed: " + str(special_1_pressed) + " soundManager: " + str(self.__sound_manager is not None) + " gameSound: " + str(GameSound is not None))
             if (
                 special_1_pressed
                 and self.__sound_manager is not None
                 and GameSound is not None
             ):
-                self.__play_positional_sound(player, GameSound.COIN_2, volume=80.0)
+                # logger.log("Playing sound: COIN_2 for player " + player.name)
+                self.__play_positional_sound(player, GameSound.COIN_2, volume=40.0)
 
             if not vehicle.active:
                 # Keep the engine audible but idle while waiting to respawn.
@@ -517,21 +520,27 @@ class Game:
 
     def __fall_player(self, player: Player, reason: str) -> None:
         """Move one player into respawn state and clear pending lane-change state."""
-        self.__record_event(
-            {
-                "event": "player_fell",
-                "player": player.name,
-                "reason": reason,
-                "lane": player.vehicle.lane.lane_id
-                if player.vehicle.lane is not None
-                else None,
-                "position": player.vehicle.position,
-                "speed": player.vehicle.speed,
-                "acceleration": player.vehicle.acceleration,
-                "respawn_ticks": self.__settings.respawn_ticks,
-            }
-        )
-        player.vehicle.trigger_respawn(self.__settings.respawn_ticks)
+        # logger.log("Collision detected for player " + player.name + ": " + reason)
+        if player.vehicle.active:
+            if self.__sound_manager is not None and GameSound is not None:
+                self.__play_positional_sound(
+                    player, GameSound.CAR_CRASH_2, volume=70.0
+                )
+            self.__record_event(
+                {
+                    "event": "player_fell",
+                    "player": player.name,
+                    "reason": reason,
+                    "lane": player.vehicle.lane.lane_id
+                    if player.vehicle.lane is not None
+                    else None,
+                    "position": player.vehicle.position,
+                    "speed": player.vehicle.speed,
+                    "acceleration": player.vehicle.acceleration,
+                    "respawn_ticks": self.__settings.respawn_ticks,
+                }
+            )
+            player.vehicle.trigger_respawn(self.__settings.respawn_ticks)
 
     def __lane_gap_reason(self, player: Player, delta_position: float) -> str | None:
         """Return a short reason when movement enters a lane gap."""
@@ -730,11 +739,13 @@ class Game:
         """Start the looping engine sound for every player."""
         for motor_sound in self.__motor_sounds.values():
             motor_sound.start()
+        # pass # TODO: implement!
 
     def __stop_motor_sounds(self) -> None:
         """Stop the looping engine sound for every player."""
         for motor_sound in self.__motor_sounds.values():
             motor_sound.stop()
+        # pass # TODO: implement!
 
     # Sound helpers
     def __get_stereo_ratio_left_for_player(self, player: Player) -> float:
@@ -779,6 +790,9 @@ class Game:
 
         ratio_left = self.__get_stereo_ratio_left_for_player(player)
         left_volume, right_volume = self.__stereo_ratio_to_channel_volumes(ratio_left)
+        
+        # logger.log("Playing positional sound: " + str(sound) + " for player " + player.name + " with left volume " + str(left_volume) + " and right volume " + str(right_volume))
+        
         self.__sound_manager.play(
             sound_name_or_path=sound,
             # loop=False,
@@ -789,7 +803,7 @@ class Game:
         )
 
     @staticmethod
-    def __is_near_profile_bounds(vehicle, profile: Any, threshold: float = 0.2) -> bool:
+    def __is_near_profile_bounds(vehicle, profile: Any, threshold: float = 0.1) -> bool:
         """Return whether speed or acceleration is close to a profile limit.
 
         A value is considered "near a bound" when it falls within ``threshold``
@@ -832,8 +846,8 @@ class Game:
 
         is_near = self.__is_near_profile_bounds(player.vehicle, profile)
         was_near = self.__warning_active.get(player, False)
-        if is_near and not was_near:
-            self.__play_positional_sound(player, GameSound.WARNING_1, volume=70.0)
+        # if is_near and not was_near:
+            # self.__play_positional_sound(player, GameSound.WARNING_1, volume=50.0)
         self.__warning_active[player] = is_near
 
     def __update_motor_sound(self, player: Player) -> None:
@@ -958,12 +972,7 @@ class Game:
                     )
 
         for player, reason in players_to_fall.items():
-            if player.vehicle.active:
-                if self.__sound_manager is not None and GameSound is not None:
-                    self.__play_positional_sound(
-                        player, GameSound.CAR_CRASH_2, volume=90.0
-                    )
-                self.__fall_player(player, reason)
+            self.__fall_player(player, reason)
 
     # Getters
     @property

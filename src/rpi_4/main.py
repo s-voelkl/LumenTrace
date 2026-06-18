@@ -44,6 +44,7 @@ def main():
     sound_manager = SoundManager()
     try:
         sound_manager.start()
+        # sound_manager.play(GameSound.START_SIGNAL)
     except Exception as e:
         logger.log(f"Error starting SoundManager: {e}")
         return
@@ -52,12 +53,12 @@ def main():
     game, display = build_game(sound_manager)
 
     logger.log("Clearing all LEDs on startup...")
-    clear_all_leds(display)
-
-    # logger.log(
-    #     "Setup of Game, SignalReceiver, and PlayerController complete. "
-    #     "Waiting for all players to press their start button."
-    # )
+    clear_all_leds(display, game.lanes)
+    
+    logger.log(
+        "Setup of Game, SignalReceiver, and PlayerController complete. "
+        "Waiting for all players to press their start button."
+    )
 
     # Game startup:
     # The game waits for an initial signal of all player controllers pressing
@@ -68,7 +69,7 @@ def main():
     # wait_for_start_signal(game)
 
     # uncomment for start sequence
-    # logger.log("Start signal received. Running start sequence.")
+    logger.log("Start signal received. Running start sequence.")
     # run_start_sequence(display, game, sound_manager)
 
     logger.log("Start sequence complete. Starting game loop.")
@@ -80,16 +81,17 @@ def main():
         sound_manager.stop_all()
 
 
-def clear_all_leds(display: LedDisplay) -> None:
+def clear_all_leds(display: LedDisplay, lanes: list[Lane]) -> None:
     """Clear all LEDs to black before applying new colors on startup."""
-    display.clear()
+    for lane in lanes:
+        display.fill_lane(lane, DARK_PURPLE, 0.1)
     display.render()
 
 
 def wait_for_start_signal(
     game: Game,
-    hold_seconds: float = 0.2,
-    poll_interval_s: float = 0.1,
+    hold_seconds: float = 2,
+    poll_interval_s: float = 0.5,
 ) -> None:
     """Block until all players hold their start button for ``hold_seconds``.
 
@@ -114,7 +116,12 @@ def wait_for_start_signal(
         all_pressed = bool(players) and all(
             player.controller.special_1 for player in players
         )
+        
         now = time.perf_counter()
+        logger.log(f"Waiting for start signal: all_pressed={all_pressed}, time={now - held_since if held_since else 0}s")
+        # for player in players:
+        #     logger.log(f"Player {player} special_1={player.controller.special_1}")
+        
 
         if all_pressed:
             if held_since is None:
@@ -286,10 +293,10 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     display_manager = DisplayManager(display, display_config)
 
     # settings
-    max_speed: int = 120
+    max_speed: int = 100
     settings = Settings(
         max_speed=max_speed,
-        respawn_ticks=50,
+        respawn_ticks=75,
         friction_percent=0.04,
         acceleration_multiplier=0.06,
         lane_change_window=5,
@@ -487,7 +494,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         signal_receiver=signal_receiver,
         lanes=[lane_0, lane_1, lane_2],
         display_manager=display_manager,
-        # sound_manager=sound_manager,
+        sound_manager=sound_manager,
     )
 
     return game, display
