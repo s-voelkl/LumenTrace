@@ -295,10 +295,15 @@ class DisplayManager:
         Args:
             game (Game): Current game instance exposing lane list.
         """
+        if not game.track_modules:
+            return
+
         lanes = game.lanes
+        first_module = game.track_modules[0]
 
         for lane in lanes:
-            self.display.set_lane_pixel_by_relative_position(lane, 0.0, GRAY)
+            if first_module.get_line_for_lane(lane) is not None:
+                self.display.set_lane_pixel_by_relative_position(lane, 0.0, GRAY)
 
     def _render_round_advance(self, game: Game):
         players = game.players
