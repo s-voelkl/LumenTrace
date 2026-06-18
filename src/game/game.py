@@ -77,639 +77,7 @@ class Game:
             }
         )
 
-    def start_game(
-        self,
-        fetch_interval_s: float = 0.01,
-        display_interval_s: float = 0.02,
-        game_tick_interval_s: float = 0.02,
-    ):
-        self.__record_event(
-            {
-                "event": "game_started",
-            }
-        )
-
-        self.__game_tick_interval_s = game_tick_interval_s
-
-        # Start the continuous per-player engine loops before the worker
-        # threads begin updating their pitch and volume each tick.
-        self.__start_motor_sounds()
-
-        # Each worker owns one responsibility so timing stays predictable and easy to review.
-        self.__stop_event.clear()
-        self.__threads = [
-            threading.Thread(
-                target=self.__run_periodic_loop,
-                name="GameFetchThread",
-                args=(self.fetch_data, fetch_interval_s),
-                daemon=False,
-            ),
-            threading.Thread(
-                target=self.__run_periodic_loop,
-                name="GameDisplayThread",
-                args=(self.display, display_interval_s),
-                daemon=False,
-            ),
-            threading.Thread(
-                target=self.__run_periodic_loop,
-                name="GameTickThread",
-                args=(self.__game_loop, game_tick_interval_s),
-                daemon=False,
-            ),
-            # sound logic
-        ]
-
-        for thread in self.__threads:
-            thread.start()
-
-        try:
-            for thread in self.__threads:
-                thread.join()
-        except KeyboardInterrupt:
-            self.stop_game()
-            for thread in self.__threads:
-                thread.join()
-        finally:
-            self.__stop_motor_sounds()
-
-    def stop_game(self):
-        self.__stop_event.set()
-
-    def __start_motor_sounds(self) -> None:
-        """Start the looping engine sound for every player."""
-        for motor_sound in self.__motor_sounds.values():
-            motor_sound.start()
-
-    def __stop_motor_sounds(self) -> None:
-        """Stop the looping engine sound for every player."""
-        for motor_sound in self.__motor_sounds.values():
-            motor_sound.stop()
-
-    def __run_periodic_loop(
-        self, action: Callable[[], None], interval_s: float
-    ) -> None:
-        # Use a monotonic clock so the loop keeps its cadence even if wall time changes.
-        next_run = time.perf_counter()
-        while not self.__stop_event.is_set():
-            next_run += interval_s
-            action()
-
-            remaining_s = next_run - time.perf_counter()
-            if remaining_s > 0:
-                self.__stop_event.wait(remaining_s)
-            else:
-                # If the action took longer than the requested cadence, continue immediately.
-                next_run = time.perf_counter()
-
-    def fetch_data(self):
-        self.__signal_receiver.receive_signal()
-
-    def __record_event(self, payload: dict[str, Any]) -> None:
-        """Store and emit one structured game event."""
-        event = {"tick": self.__tick_count, **payload}
-        self.__event_history.append(event)
-        if len(self.__event_history) > self.__event_history_limit:
-            self.__event_history = self.__event_history[-self.__event_history_limit :]
-        logger.log_json(event)
-
-    def tick_once(
-        self,
-        *,
-        fetch_data: bool = True,
-        show_display: bool = False,
-        game_tick_interval_s: float | None = None,
-    ) -> None:
-        """Run one deterministic game tick.
-
-        This API is intended for simulation and unit tests where external control
-        over tick cadence is preferred over threaded background loops.
-
-        Args:
-            fetch_data (bool, optional): Whether input receiver should be polled first.
-            show_display (bool, optional): Whether to call ``display`` after tick update.
-            game_tick_interval_s (float | None, optional): Tick duration used by
-                movement integration. ``None`` keeps the current configured value.
-        """
-        if game_tick_interval_s is not None:
-            self.__game_tick_interval_s = game_tick_interval_s
-
-        if fetch_data:
-            self.fetch_data()
-
-        self.__game_loop()
-
-        if show_display:
-            self.display()
-
-    def display(self):
-        # self.log_fully()
-        if self.__display_manager is not None:
-            self.__display_manager.update(self)
-
-    # Helpers
-    def get_lane_track_length(self, lane: Lane) -> float:
-        """Return total drivable length for one lane across all configured modules.
-
-        Args:
-            lane (Lane): Lane whose complete track length should be accumulated.
-
-        Returns:
-            float: Sum of all line lengths that belong to the given lane.
-        """
-        return sum([tm.get_line_length_for_lane(lane) for tm in self.__track_modules])
-
-    def __get_track_module_index_and_local_position(
-        self, lane: Lane, position: float
-    ) -> tuple[int | None, float]:
-        """Resolve one lane position to a concrete module index and lane-local position.
-
-        Args:
-            lane (Lane): Lane in which the position is interpreted.
-            position (float): Global lane position value.
-
-        Returns:
-            tuple[int | None, float]:
-                The matched module index and local position in that module.
-                Returns ``(None, 0.0)`` if no lane segment can be resolved.
-        """
-        lane_length = self.get_lane_track_length(lane)
-        if lane_length <= 0:
-            return None, 0.0
-
-        normalized_position = position % lane_length if position >= 0 else 0.0
-        cumulative = 0.0
-        for index, module in enumerate(self.__track_modules):
-            line_length = module.get_line_length_for_lane(lane)
-            if line_length <= 0:
-                continue
-
-            upper = cumulative + line_length
-            if normalized_position < upper:
-                return index, normalized_position - cumulative
-            cumulative = upper
-
-        return None, normalized_position
-
-    def __build_global_lane_position(
-        self, lane: Lane, module_index: int, module_local_position: float
-    ) -> float:
-        """Build global lane position from a module-local coordinate.
-
-        Args:
-            lane (Lane): Target lane.
-            module_index (int): Module index for the local position.
-            module_local_position (float): Offset within the lane line of that module.
-
-        Returns:
-            float: Global lane position coordinate.
-        """
-        global_position = 0.0
-        for idx in range(module_index):
-            global_position += self.__track_modules[idx].get_line_length_for_lane(lane)
-        return max(0.0, global_position + max(0.0, module_local_position))
-
-    def get_track_module_for_lane_position(
-        self, lane: Lane, position: float
-    ) -> tuple[TrackModule | None, float]:
-        """Resolve a lane position to its module and local offset inside that module.
-
-        The vehicle position is interpreted as a continuous coordinate on the selected lane.
-        This method maps that coordinate to one concrete track module and returns the
-        lane-local position used for proportional lane conversion.
-
-        Args:
-            lane (Lane): Lane used to interpret the global position value.
-            position (float): Global lane position coordinate.
-
-        Returns:
-            tuple[TrackModule | None, float]:
-                The matched track module and the module-local lane offset.
-                Returns ``(None, 0.0)`` if the lane has no positive total length.
-        """
-        module_index, local_position = self.__get_track_module_index_and_local_position(
-            lane, position
-        )
-        if module_index is None:
-            return None, local_position
-        return self.__track_modules[module_index], local_position
-
-    def __fall_player(self, player: Player, reason: str) -> None:
-        """Move one player into respawn state and clear pending lane-change state."""
-        self.__lane_change_targets.pop(player, None)
-        self.__record_event(
-            {
-                "event": "player_fell",
-                "player": player.name,
-                "reason": reason,
-                "lane": player.vehicle.lane.lane_id
-                if player.vehicle.lane is not None
-                else None,
-                "position": player.vehicle.position,
-                "speed": player.vehicle.speed,
-                "acceleration": player.vehicle.acceleration,
-                "respawn_ticks": self.__settings.respawn_ticks,
-            }
-        )
-        player.vehicle.trigger_respawn(self.__settings.respawn_ticks)
-
-    def __lane_gap_reason(self, player: Player, delta_position: float) -> str | None:
-        """Return a short reason when movement enters a lane gap."""
-        if delta_position == 0:
-            return None
-
-        lane = player.vehicle.lane
-        if lane is None:
-            return "lane is ended: vehicle has no lane"
-        if not self.__track_modules:
-            return "lane is ended: no track modules configured"
-
-        module_index, module_position = (
-            self.__get_track_module_index_and_local_position(
-                lane, player.vehicle.position
-            )
-        )
-        if module_index is None:
-            return "lane is ended: current lane position not resolvable"
-
-        remaining = delta_position
-        track_module_count = len(self.__track_modules)
-
-        while remaining != 0:
-            current_module = self.__track_modules[module_index]
-            current_line_length = current_module.get_line_length_for_lane(lane)
-            if current_line_length <= 0:
-                return f"lane is ended in module {module_index}"
-
-            if remaining > 0:
-                distance_to_end = max(current_line_length - module_position, 0.0)
-                if remaining <= distance_to_end:
-                    return None
-
-                remaining -= distance_to_end
-                module_index = (module_index + 1) % track_module_count
-                if (
-                    self.__track_modules[module_index].get_line_length_for_lane(lane)
-                    <= 0
-                ):
-                    return f"lane is ended: missing next lane segment in module {module_index}"
-                module_position = 0.0
-                continue
-
-            distance_to_start = max(module_position, 0.0)
-            if -remaining <= distance_to_start:
-                return None
-
-            remaining += distance_to_start
-            module_index = (module_index - 1) % track_module_count
-            previous_line_length = self.__track_modules[
-                module_index
-            ].get_line_length_for_lane(lane)
-            if previous_line_length <= 0:
-                return f"lane is ended: missing previous lane segment in module {module_index}"
-            module_position = previous_line_length
-
-        return None
-
-    @staticmethod
-    def __get_profile_violation_reason(player: Player, profile: Any) -> str | None:
-        """Return short violation string for speed/acceleration bounds."""
-        speed = player.vehicle.speed
-        acceleration = player.vehicle.acceleration
-
-        if speed > profile.max_speed:
-            return f"speed ({speed:.2f}) > {profile.max_speed:.2f}"
-        if speed < profile.min_speed:
-            return f"speed ({speed:.2f}) < {profile.min_speed:.2f}"
-        if acceleration > profile.max_acceleration:
-            return f"acceleration ({acceleration:.2f}) > {profile.max_acceleration:.2f}"
-        if acceleration < profile.min_acceleration:
-            return f"acceleration ({acceleration:.2f}) < {profile.min_acceleration:.2f}"
-
-        return None
-
-    # Sound helpers
-    def __get_stereo_ratio_left_for_player(self, player: Player) -> float:
-        """Return the left-channel stereo ratio for a player's current module.
-
-        Args:
-            player (Player): Player whose track position selects the module.
-
-        Returns:
-            float: Left ratio in [0.0, 1.0]; defaults to ``0.5`` (centered)
-                when the player has no resolvable lane or module.
-        """
-        lane = player.vehicle.lane
-        if lane is None:
-            return 0.5
-
-        module, _ = self.get_track_module_for_lane_position(
-            lane, player.vehicle.position
-        )
-        if module is None:
-            return 0.5
-        return module.sound_stereo_ratio_left
-
-    @staticmethod
-    def __stereo_ratio_to_channel_volumes(ratio_left: float) -> tuple[float, float]:
-        """Convert a left stereo ratio to (left, right) channel volumes (0-100)."""
-        ratio_left = min(1.0, max(0.0, ratio_left))
-        return ratio_left * 100.0, (1.0 - ratio_left) * 100.0
-
-    def __play_positional_sound(
-        self, player: Player, sound: Any, volume: float
-    ) -> None:
-        """Play a one-shot sound panned to the player's current track module.
-
-        Args:
-            player (Player): Player used to derive the stereo position.
-            sound (GameSound): Sound effect to play.
-            volume (float): Overall volume of the effect (0-100).
-        """
-        if self.__sound_manager is None or GameSound is None:
-            return
-
-        ratio_left = self.__get_stereo_ratio_left_for_player(player)
-        left_volume, right_volume = self.__stereo_ratio_to_channel_volumes(ratio_left)
-        self.__sound_manager.play(
-            sound_name_or_path=sound,
-            # loop=False,
-            # pitch=1.0,
-            volume=volume,
-            left_volume=left_volume,
-            right_volume=right_volume,
-        )
-
-    @staticmethod
-    def __is_near_profile_bounds(vehicle, profile: Any, threshold: float = 0.2) -> bool:
-        """Return whether speed or acceleration is close to a profile limit.
-
-        A value is considered "near a bound" when it falls within ``threshold``
-        of the span on either side, i.e. inside ``[lower, lower + margin]`` or
-        ``[upper - margin, upper]`` with ``margin = (upper - lower) * threshold``.
-        This captures the upper warning band ``[max * 0.8, max]`` as well as the
-        symmetric band next to the lower limit for both speed and acceleration.
-
-        Args:
-            vehicle: Vehicle whose speed and acceleration are inspected.
-            profile (Any): Driving profile providing the min/max bounds.
-            threshold (float): Fraction of the span treated as the warning band.
-
-        Returns:
-            bool: ``True`` when speed or acceleration is within the warning band.
-        """
-
-        def near(value: float, lower: float, upper: float) -> bool:
-            span = upper - lower
-            if span <= 0:
-                return False
-            margin = span * threshold
-            return value <= lower + margin or value >= upper - margin
-
-        return near(vehicle.speed, profile.min_speed, profile.max_speed) or near(
-            vehicle.acceleration,
-            profile.min_acceleration,
-            profile.max_acceleration,
-        )
-
-    def __update_warning_sound(self, player: Player, profile: Any) -> None:
-        """Play a warning sound once when a player enters the warning band.
-
-        The warning is edge-triggered: it fires only on the transition into the
-        warning band and resets once the player leaves it, preventing the sound
-        from repeating on every tick.
-        """
-        if self.__sound_manager is None or GameSound is None:
-            return
-
-        is_near = self.__is_near_profile_bounds(player.vehicle, profile)
-        was_near = self.__warning_active.get(player, False)
-        if is_near and not was_near:
-            self.__play_positional_sound(player, GameSound.WARNING_1, volume=70.0)
-        self.__warning_active[player] = is_near
-
-    def __update_motor_sound(self, player: Player) -> None:
-        """Update one player's continuous engine sound from its vehicle state."""
-        motor_sound = self.__motor_sounds.get(player)
-        if motor_sound is None:
-            return
-
-        vehicle = player.vehicle
-        max_speed = self.__settings.max_speed
-        max_acceleration = self.__settings.max_acceleration
-        speed_ratio = abs(vehicle.speed) / max_speed if max_speed else 0.0
-        acceleration_ratio = (
-            abs(vehicle.acceleration) / max_acceleration if max_acceleration else 0.0
-        )
-        ratio_left = self.__get_stereo_ratio_left_for_player(player)
-        motor_sound.update(speed_ratio, acceleration_ratio, ratio_left)
-
-    @staticmethod
-    def map_forward_press_to_acceleration(forward_press: float) -> float:
-        input_min = 42000  # 70% of 65536 is 45875, but rounding down to 42000 to give some buffer for switch activation
-        input_max = 65536
-        output_min = 0
-        output_max = 100
-        if forward_press < input_min:
-            return 0.0
-        if forward_press > input_max:
-            return 100.0
-
-        # calculation for the mapping: linear interpolation
-        # $$f(x) = (x - \text{input\_min}) \cdot \frac{\text{output\_max} - \text{output\_min}}{\text{input\_max} - \text{input\_min}} + \text{output\_min}$$
-        mapped_signal: float = (forward_press - input_min) * (
-            output_max - output_min
-        ) // (input_max - input_min) + output_min
-        # logger.log("Input: " + str(forward_press) + " -> " + str(mapped_signal))
-        return mapped_signal
-
-    def __handle_lane_change(self, player: Player, special_1_pressed: bool) -> None:
-        """Handle new immediate and automatic lane changes for the given player."""
-        vehicle = player.vehicle
-        lane = vehicle.lane
-        if lane is None or len(self.__lanes) < 3:
-            return
-
-        left_lane = self.__lanes[0]
-        middle_lane = self.__lanes[1]
-        right_lane = self.__lanes[2]
-
-        module_index, local_position = self.__get_track_module_index_and_local_position(
-            lane, vehicle.position
-        )
-        if module_index is None:
-            return
-
-        module = self.__track_modules[module_index]
-        line = module.get_line_for_lane(lane)
-        if line is None or not line.driving_profile.lane_change_allowed:
-            return
-
-        if lane in (left_lane, right_lane):
-            if (
-                special_1_pressed
-                and local_position <= self.__settings.lane_change_window
-            ):
-                logger.log("DEBUG: changing to middle lane!!!")
-                target_outer_lane = right_lane if lane == left_lane else left_lane
-                self.__lane_change_targets[player] = target_outer_lane
-
-                target_position = module.convert_position_between_lanes(
-                    lane, middle_lane, local_position
-                )
-                global_position = self.__build_global_lane_position(
-                    middle_lane, module_index, target_position
-                )
-                vehicle.set_lane(middle_lane)
-                vehicle.set_position(global_position)
-                self.__record_event(
-                    {
-                        "event": "lane_change_started",
-                        "player": player.name,
-                        "from_lane": lane.lane_id,
-                        "to_lane": middle_lane.lane_id,
-                    }
-                )
-        elif lane == middle_lane:
-            middle_line = module.get_line_for_lane(middle_lane)
-            if middle_line is None:
-                return
-            distance_to_end = middle_line.length - local_position
-            if distance_to_end <= self.__settings.lane_change_window:
-                target_lane = self.__lane_change_targets.get(player)
-                if target_lane is None:
-                    # In case a car gets on the middle lane somehow without a target, default to right.
-                    target_lane = right_lane
-
-                target_position = module.convert_position_between_lanes(
-                    middle_lane, target_lane, local_position
-                )
-                global_position = self.__build_global_lane_position(
-                    target_lane, module_index, target_position
-                )
-                vehicle.set_lane(target_lane)
-                vehicle.set_position(global_position)
-                self.__lane_change_targets.pop(player, None)
-                self.__record_event(
-                    {
-                        "event": "lane_change_finished",
-                        "player": player.name,
-                        "from_lane": middle_lane.lane_id,
-                        "to_lane": target_lane.lane_id,
-                    }
-                )
-
-    def __is_lane_available_for_respawn(self, lane: Lane, module_index: int) -> bool:
-        """Return whether lane is free of active vehicles in a given module index."""
-        for player in self.__players:
-            vehicle = player.vehicle
-            if not vehicle.active or vehicle.lane != lane:
-                continue
-
-            active_module_index, _ = self.__get_track_module_index_and_local_position(
-                lane,
-                vehicle.position,
-            )
-            if active_module_index == module_index:
-                return False
-
-        return True
-
-    def __try_respawn_player(self, player: Player) -> bool:
-        """Try to respawn one player at position 0 on the first module.
-
-        Returns:
-            bool: ``True`` when respawn succeeded.
-        """
-        if not self.__track_modules:
-            return False
-
-        first_module_index = 0
-        first_module = self.__track_modules[first_module_index]
-        for lane in self.__lanes:
-            if first_module.get_line_for_lane(lane) is None:
-                continue
-            if not self.__is_lane_available_for_respawn(lane, first_module_index):
-                continue
-
-            player.vehicle.set_lane(lane)
-            player.vehicle.set_position(0)
-            player.vehicle.set_speed(0)
-            player.vehicle.set_acceleration(
-                0, self.__settings.min_acceleration, self.__settings.max_acceleration
-            )
-            player.vehicle.set_respawn_ticks(0)
-            player.vehicle.set_active(True)
-            self.__record_event(
-                {
-                    "event": "player_respawned",
-                    "player": player.name,
-                    "lane": lane.lane_id,
-                    "position": player.vehicle.position,
-                }
-            )
-            return True
-
-        return False
-
-    def __handle_inactive_player_tick(self, player: Player) -> None:
-        """Tick one inactive player and attempt respawn when ready."""
-        vehicle = player.vehicle
-        if vehicle.respawn_ticks > 0:
-            vehicle.reduce_respawn_ticks(1)
-
-        if vehicle.respawn_ticks == 0 and not self.__try_respawn_player(player):
-            # Keep retrying every tick while no lane is safely available.
-            vehicle.set_active(False)
-            self.__record_event(
-                {
-                    "event": "respawn_retry_blocked",
-                    "player": player.name,
-                }
-            )
-
-    # Collision and Fall Detection
-    def __detect_and_apply_collisions(self):
-        """Detect same-lane rear-end collisions and mark front vehicles as fallen.
-
-        For each lane, players are ordered by position and only neighboring vehicles
-        can collide in one direction. If the forward gap is below or equal to the
-        configured crash distance, the vehicle in front falls.
-        """
-        players_to_fall: dict[Player, str] = {}
-        crash_distance = self.__settings.vehicle_crash_distance
-
-        for lane in self.__lanes:
-            lane_players = [
-                player
-                for player in self.__players
-                if player.vehicle.active and player.vehicle.lane == lane
-            ]
-            if len(lane_players) < 2:
-                continue
-
-            lane_length = self.get_lane_track_length(lane)
-            if lane_length <= 0:
-                continue
-
-            lane_players.sort(key=lambda player: player.vehicle.position)
-            for index, rear_player in enumerate(lane_players):
-                front_player = lane_players[(index + 1) % len(lane_players)]
-                forward_gap = (
-                    front_player.vehicle.position - rear_player.vehicle.position
-                ) % lane_length
-                if 0 < forward_gap <= crash_distance:
-                    players_to_fall[front_player] = (
-                        f"collision with {rear_player.name} at position {rear_player.vehicle.position:.2f}"
-                    )
-
-        for player, reason in players_to_fall.items():
-            if player.vehicle.active:
-                if self.__sound_manager is not None and GameSound is not None:
-                    self.__play_positional_sound(
-                        player, GameSound.CAR_CRASH_2, volume=90.0
-                    )
-                self.__fall_player(player, reason)
-
+    # main game loop
     def __game_loop(self):
         """Execute one simulation tick for all players.
 
@@ -940,6 +308,642 @@ class Game:
                 "signal_receiver": {"data": dict(self.__signal_receiver.get_data())},
             }
         )
+
+    def start_game(
+        self,
+        fetch_interval_s: float = 0.01,
+        display_interval_s: float = 0.02,
+        game_tick_interval_s: float = 0.02,
+    ):
+        self.__record_event(
+            {
+                "event": "game_started",
+            }
+        )
+
+        self.__game_tick_interval_s = game_tick_interval_s
+
+        # Start the continuous per-player engine loops before the worker
+        # threads begin updating their pitch and volume each tick.
+        self.__start_motor_sounds()
+
+        # Each worker owns one responsibility so timing stays predictable and easy to review.
+        self.__stop_event.clear()
+        self.__threads = [
+            threading.Thread(
+                target=self.__run_periodic_loop,
+                name="GameFetchThread",
+                args=(self.fetch_data, fetch_interval_s),
+                daemon=False,
+            ),
+            threading.Thread(
+                target=self.__run_periodic_loop,
+                name="GameDisplayThread",
+                args=(self.display, display_interval_s),
+                daemon=False,
+            ),
+            threading.Thread(
+                target=self.__run_periodic_loop,
+                name="GameTickThread",
+                args=(self.__game_loop, game_tick_interval_s),
+                daemon=False,
+            ),
+            # sound logic
+        ]
+
+        for thread in self.__threads:
+            thread.start()
+
+        try:
+            for thread in self.__threads:
+                thread.join()
+        except KeyboardInterrupt:
+            self.stop_game()
+            for thread in self.__threads:
+                thread.join()
+        finally:
+            self.__stop_motor_sounds()
+
+    def stop_game(self):
+        self.__stop_event.set()
+
+    def __run_periodic_loop(
+        self, action: Callable[[], None], interval_s: float
+    ) -> None:
+        # Use a monotonic clock so the loop keeps its cadence even if wall time changes.
+        next_run = time.perf_counter()
+        while not self.__stop_event.is_set():
+            next_run += interval_s
+            action()
+
+            remaining_s = next_run - time.perf_counter()
+            if remaining_s > 0:
+                self.__stop_event.wait(remaining_s)
+            else:
+                # If the action took longer than the requested cadence, continue immediately.
+                next_run = time.perf_counter()
+
+    def fetch_data(self):
+        self.__signal_receiver.receive_signal()
+
+    def __record_event(self, payload: dict[str, Any]) -> None:
+        """Store and emit one structured game event."""
+        event = {"tick": self.__tick_count, **payload}
+        self.__event_history.append(event)
+        if len(self.__event_history) > self.__event_history_limit:
+            self.__event_history = self.__event_history[-self.__event_history_limit :]
+        logger.log_json(event)
+
+    def tick_once(
+        self,
+        *,
+        fetch_data: bool = True,
+        show_display: bool = False,
+        game_tick_interval_s: float | None = None,
+    ) -> None:
+        """Run one deterministic game tick.
+
+        This API is intended for simulation and unit tests where external control
+        over tick cadence is preferred over threaded background loops.
+
+        Args:
+            fetch_data (bool, optional): Whether input receiver should be polled first.
+            show_display (bool, optional): Whether to call ``display`` after tick update.
+            game_tick_interval_s (float | None, optional): Tick duration used by
+                movement integration. ``None`` keeps the current configured value.
+        """
+        if game_tick_interval_s is not None:
+            self.__game_tick_interval_s = game_tick_interval_s
+
+        if fetch_data:
+            self.fetch_data()
+
+        self.__game_loop()
+
+        if show_display:
+            self.display()
+
+    # display
+    def display(self):
+        # self.log_fully()
+        if self.__display_manager is not None:
+            self.__display_manager.update(self)
+
+    # helpers
+    def get_lane_track_length(self, lane: Lane) -> float:
+        """Return total drivable length for one lane across all configured modules.
+
+        Args:
+            lane (Lane): Lane whose complete track length should be accumulated.
+
+        Returns:
+            float: Sum of all line lengths that belong to the given lane.
+        """
+        return sum([tm.get_line_length_for_lane(lane) for tm in self.__track_modules])
+
+    def __get_track_module_index_and_local_position(
+        self, lane: Lane, position: float
+    ) -> tuple[int | None, float]:
+        """Resolve one lane position to a concrete module index and lane-local position.
+
+        Args:
+            lane (Lane): Lane in which the position is interpreted.
+            position (float): Global lane position value.
+
+        Returns:
+            tuple[int | None, float]:
+                The matched module index and local position in that module.
+                Returns ``(None, 0.0)`` if no lane segment can be resolved.
+        """
+        lane_length = self.get_lane_track_length(lane)
+        if lane_length <= 0:
+            return None, 0.0
+
+        normalized_position = position % lane_length if position >= 0 else 0.0
+        cumulative = 0.0
+        for index, module in enumerate(self.__track_modules):
+            line_length = module.get_line_length_for_lane(lane)
+            if line_length <= 0:
+                continue
+
+            upper = cumulative + line_length
+            if normalized_position < upper:
+                return index, normalized_position - cumulative
+            cumulative = upper
+
+        return None, normalized_position
+
+    def __build_global_lane_position(
+        self, lane: Lane, module_index: int, module_local_position: float
+    ) -> float:
+        """Build global lane position from a module-local coordinate.
+
+        Args:
+            lane (Lane): Target lane.
+            module_index (int): Module index for the local position.
+            module_local_position (float): Offset within the lane line of that module.
+
+        Returns:
+            float: Global lane position coordinate.
+        """
+        global_position = 0.0
+        for idx in range(module_index):
+            global_position += self.__track_modules[idx].get_line_length_for_lane(lane)
+        return max(0.0, global_position + max(0.0, module_local_position))
+
+    def get_track_module_for_lane_position(
+        self, lane: Lane, position: float
+    ) -> tuple[TrackModule | None, float]:
+        """Resolve a lane position to its module and local offset inside that module.
+
+        The vehicle position is interpreted as a continuous coordinate on the selected lane.
+        This method maps that coordinate to one concrete track module and returns the
+        lane-local position used for proportional lane conversion.
+
+        Args:
+            lane (Lane): Lane used to interpret the global position value.
+            position (float): Global lane position coordinate.
+
+        Returns:
+            tuple[TrackModule | None, float]:
+                The matched track module and the module-local lane offset.
+                Returns ``(None, 0.0)`` if the lane has no positive total length.
+        """
+        module_index, local_position = self.__get_track_module_index_and_local_position(
+            lane, position
+        )
+        if module_index is None:
+            return None, local_position
+        return self.__track_modules[module_index], local_position
+
+    def __fall_player(self, player: Player, reason: str) -> None:
+        """Move one player into respawn state and clear pending lane-change state."""
+        self.__lane_change_targets.pop(player, None)
+        self.__record_event(
+            {
+                "event": "player_fell",
+                "player": player.name,
+                "reason": reason,
+                "lane": player.vehicle.lane.lane_id
+                if player.vehicle.lane is not None
+                else None,
+                "position": player.vehicle.position,
+                "speed": player.vehicle.speed,
+                "acceleration": player.vehicle.acceleration,
+                "respawn_ticks": self.__settings.respawn_ticks,
+            }
+        )
+        player.vehicle.trigger_respawn(self.__settings.respawn_ticks)
+
+    def __lane_gap_reason(self, player: Player, delta_position: float) -> str | None:
+        """Return a short reason when movement enters a lane gap."""
+        if delta_position == 0:
+            return None
+
+        lane = player.vehicle.lane
+        if lane is None:
+            return "lane is ended: vehicle has no lane"
+        if not self.__track_modules:
+            return "lane is ended: no track modules configured"
+
+        module_index, module_position = (
+            self.__get_track_module_index_and_local_position(
+                lane, player.vehicle.position
+            )
+        )
+        if module_index is None:
+            return "lane is ended: current lane position not resolvable"
+
+        remaining = delta_position
+        track_module_count = len(self.__track_modules)
+
+        while remaining != 0:
+            current_module = self.__track_modules[module_index]
+            current_line_length = current_module.get_line_length_for_lane(lane)
+            if current_line_length <= 0:
+                return f"lane is ended in module {module_index}"
+
+            if remaining > 0:
+                distance_to_end = max(current_line_length - module_position, 0.0)
+                if remaining <= distance_to_end:
+                    return None
+
+                remaining -= distance_to_end
+                module_index = (module_index + 1) % track_module_count
+                if (
+                    self.__track_modules[module_index].get_line_length_for_lane(lane)
+                    <= 0
+                ):
+                    return f"lane is ended: missing next lane segment in module {module_index}"
+                module_position = 0.0
+                continue
+
+            distance_to_start = max(module_position, 0.0)
+            if -remaining <= distance_to_start:
+                return None
+
+            remaining += distance_to_start
+            module_index = (module_index - 1) % track_module_count
+            previous_line_length = self.__track_modules[
+                module_index
+            ].get_line_length_for_lane(lane)
+            if previous_line_length <= 0:
+                return f"lane is ended: missing previous lane segment in module {module_index}"
+            module_position = previous_line_length
+
+        return None
+
+    @staticmethod
+    def __get_profile_violation_reason(player: Player, profile: Any) -> str | None:
+        """Return short violation string for speed/acceleration bounds."""
+        speed = player.vehicle.speed
+        acceleration = player.vehicle.acceleration
+
+        if speed > profile.max_speed:
+            return f"speed ({speed:.2f}) > {profile.max_speed:.2f}"
+        if speed < profile.min_speed:
+            return f"speed ({speed:.2f}) < {profile.min_speed:.2f}"
+        if acceleration > profile.max_acceleration:
+            return f"acceleration ({acceleration:.2f}) > {profile.max_acceleration:.2f}"
+        if acceleration < profile.min_acceleration:
+            return f"acceleration ({acceleration:.2f}) < {profile.min_acceleration:.2f}"
+
+        return None
+
+    @staticmethod
+    def map_forward_press_to_acceleration(forward_press: float) -> float:
+        input_min = 42000  # 70% of 65536 is 45875, but rounding down to 42000 to give some buffer for switch activation
+        input_max = 65536
+        output_min = 0
+        output_max = 100
+        if forward_press < input_min:
+            return 0.0
+        if forward_press > input_max:
+            return 100.0
+
+        # calculation for the mapping: linear interpolation
+        # $$f(x) = (x - \text{input\_min}) \cdot \frac{\text{output\_max} - \text{output\_min}}{\text{input\_max} - \text{input\_min}} + \text{output\_min}$$
+        mapped_signal: float = (forward_press - input_min) * (
+            output_max - output_min
+        ) // (input_max - input_min) + output_min
+        # logger.log("Input: " + str(forward_press) + " -> " + str(mapped_signal))
+        return mapped_signal
+
+    def __handle_lane_change(self, player: Player, special_1_pressed: bool) -> None:
+        """Handle new immediate and automatic lane changes for the given player."""
+        vehicle = player.vehicle
+        lane = vehicle.lane
+        if lane is None or len(self.__lanes) < 3:
+            return
+
+        left_lane = self.__lanes[0]
+        middle_lane = self.__lanes[1]
+        right_lane = self.__lanes[2]
+
+        module_index, local_position = self.__get_track_module_index_and_local_position(
+            lane, vehicle.position
+        )
+        if module_index is None:
+            return
+
+        module = self.__track_modules[module_index]
+        line = module.get_line_for_lane(lane)
+        if line is None or not line.driving_profile.lane_change_allowed:
+            return
+
+        if lane in (left_lane, right_lane):
+            if (
+                special_1_pressed
+                and local_position <= self.__settings.lane_change_window
+            ):
+                logger.log("DEBUG: changing to middle lane!!!")
+                target_outer_lane = right_lane if lane == left_lane else left_lane
+                self.__lane_change_targets[player] = target_outer_lane
+
+                target_position = module.convert_position_between_lanes(
+                    lane, middle_lane, local_position
+                )
+                global_position = self.__build_global_lane_position(
+                    middle_lane, module_index, target_position
+                )
+                vehicle.set_lane(middle_lane)
+                vehicle.set_position(global_position)
+                self.__record_event(
+                    {
+                        "event": "lane_change_started",
+                        "player": player.name,
+                        "from_lane": lane.lane_id,
+                        "to_lane": middle_lane.lane_id,
+                    }
+                )
+        elif lane == middle_lane:
+            middle_line = module.get_line_for_lane(middle_lane)
+            if middle_line is None:
+                return
+            distance_to_end = middle_line.length - local_position
+            if distance_to_end <= self.__settings.lane_change_window:
+                target_lane = self.__lane_change_targets.get(player)
+                if target_lane is None:
+                    # In case a car gets on the middle lane somehow without a target, default to right.
+                    target_lane = right_lane
+
+                target_position = module.convert_position_between_lanes(
+                    middle_lane, target_lane, local_position
+                )
+                global_position = self.__build_global_lane_position(
+                    target_lane, module_index, target_position
+                )
+                vehicle.set_lane(target_lane)
+                vehicle.set_position(global_position)
+                self.__lane_change_targets.pop(player, None)
+                self.__record_event(
+                    {
+                        "event": "lane_change_finished",
+                        "player": player.name,
+                        "from_lane": middle_lane.lane_id,
+                        "to_lane": target_lane.lane_id,
+                    }
+                )
+
+    # motor sound initialization
+    def __start_motor_sounds(self) -> None:
+        """Start the looping engine sound for every player."""
+        for motor_sound in self.__motor_sounds.values():
+            motor_sound.start()
+
+    def __stop_motor_sounds(self) -> None:
+        """Stop the looping engine sound for every player."""
+        for motor_sound in self.__motor_sounds.values():
+            motor_sound.stop()
+
+    # Sound helpers
+    def __get_stereo_ratio_left_for_player(self, player: Player) -> float:
+        """Return the left-channel stereo ratio for a player's current module.
+
+        Args:
+            player (Player): Player whose track position selects the module.
+
+        Returns:
+            float: Left ratio in [0.0, 1.0]; defaults to ``0.5`` (centered)
+                when the player has no resolvable lane or module.
+        """
+        lane = player.vehicle.lane
+        if lane is None:
+            return 0.5
+
+        module, _ = self.get_track_module_for_lane_position(
+            lane, player.vehicle.position
+        )
+        if module is None:
+            return 0.5
+        return module.sound_stereo_ratio_left
+
+    @staticmethod
+    def __stereo_ratio_to_channel_volumes(ratio_left: float) -> tuple[float, float]:
+        """Convert a left stereo ratio to (left, right) channel volumes (0-100)."""
+        ratio_left = min(1.0, max(0.0, ratio_left))
+        return ratio_left * 100.0, (1.0 - ratio_left) * 100.0
+
+    def __play_positional_sound(
+        self, player: Player, sound: Any, volume: float
+    ) -> None:
+        """Play a one-shot sound panned to the player's current track module.
+
+        Args:
+            player (Player): Player used to derive the stereo position.
+            sound (GameSound): Sound effect to play.
+            volume (float): Overall volume of the effect (0-100).
+        """
+        if self.__sound_manager is None or GameSound is None:
+            return
+
+        ratio_left = self.__get_stereo_ratio_left_for_player(player)
+        left_volume, right_volume = self.__stereo_ratio_to_channel_volumes(ratio_left)
+        self.__sound_manager.play(
+            sound_name_or_path=sound,
+            # loop=False,
+            # pitch=1.0,
+            volume=volume,
+            left_volume=left_volume,
+            right_volume=right_volume,
+        )
+
+    @staticmethod
+    def __is_near_profile_bounds(vehicle, profile: Any, threshold: float = 0.2) -> bool:
+        """Return whether speed or acceleration is close to a profile limit.
+
+        A value is considered "near a bound" when it falls within ``threshold``
+        of the span on either side, i.e. inside ``[lower, lower + margin]`` or
+        ``[upper - margin, upper]`` with ``margin = (upper - lower) * threshold``.
+        This captures the upper warning band ``[max * 0.8, max]`` as well as the
+        symmetric band next to the lower limit for both speed and acceleration.
+
+        Args:
+            vehicle: Vehicle whose speed and acceleration are inspected.
+            profile (Any): Driving profile providing the min/max bounds.
+            threshold (float): Fraction of the span treated as the warning band.
+
+        Returns:
+            bool: ``True`` when speed or acceleration is within the warning band.
+        """
+
+        def near(value: float, lower: float, upper: float) -> bool:
+            span = upper - lower
+            if span <= 0:
+                return False
+            margin = span * threshold
+            return value <= lower + margin or value >= upper - margin
+
+        return near(vehicle.speed, profile.min_speed, profile.max_speed) or near(
+            vehicle.acceleration,
+            profile.min_acceleration,
+            profile.max_acceleration,
+        )
+
+    def __update_warning_sound(self, player: Player, profile: Any) -> None:
+        """Play a warning sound once when a player enters the warning band.
+
+        The warning is edge-triggered: it fires only on the transition into the
+        warning band and resets once the player leaves it, preventing the sound
+        from repeating on every tick.
+        """
+        if self.__sound_manager is None or GameSound is None:
+            return
+
+        is_near = self.__is_near_profile_bounds(player.vehicle, profile)
+        was_near = self.__warning_active.get(player, False)
+        if is_near and not was_near:
+            self.__play_positional_sound(player, GameSound.WARNING_1, volume=70.0)
+        self.__warning_active[player] = is_near
+
+    def __update_motor_sound(self, player: Player) -> None:
+        """Update one player's continuous engine sound from its vehicle state."""
+        motor_sound = self.__motor_sounds.get(player)
+        if motor_sound is None:
+            return
+
+        vehicle = player.vehicle
+        max_speed = self.__settings.max_speed
+        max_acceleration = self.__settings.max_acceleration
+        speed_ratio = abs(vehicle.speed) / max_speed if max_speed else 0.0
+        acceleration_ratio = (
+            abs(vehicle.acceleration) / max_acceleration if max_acceleration else 0.0
+        )
+        ratio_left = self.__get_stereo_ratio_left_for_player(player)
+        motor_sound.update(speed_ratio, acceleration_ratio, ratio_left)
+
+
+    # collision and respawn
+    def __is_lane_available_for_respawn(self, lane: Lane, module_index: int) -> bool:
+        """Return whether lane is free of active vehicles in a given module index."""
+        for player in self.__players:
+            vehicle = player.vehicle
+            if not vehicle.active or vehicle.lane != lane:
+                continue
+
+            active_module_index, _ = self.__get_track_module_index_and_local_position(
+                lane,
+                vehicle.position,
+            )
+            if active_module_index == module_index:
+                return False
+
+        return True
+
+    def __try_respawn_player(self, player: Player) -> bool:
+        """Try to respawn one player at position 0 on the first module.
+
+        Returns:
+            bool: ``True`` when respawn succeeded.
+        """
+        if not self.__track_modules:
+            return False
+
+        first_module_index = 0
+        first_module = self.__track_modules[first_module_index]
+        for lane in self.__lanes:
+            if first_module.get_line_for_lane(lane) is None:
+                continue
+            if not self.__is_lane_available_for_respawn(lane, first_module_index):
+                continue
+
+            player.vehicle.set_lane(lane)
+            player.vehicle.set_position(0)
+            player.vehicle.set_speed(0)
+            player.vehicle.set_acceleration(
+                0, self.__settings.min_acceleration, self.__settings.max_acceleration
+            )
+            player.vehicle.set_respawn_ticks(0)
+            player.vehicle.set_active(True)
+            self.__record_event(
+                {
+                    "event": "player_respawned",
+                    "player": player.name,
+                    "lane": lane.lane_id,
+                    "position": player.vehicle.position,
+                }
+            )
+            return True
+
+        return False
+
+    def __handle_inactive_player_tick(self, player: Player) -> None:
+        """Tick one inactive player and attempt respawn when ready."""
+        vehicle = player.vehicle
+        if vehicle.respawn_ticks > 0:
+            vehicle.reduce_respawn_ticks(1)
+
+        if vehicle.respawn_ticks == 0 and not self.__try_respawn_player(player):
+            # Keep retrying every tick while no lane is safely available.
+            vehicle.set_active(False)
+            self.__record_event(
+                {
+                    "event": "respawn_retry_blocked",
+                    "player": player.name,
+                }
+            )
+
+    def __detect_and_apply_collisions(self):
+        """Detect same-lane rear-end collisions and mark front vehicles as fallen.
+
+        For each lane, players are ordered by position and only neighboring vehicles
+        can collide in one direction. If the forward gap is below or equal to the
+        configured crash distance, the vehicle in front falls.
+        """
+        players_to_fall: dict[Player, str] = {}
+        crash_distance = self.__settings.vehicle_crash_distance
+
+        for lane in self.__lanes:
+            lane_players = [
+                player
+                for player in self.__players
+                if player.vehicle.active and player.vehicle.lane == lane
+            ]
+            if len(lane_players) < 2:
+                continue
+
+            lane_length = self.get_lane_track_length(lane)
+            if lane_length <= 0:
+                continue
+
+            lane_players.sort(key=lambda player: player.vehicle.position)
+            for index, rear_player in enumerate(lane_players):
+                front_player = lane_players[(index + 1) % len(lane_players)]
+                forward_gap = (
+                    front_player.vehicle.position - rear_player.vehicle.position
+                ) % lane_length
+                if 0 < forward_gap <= crash_distance:
+                    players_to_fall[front_player] = (
+                        f"collision with {rear_player.name} at position {rear_player.vehicle.position:.2f}"
+                    )
+
+        for player, reason in players_to_fall.items():
+            if player.vehicle.active:
+                if self.__sound_manager is not None and GameSound is not None:
+                    self.__play_positional_sound(
+                        player, GameSound.CAR_CRASH_2, volume=90.0
+                    )
+                self.__fall_player(player, reason)
 
     # Getters
     @property
