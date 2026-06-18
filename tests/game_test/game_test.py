@@ -142,8 +142,8 @@ def run_ticks(game: Game, tick_count: int) -> None:
     assert vehicle.round == 1
 
 
-def test_lane_change_immediately_moves_to_middle_lane_when_button_pressed_in_window():
-    """Lane change switches immediately to the middle lane if button is pressed in the first 20 units."""
+def test_lane_change_immediately_moves_to_middle_lane_when_button_pressed_before_end_window():
+    """Lane change switches immediately to the middle lane if button is pressed before the last 20 units."""
     lanes = [Lane(), Lane(), Lane()]
     modules = make_track_modules(
         lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True
@@ -152,9 +152,9 @@ def test_lane_change_immediately_moves_to_middle_lane_when_button_pressed_in_win
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
-    # Position = 10.0, within the 20.0 window
+    # Position = 70.0, distance to end is 30.0 > 20.0, allowed
     player = Player(
-        controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0)
+        controller=controller, vehicle=Vehicle(lane=lanes[0], position=70.0)
     )
     game = make_game(lanes, [player], modules, settings=settings)
 
@@ -162,8 +162,8 @@ def test_lane_change_immediately_moves_to_middle_lane_when_button_pressed_in_win
     assert player.vehicle.lane == lanes[1]
 
 
-def test_lane_change_is_ignored_if_button_pressed_outside_window():
-    """Lane change must be blocked if button is pressed AFTER the first 20 units."""
+def test_lane_change_is_ignored_if_button_pressed_inside_end_window():
+    """Lane change must be blocked if button is pressed in the last 20 units."""
     lanes = [Lane(), Lane(), Lane()]
     modules = make_track_modules(
         lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True
@@ -172,14 +172,54 @@ def test_lane_change_is_ignored_if_button_pressed_outside_window():
 
     controller = PlayerController()
     set_controller_input(controller, special_1=1.0)
-    # Position = 30.0, outside the 20.0 window
+    # Position = 90.0, distance to end is 10.0 <= 20.0, blocked
     player = Player(
-        controller=controller, vehicle=Vehicle(lane=lanes[0], position=30.0)
+        controller=controller, vehicle=Vehicle(lane=lanes[0], position=90.0)
     )
     game = make_game(lanes, [player], modules, settings=settings)
 
     run_game_tick_for_test(game)
     assert player.vehicle.lane == lanes[0]
+
+
+def test_lane_change_manual_switch_from_middle_lane():
+    """Lane switch from middle lane manually after travelling lane_change_window units."""
+    lanes = [Lane(), Lane(), Lane()]
+    modules = make_track_modules(
+        lanes, [[100.0, 100.0, 100.0]], lane_change_allowed=True
+    )
+    settings = Settings(lane_change_window=20.0, max_speed=0.0)
+
+    controller = PlayerController()
+    player = Player(
+        controller=controller, vehicle=Vehicle(lane=lanes[0], position=10.0)
+    )
+    game = make_game(lanes, [player], modules, settings=settings)
+
+    # Press button, distance to end 90 > 20
+    set_controller_input(controller, special_1=1.0)
+    run_game_tick_for_test(game)
+    assert player.vehicle.lane == lanes[1]
+
+    # Stop pressing button
+    set_controller_input(controller, special_1=0.0)
+    run_game_tick_for_test(game)
+
+    # Move vehicle to position 25 (only travelled 15 units, < 20)
+    player.vehicle.set_position(25.0)
+    set_controller_input(controller, special_1=1.0)
+    run_game_tick_for_test(game)
+    assert player.vehicle.lane == lanes[1] # Manual change blocked
+
+    # Stop pressing button
+    set_controller_input(controller, special_1=0.0)
+    run_game_tick_for_test(game)
+
+    # Move vehicle to position 35 (travelled 25 units, >= 20)
+    player.vehicle.set_position(35.0)
+    set_controller_input(controller, special_1=1.0)
+    run_game_tick_for_test(game)
+    assert player.vehicle.lane == lanes[2] # Manual change succeeded
 
 
 def test_lane_change_finishes_automatically_near_end_of_middle_lane():

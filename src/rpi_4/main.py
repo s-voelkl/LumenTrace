@@ -230,7 +230,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     real_strips = {}
     virtual_strips = []
 
-    leds_total_strip_0 = 249 - 6
+    leds_total_strip_0 = 249 - 6 # cut this away
     leds_total_strip_1 = 248
 
     leds_add_strip_0 = 30 - 6
@@ -433,17 +433,12 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_0,
                     line_length=34.0,
                 ),
-                # Line(
-                #     driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
-                #     lane=lane_1b,
-                #     line_length=34.2,  # TODO: edit this intersection!
-                # ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_2,
                     line_length=34.3,
                 ),

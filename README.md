@@ -96,10 +96,10 @@ Track layout used by the simulation:
 - Lane changes are triggered by pressing the `special_1` button.
 - A lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`. This is typically used for intersection modules.
 - By default, there are two main lanes: the left lane and the right lane. Intersections introduce a temporary middle lane to facilitate the switch.
-- The lane change can only be initiated within a specific window at the beginning of the track module (e.g., the first 20 units, configured via `lane_change_window`).
-- If the player presses the button within this window, the vehicle immediately switches to the middle lane.
-- Once on the middle lane, manual lane changes are disabled.
-- The vehicle continues on the middle lane until it reaches the end of the module (specifically, `lane_change_window` units before the end). At that point, it automatically switches to the target outer lane, completing the lane change smoothly.
+- A manual lane change from the outer lanes to the middle lane can be initiated anywhere on the module, except for the last `lane_change_window` units before the end of the module.
+- After pressing the button, the vehicle switches to the middle lane.
+- From the middle lane, the player can switch to the target outer lane manually by pressing the button again, provided the vehicle has travelled at least `lane_change_window` units on the middle lane.
+- The vehicle continues on the middle lane until it reaches the end of the module (specifically, `lane_change_window` units before the end). At that point, it automatically switches to the target outer lane, completing the lane change smoothly if the player hasn't already changed lanes manually.
 
 ### Position Conversion During Lane Change
 

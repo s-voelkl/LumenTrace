@@ -50,7 +50,6 @@ class Game:
         self.__display_manager = display_manager
         self.__sound_manager = sound_manager
         self.__event_history: list[dict[str, Any]] = []
-        self.__lane_change_targets: dict[Player, Lane] = {}
         self.__event_history_limit = 200
         self.__tick_count = 0
 
@@ -518,7 +517,6 @@ class Game:
 
     def __fall_player(self, player: Player, reason: str) -> None:
         """Move one player into respawn state and clear pending lane-change state."""
-        self.__lane_change_targets.pop(player, None)
         self.__record_event(
             {
                 "event": "player_fell",
@@ -651,23 +649,25 @@ class Game:
         if line is None or not line.driving_profile.lane_change_allowed:
             return
 
+        distance_to_end = line.length - local_position
+
         if lane in (left_lane, right_lane):
             if (
                 special_1_pressed
-                and local_position <= self.__settings.lane_change_window
+                and distance_to_end > self.__settings.lane_change_window
             ):
-                logger.log("DEBUG: changing to middle lane!!!")
                 target_outer_lane = right_lane if lane == left_lane else left_lane
-                self.__lane_change_targets[player] = target_outer_lane
 
                 target_position = module.convert_position_between_lanes(
                     lane, middle_lane, local_position
                 )
+                
                 global_position = self.__build_global_lane_position(
                     middle_lane, module_index, target_position
                 )
                 vehicle.set_lane(middle_lane)
                 vehicle.set_position(global_position)
+                vehicle.set_lane_change(target_outer_lane, target_position)
                 self.__record_event(
                     {
                         "event": "lane_change_started",
@@ -677,12 +677,8 @@ class Game:
                     }
                 )
         elif lane == middle_lane:
-            middle_line = module.get_line_for_lane(middle_lane)
-            if middle_line is None:
-                return
-            distance_to_end = middle_line.length - local_position
             if distance_to_end <= self.__settings.lane_change_window:
-                target_lane = self.__lane_change_targets.get(player)
+                target_lane = vehicle.lane_change_target
                 if target_lane is None:
                     # In case a car gets on the middle lane somehow without a target, default to right.
                     target_lane = right_lane
@@ -695,7 +691,7 @@ class Game:
                 )
                 vehicle.set_lane(target_lane)
                 vehicle.set_position(global_position)
-                self.__lane_change_targets.pop(player, None)
+                vehicle.clear_lane_change()
                 self.__record_event(
                     {
                         "event": "lane_change_finished",
@@ -704,6 +700,30 @@ class Game:
                         "to_lane": target_lane.lane_id,
                     }
                 )
+            else:
+                start_position = vehicle.lane_change_start_position
+                if special_1_pressed and (local_position - start_position) >= self.__settings.lane_change_window:
+                    target_lane = vehicle.lane_change_target
+                    if target_lane is None:
+                        target_lane = right_lane
+
+                    target_position = module.convert_position_between_lanes(
+                        middle_lane, target_lane, local_position
+                    )
+                    global_position = self.__build_global_lane_position(
+                        target_lane, module_index, target_position
+                    )
+                    vehicle.set_lane(target_lane)
+                    vehicle.set_position(global_position)
+                    vehicle.clear_lane_change()
+                    self.__record_event(
+                        {
+                            "event": "lane_change_finished",
+                            "player": player.name,
+                            "from_lane": middle_lane.lane_id,
+                            "to_lane": target_lane.lane_id,
+                        }
+                    )
 
     # motor sound initialization
     def __start_motor_sounds(self) -> None:
