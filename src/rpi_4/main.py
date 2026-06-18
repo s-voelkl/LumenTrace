@@ -51,6 +51,9 @@ def main():
     logger.log("SoundManager started successfully. Building game and display...")
     game, display = build_game(sound_manager)
 
+    logger.log("Clearing all LEDs on startup...")
+    clear_all_leds(display)
+
     # logger.log(
     #     "Setup of Game, SignalReceiver, and PlayerController complete. "
     #     "Waiting for all players to press their start button."
@@ -75,6 +78,12 @@ def main():
         )
     finally:
         sound_manager.stop_all()
+
+
+def clear_all_leds(display: LedDisplay) -> None:
+    """Clear all LEDs to black before applying new colors on startup."""
+    display.clear()
+    display.render()
 
 
 def wait_for_start_signal(
@@ -214,22 +223,25 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     # signal_receiver = SignalReceiver(controllers=[player_controller_1])
 
     lane_0 = Lane()  # 0
-    lane_1 = Lane()  # 1 middle lane
+    lane_1 = Lane()  # 1
     lane_2 = Lane()  # 2
 
     # Configuring display and display manager
     real_strips = {}
     virtual_strips = []
 
-    strip_total_leds = 250
-    # strip_0_leds = strip_total_leds -32
-    strip_0_leds = strip_total_leds
-    # strip_1_leds = strip_total_leds -33
-    strip_1_leds = strip_total_leds
+    leds_total_strip_0 = 249 - 6
+    leds_total_strip_1 = 248
+
+    leds_add_strip_0 = 30 - 6
+    leds_add_strip_1 = 30
+    
+    leds_main_strip_0 = leds_total_strip_0 - leds_add_strip_0
+    leds_main_strip_1 = leds_total_strip_1 - leds_add_strip_1
     
     if RPI_WS281X_AVAILABLE and PixelStrip is not None:
         strip0 = PixelStrip(
-            num=strip_0_leds,
+            num=leds_total_strip_0,
             pin=18,
             freq_hz=800_000,
             dma=10,
@@ -238,7 +250,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             channel=0,  # needed for gpio 18
         )
         strip1 = PixelStrip(
-            num=strip_1_leds,
+            num=leds_total_strip_1,
             pin=19,
             freq_hz=800_000,
             dma=10,
@@ -256,13 +268,13 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
 
     virtual_strips = [
         VirtualLedStrip(
-            lane=lane_0, real_strip_id=0, min_index=0, max_index=strip_0_leds - 1
+            lane=lane_0, real_strip_id=0, min_index=0, max_index=leds_main_strip_0 - 1
         ),
-        # VirtualLedStrip(
-        #     lane=lane_1, real_strip_id=1, min_index=strip_1_leds, max_index=strip_total_leds - 1
-        # ),
         VirtualLedStrip(
-            lane=lane_2, real_strip_id=1, min_index=0, max_index=strip_1_leds - 1
+            lane=lane_1, real_strip_id=0, min_index=leds_main_strip_0, max_index=leds_total_strip_0 - 1
+        ),
+        VirtualLedStrip(
+            lane=lane_2, real_strip_id=1, min_index=0, max_index=leds_main_strip_1 - 1
         ),
     ]
 
@@ -416,7 +428,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             ],
         ),
         TrackModule(
-            track_type=TrackType.INTERSECTION,
+            track_type=TrackType.STRAIGHT,
             part_length=34.2,
             sound_stereo_ratio_left=0.5,
             lines=[
@@ -425,11 +437,11 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
                     lane=lane_0,
                     line_length=34.0,
                 ),
-                Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
-                    lane=lane_1,
-                    line_length=34.2,  # TODO: edit this intersection!
-                ),
+                # Line(
+                #     driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
+                #     lane=lane_1b,
+                #     line_length=34.2,  # TODO: edit this intersection!
+                # ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
                     lane=lane_2,
