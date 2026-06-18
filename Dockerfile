@@ -18,6 +18,16 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+# Install build tools required to compile native C extensions
+# (RPi.GPIO and rpi-ws281x build C code for GPIO/UART access).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        make \
+        build-essential \
+        libportaudio2 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
 # Leverage a bind mount to requirements.txt to avoid having to copy them into

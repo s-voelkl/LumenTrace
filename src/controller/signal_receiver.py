@@ -56,7 +56,7 @@ class SignalReceiver(SignalReceiverInterface):
             decoded_line = line.decode("utf-8").strip()
 
             if not decoded_line:
-                print("Received empty line after decoding.")
+                # print("Received empty line after decoding.")
                 return
 
             # JSON parse

@@ -21,10 +21,15 @@ class TrackModule:
         track_type: TrackType = TrackType.NONE,
         part_length: float = 0,
         lines: list[Line] | None = None,
+        sound_stereo_ratio_left: float = 0.5,
     ):
         self.__track_type = track_type if track_type in self.__track_types else TrackType.NONE
         self.__length = part_length if part_length >= 0 else 0
         self.__lines = lines if lines else []
+        # Clamp the stereo balance to the valid [0.0, 1.0] range. A value of
+        # 1.0 routes the motor sound fully to the left speaker, 0.0 fully to
+        # the right speaker, and 0.5 keeps it centered.
+        self.__sound_stereo_ratio_left = min(1.0, max(0.0, sound_stereo_ratio_left))
 
     def get_line_length_for_lane(self, lane: Lane) -> float:
         '''Returns the line length for the given lane. If the lane is not found, returns 0.0.
@@ -75,3 +80,22 @@ class TrackModule:
     @property
     def track_type(self) -> TrackType:
         return self.__track_type
+
+    @property
+    def sound_stereo_ratio_left(self) -> float:
+        """Stereo balance of the motor sound for this module.
+
+        Returns:
+            float: Left-channel ratio in the range [0.0, 1.0]. The right
+                channel ratio is ``1.0 - sound_stereo_ratio_left``.
+        """
+        return self.__sound_stereo_ratio_left
+
+    @property
+    def sound_stereo_ratio_right(self) -> float:
+        """Right-channel stereo ratio, complementary to the left ratio.
+
+        Returns:
+            float: ``1.0 - sound_stereo_ratio_left``.
+        """
+        return 1.0 - self.__sound_stereo_ratio_left

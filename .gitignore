@@ -211,4 +211,7 @@ marimo/_lsp/
 __marimo__/
 
 # Draw.io
-.bkp
+*.bkp
+
+# docker
+get-docker.sh

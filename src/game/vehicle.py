@@ -75,8 +75,8 @@ class Vehicle:
         # Runtime state flags and timers.
         self.__respawn_ticks: int = 0
         self.__active: bool = True
-        self.__line_change_ticks: int = 0
-        self.__line_change_target: Lane | None = None
+        self.__lane_change_target: Lane | None = None
+        self.__lane_change_start_position: float = 0.0
         
     def reduce_respawn_ticks(self, ticks: int = 1):
         '''Reduces the respawn ticks by a specified amount, ensuring it does not go below zero.
@@ -104,30 +104,19 @@ class Vehicle:
             self.__position = 0
             self.__acceleration = 0
             self.__lane = None
-            self.__line_change_ticks = 0
-            self.__line_change_target = None
+            self.__lane_change_target = None
+            self.__lane_change_start_position = 0.0
         else:
             self.__active = True
             
-    def reduce_line_change_ticks(self, ticks: int = 1):
-        '''Reduces the line change ticks by a specified amount, ensuring it does not go below zero.
-        If the line change ticks reach zero, the line change target is cleared.
-        
-        Args:
-            ticks (int): The number of ticks to reduce. Default is 1.
-        '''
-
-        self.__line_change_ticks = max(self.__line_change_ticks - ticks, 0)
-        if self.__line_change_ticks == 0:
-            self.__line_change_target = None
-            
-    def trigger_line_change(self, target_lane: Lane, line_change_ticks: int):
-        # set line change target and ticks
-        # checks if target is not the same as current lane and if line change ticks is greater than 0
-        if target_lane != self.__lane and line_change_ticks > 0:
-            self.__line_change_target = target_lane
-            self.__line_change_ticks = line_change_ticks
+    def set_lane_change(self, target_lane: Lane | None, start_position: float):
+        self.__lane_change_target = target_lane
+        self.__lane_change_start_position = start_position
     
+    def clear_lane_change(self):
+        self.__lane_change_target = None
+        self.__lane_change_start_position = 0.0
+
     def apply_friction(self, fraction_percent: float = 0.02):
         '''Applies friction to the vehicle's speed by reducing it by a fraction of its current value.
         
@@ -255,12 +244,12 @@ class Vehicle:
         return self.__active
     
     @property
-    def line_change_ticks(self) -> int:
-        return self.__line_change_ticks
+    def lane_change_start_position(self) -> float:
+        return self.__lane_change_start_position
     
     @property
-    def line_change_target(self) -> Lane | None:
-        return self.__line_change_target
+    def lane_change_target(self) -> Lane | None:
+        return self.__lane_change_target
 
     @property
     def primary_color(self) -> tuple[int, int, int]:
