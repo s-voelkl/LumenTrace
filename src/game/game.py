@@ -506,8 +506,7 @@ class Game:
     @staticmethod
     def map_forward_press_to_acceleration(forward_press: float) -> float:
         input_min = 42000  # 70% of 65536 is 45875, but rounding down to 42000 to give some buffer for switch activation
-        # input_max = 65536 # TODO: revert this for better input quality again!
-        input_max = 45000
+        input_max = 65536
         output_min = 0
         output_max = 100
         if forward_press < input_min:
