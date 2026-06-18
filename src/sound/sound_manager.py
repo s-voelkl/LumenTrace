@@ -169,8 +169,9 @@ class SoundManager:
         """
         Callback used by sounddevice to fetch the next chunk of mixed audio.
         """
-        if status:
-            logger.log(f"Audio stream status: {status}")
+        # TODO: fix status
+        # if status:
+        #     logger.log(f"Audio stream status: {status}")
 
         # Initialize output buffer to zeros
         out = np.zeros((frames, _DEFAULT_CHANNELS), dtype="float32")
