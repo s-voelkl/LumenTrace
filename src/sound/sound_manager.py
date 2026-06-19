@@ -39,7 +39,7 @@ class GameSound(Enum):
     that call sites stay decoupled from concrete file paths.
     """
 
-    ENGINE = SoundEffect("Engine Loop", "assets/sound/base-engine.wav")
+    ENGINE = SoundEffect("Engine Loop", "assets/sound/base-engine-1.wav")
     START_SIGNAL = SoundEffect(
         "Start Signal 3-2-1-Go", "assets/sound/startup-sound.mp3"
     )
@@ -436,7 +436,7 @@ if __name__ == "__main__":
         logger.log("Playing first sound exclusively on the right speaker...")
         # 3. Play a sound exclusively on the right speaker
         # Make sure to provide a valid wav file for your environment
-        dummy_wav = "assets/sound/base-engine.wav"
+        dummy_wav = "assets/sound/base-engine-1.wav"
         try:
             sound1_id = manager.play(
                 sound_name_or_path=dummy_wav,
