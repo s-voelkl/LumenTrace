@@ -44,7 +44,6 @@ def main():
     sound_manager = SoundManager()
     try:
         sound_manager.start()
-        # sound_manager.play(GameSound.START_SIGNAL)
     except Exception as e:
         logger.log(f"Error starting SoundManager: {e}")
         return
@@ -52,13 +51,20 @@ def main():
     logger.log("SoundManager started successfully. Building game and display...")
     game, display = build_game(sound_manager)
 
-    logger.log("Clearing all LEDs on startup...")
+    logger.log("Clearing all LEDs on startup and playing startup sound...")
     clear_all_leds(display, game.lanes)
-    
+    sound_manager.play(GameSound.GAME_INIT)
+
+    # wait a short moment
+    time.sleep(1)
+
     logger.log(
         "Setup of Game, SignalReceiver, and PlayerController complete. "
         "Waiting for all players to press their start button."
     )
+
+    # start waiting music, end if the start signal is received
+    vibe_music: str = sound_manager.play(GameSound.VIBE_2, loop=True, volume=50)
 
     # Game startup:
     # The game waits for an initial signal of all player controllers pressing
@@ -66,11 +72,14 @@ def main():
     # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
     # effect plays in parallel, before the game loop is started.
     # uncomment for immediate startup
-    # wait_for_start_signal(game)
+    wait_for_start_signal(game)
+
+    # stop waiting music
+    sound_manager.stop_sound(vibe_music)
 
     # uncomment for start sequence
     logger.log("Start signal received. Running start sequence.")
-    # run_start_sequence(display, game, sound_manager)
+    run_start_sequence(display, game, sound_manager)
 
     logger.log("Start sequence complete. Starting game loop.")
     try:
@@ -116,12 +125,13 @@ def wait_for_start_signal(
         all_pressed = bool(players) and all(
             player.controller.special_1 for player in players
         )
-        
+
         now = time.perf_counter()
-        logger.log(f"Waiting for start signal: all_pressed={all_pressed}, time={now - held_since if held_since else 0}s")
+        logger.log(
+            f"Waiting for start signal: all_pressed={all_pressed}, time={now - held_since if held_since else 0}s"
+        )
         # for player in players:
         #     logger.log(f"Player {player} special_1={player.controller.special_1}")
-        
 
         if all_pressed:
             if held_since is None:
@@ -194,7 +204,7 @@ def run_start_sequence(
         None
     """
     # sound for startup
-    sound_manager.play(GameSound.START_SIGNAL)
+    sound_manager.play(GameSound.STARTUP)
 
     # colors on first track module
     for color in (RED, YELLOW, GREEN):
@@ -237,15 +247,15 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     real_strips = {}
     virtual_strips = []
 
-    leds_total_strip_0 = 249 - 6 # cut this away
+    leds_total_strip_0 = 249 - 6  # cut this away
     leds_total_strip_1 = 248
 
     leds_add_strip_0 = 30 - 6
     leds_add_strip_1 = 30
-    
+
     leds_main_strip_0 = leds_total_strip_0 - leds_add_strip_0
     leds_main_strip_1 = leds_total_strip_1 - leds_add_strip_1
-    
+
     if RPI_WS281X_AVAILABLE and PixelStrip is not None:
         strip0 = PixelStrip(
             num=leds_total_strip_0,
@@ -278,7 +288,10 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             lane=lane_0, real_strip_id=0, min_index=0, max_index=leds_main_strip_0 - 1
         ),
         VirtualLedStrip(
-            lane=lane_1, real_strip_id=0, min_index=leds_main_strip_0, max_index=leds_total_strip_0 - 1
+            lane=lane_1,
+            real_strip_id=0,
+            min_index=leds_main_strip_0,
+            max_index=leds_total_strip_0 - 1,
         ),
         VirtualLedStrip(
             lane=lane_2, real_strip_id=1, min_index=0, max_index=leds_main_strip_1 - 1
@@ -363,17 +376,23 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
                     lane=lane_0,
                     line_length=45.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
                     lane=lane_1,
                     line_length=45.5,  # TODO: edit this intersection!
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
                     lane=lane_2,
                     line_length=45.5,
                 ),
@@ -414,7 +433,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             ],
         ),
         TrackModule(
-            track_type=TrackType.LOOPING, 
+            track_type=TrackType.LOOPING,
             part_length=110.0,
             sound_stereo_ratio_left=0.5,
             lines=[
