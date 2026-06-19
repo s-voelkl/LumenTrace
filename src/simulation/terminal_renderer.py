@@ -105,7 +105,6 @@ class TerminalSimulationRenderer:
                     f"pos={vehicle.position:.2f} | speed={vehicle.speed:.2f} | "
                     f"acc={vehicle.acceleration:.2f} | round={vehicle.round} | "
                     f"respawn={vehicle.respawn_ticks} | "
-                    f"target={self.__lane_target_label(vehicle.line_change_target)} | "
                     f"module={module_text}"
                 )
             )

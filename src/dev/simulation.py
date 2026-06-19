@@ -70,17 +70,23 @@ def build_simulation_track(
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
                     lane=lane_0,
                     line_length=45.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
                     lane=lane_1,
                     line_length=45.5,  # TODO: edit this intersection!
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
                     lane=lane_2,
                     line_length=45.5,
                 ),
@@ -122,27 +128,27 @@ def build_simulation_track(
         ),
         TrackModule(
             track_type=TrackType.LOOPING,
-            part_length=103.0,
+            part_length=110.0,
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed * 0.95, min_speed=max_speed * 0.6
+                        max_speed=max_speed, min_speed=max_speed * 0.6
                     ),
                     lane=lane_0,
-                    line_length=103.0,
+                    line_length=110.0,
                 ),
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed * 0.95, min_speed=max_speed * 0.6
+                        max_speed=max_speed, min_speed=max_speed * 0.6
                     ),
                     lane=lane_2,
-                    line_length=103.0,
+                    line_length=110.0,
                 ),
             ],
         ),
         TrackModule(
-            track_type=TrackType.INTERSECTION,
+            track_type=TrackType.STRAIGHT,
             part_length=34.2,
             sound_stereo_ratio_left=0.5,
             lines=[
@@ -150,11 +156,6 @@ def build_simulation_track(
                     driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_0,
                     line_length=34.0,
-                ),
-                Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
-                    lane=lane_1,
-                    line_length=34.2,  # TODO: edit this intersection!
                 ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
@@ -231,7 +232,13 @@ def create_simulation_game() -> Game:
     )
 
     # sound manager
-    sound_manager = SoundManager()
+    try:
+        sound_manager = SoundManager()
+        sound_manager.set_master_volume(30.0)
+        sound_manager.start()
+    except Exception as e:
+        print(f"Error initializing SoundManager: {e}")
+        sound_manager = None
 
     # Include temporary lane in lane order so intersection routing can be exercised.
     return Game(
