@@ -26,11 +26,9 @@ class SimulationSignalReceiver(SignalReceiverInterface):
     def __init__(
         self,
         controllers: list[PlayerController],
-        lane_change_period_ticks: int = 2,
         keyboard_controls_enabled: bool = True,
     ) -> None:
         self.__controllers = controllers if controllers is not None else []
-        self.__lane_change_period_ticks = max(1, lane_change_period_ticks)
         self.__keyboard_controls_enabled = keyboard_controls_enabled
         self.__tick = 0
         self.__manual_forward_press: float | None = None
@@ -56,7 +54,7 @@ class SimulationSignalReceiver(SignalReceiverInterface):
 
         normalized = key.lower()
         if normalized in {"1", "2", "3", "4", "5", "6", "7", "8", "9"}:
-            # Map 1-9 linearly into the active acceleration range [42000, 65535] 
+            # Map 1-9 linearly into the active acceleration range [42000, 65535]
             # used by the game logic.
             fraction = int(normalized) / 10.0
             self.__manual_forward_press = 42000.0 + fraction * (65535.0 - 42000.0)
@@ -102,7 +100,7 @@ class SimulationSignalReceiver(SignalReceiverInterface):
             percentage = 0.84
         else:
             percentage = 0.28
-        
+
         forward_press = 42000.0 + percentage * (65535.0 - 42000.0)
 
         # Trigger lane-change intent.

@@ -526,7 +526,7 @@ class Game:
         # logger.log("Collision detected for player " + player.name + ": " + reason)
         if player.vehicle.active:
             if self.__sound_manager is not None and GameSound is not None:
-                self.__play_positional_sound(player, GameSound.CAR_CRASH_2, volume=70.0)
+                self.__play_positional_sound(player, GameSound.CAR_CRASH_2, volume=50.0)
             self.__record_event(
                 {
                     "event": "player_fell",
@@ -744,13 +744,11 @@ class Game:
         """Start the looping engine sound for every player."""
         for motor_sound in self.__motor_sounds.values():
             motor_sound.start()
-        # pass # TODO: implement!
 
     def __stop_motor_sounds(self) -> None:
         """Stop the looping engine sound for every player."""
         for motor_sound in self.__motor_sounds.values():
             motor_sound.stop()
-        # pass # TODO: implement!
 
     # Sound helpers
     def __get_stereo_ratio_left_for_player(self, player: Player) -> float:
@@ -851,8 +849,10 @@ class Game:
 
         is_near = self.__is_near_profile_bounds(player.vehicle, profile)
         was_near = self.__warning_active.get(player, False)
-        # if is_near and not was_near:
-        # self.__play_positional_sound(player, GameSound.WARNING_1, volume=50.0)
+
+        if is_near and not was_near:
+            self.__play_positional_sound(player, GameSound.WARNING_2, volume=20.0)
+
         self.__warning_active[player] = is_near
 
     def __update_motor_sound(self, player: Player) -> None:

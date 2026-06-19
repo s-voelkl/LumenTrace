@@ -228,7 +228,7 @@ def create_simulation_game() -> Game:
     track_modules = build_simulation_track(lane_0, lane_1, lane_2)
     signal_receiver = SimulationSignalReceiver(
         controllers=[player_1.controller, player_2.controller],
-        lane_change_period_ticks=12,
+        keyboard_controls_enabled=True,
     )
 
     # sound manager
