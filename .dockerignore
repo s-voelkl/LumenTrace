@@ -39,3 +39,7 @@ tests/
 **/src/dev/
 **/src/rpi_3/
 **/src/rpi_pico/
+
+# Explicitly include the assets folder
+!assets/
+!assets/**

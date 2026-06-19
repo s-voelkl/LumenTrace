@@ -29,26 +29,24 @@ def simple_game_setup():
         respawn_ticks=200,
         friction_percent=0.02,
         acceleration_multiplier=0.015,
-        special_1_threshold=0.5,
-        lane_change_ticks=25,
+        lane_change_window=20.0,
     )
 
     # Lanes are ordered left-to-right.
     lane_1 = Lane()
     lane_2 = Lane()
+    lane_3 = Lane()
 
     # Two local players on separate start lanes.
-    player_1 = Player(
-        controller=PlayerController(),
-        vehicle=Vehicle(lane=lane_1)
-    )
-    player_2 = Player(
-        controller=PlayerController(),
-        vehicle=Vehicle(lane=lane_2)
-    )
+    player_1 = Player(controller=PlayerController(), vehicle=Vehicle(lane=lane_1))
+    player_2 = Player(controller=PlayerController(), vehicle=Vehicle(lane=lane_3))
 
-    # Mock receiver provides random controller values on dev machines.
-    signal_receiver = SignalReceiverMock(controllers=[player_1.controller, player_2.controller])
+    # Mock receiver provides deterministic controller values on dev machines.
+    from src.simulation.signal_receiver import SimulationSignalReceiver
+
+    signal_receiver = SimulationSignalReceiver(
+        controllers=[player_1.controller, player_2.controller]
+    )
 
     # Track modules with explicit lane-change permission and profile limits.
     # This enables manual testing of the updated game loop rules.
@@ -58,14 +56,18 @@ def simple_game_setup():
             part_length=50,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=100, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(
+                        max_speed=100, lane_change_allowed=True
+                    ),
                     lane=lane_1,
                     line_length=50,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=90, lane_change_allowed=True),
-                    lane=lane_2,
-                    line_length=50
+                    driving_profile=DrivingProfile(
+                        max_speed=90, lane_change_allowed=True
+                    ),
+                    lane=lane_3,
+                    line_length=50,
                 ),
             ],
         ),
@@ -74,14 +76,18 @@ def simple_game_setup():
             part_length=30,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=65, max_acceleration=7, lane_change_allowed=False),
+                    driving_profile=DrivingProfile(
+                        max_speed=65, max_acceleration=7, lane_change_allowed=False
+                    ),
                     lane=lane_1,
                     line_length=28,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=75, max_acceleration=8, lane_change_allowed=False),
-                    lane=lane_2,
-                    line_length=32
+                    driving_profile=DrivingProfile(
+                        max_speed=75, max_acceleration=8, lane_change_allowed=False
+                    ),
+                    lane=lane_3,
+                    line_length=32,
                 ),
             ],
         ),
@@ -90,14 +96,25 @@ def simple_game_setup():
             part_length=50,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=85, max_acceleration=9, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(
+                        max_speed=85, max_acceleration=9, lane_change_allowed=True
+                    ),
                     lane=lane_1,
                     line_length=55,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=75, max_acceleration=8, lane_change_allowed=True),
+                    driving_profile=DrivingProfile(
+                        max_speed=85, max_acceleration=9, lane_change_allowed=True
+                    ),
                     lane=lane_2,
-                    line_length=45
+                    line_length=50,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(
+                        max_speed=75, max_acceleration=8, lane_change_allowed=True
+                    ),
+                    lane=lane_3,
+                    line_length=45,
                 ),
             ],
         ),
@@ -118,9 +135,11 @@ def simple_game_setup():
         #     ],
         # )
     ]
-    
-    display = LedDisplay({}, [])  # Empty display for dev testing without rendering dependency.
-    display_manager = DisplayManager(display=display) 
+
+    display = LedDisplay(
+        {}, []
+    )  # Empty display for dev testing without rendering dependency.
+    display_manager = DisplayManager(display=display)
 
     # Build game instance.
     game = Game(
@@ -128,12 +147,14 @@ def simple_game_setup():
         track_modules=track_modules,
         settings=settings,
         signal_receiver=signal_receiver,
-        lanes=[lane_1, lane_2],
-        display_manager=display_manager
+        lanes=[lane_1, lane_2, lane_3],
+        display_manager=None,
     )
 
     logger.log("Starting dev game loop with updated game logic settings.")
-    game.start_game(fetch_interval_s=0.02, display_interval_s=0.02, game_tick_interval_s=0.02)
+    game.start_game(
+        fetch_interval_s=0.02, display_interval_s=0.02, game_tick_interval_s=0.02
+    )
 
 
 def main():
@@ -144,4 +165,3 @@ def main():
 if __name__ == "__main__":
     print("Running on dev pc.")
     main()
-    

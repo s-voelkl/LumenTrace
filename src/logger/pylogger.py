@@ -15,6 +15,9 @@ def _configure_pylogger() -> None:
 		return
 
 	try:
+		log_dir = Path().resolve() / "logs"
+		log_dir.mkdir(exist_ok=True)
+
 		config_path = Path(__file__).resolve().with_name("pylogger_config.ini")
 		logging.config.fileConfig(config_path, disable_existing_loggers=False)
 	except Exception as e:
