@@ -39,18 +39,22 @@ class GameSound(Enum):
     that call sites stay decoupled from concrete file paths.
     """
 
-    ENGINE = SoundEffect("Engine Loop", "assets/sound/base-engine.wav")
-    START_SIGNAL = SoundEffect(
-        "Start Signal 3-2-1-Go", "assets/sound/startup-sound.mp3"
-    )
+    ENGINE = SoundEffect("Engine Loop", "assets/sound/base-engine-1.wav")
     CAR_CRASH_1 = SoundEffect("Car Crash 1", "assets/sound/car-crash-1.mp3")
     CAR_CRASH_2 = SoundEffect("Car Crash 2", "assets/sound/car-crash-2.mp3")
     CAR_LAP_1 = SoundEffect("Lap Complete 1", "assets/sound/car-lap-1.mp3")
     CAR_LAP_2 = SoundEffect("Lap Complete 2", "assets/sound/car-lap-2.mp3")
+    STARTUP = SoundEffect("Startup", "assets/sound/startup-1.mp3")
     RACE_FINISH = SoundEffect("Race Finish", "assets/sound/race-finish.mp3")
+    GAME_INIT = SoundEffect("Game Init", "assets/sound/game-initialization.mp3")
     COIN_1 = SoundEffect("Coin 1", "assets/sound/coin-1.mp3")
     COIN_2 = SoundEffect("Coin 2", "assets/sound/coin-2.mp3")
     WARNING_1 = SoundEffect("Warning 1", "assets/sound/warning-1.mp3")
+    WARNING_2 = SoundEffect("Warning 2", "assets/sound/warning-2.mp3")
+    PUNCH_1 = SoundEffect("Punch 1", "assets/sound/punch-1.mp3")
+    VIBE_1 = SoundEffect("Vibe 1", "assets/sound/vibe-1-retro.mp3")
+    VIBE_2 = SoundEffect("Vibe 2", "assets/sound/vibe-2-retro.mp3")
+    VIBE_3 = SoundEffect("Vibe 3", "assets/sound/vibe-3-retro.mp3")
 
     @property
     def display_name(self) -> str:
@@ -436,7 +440,7 @@ if __name__ == "__main__":
         logger.log("Playing first sound exclusively on the right speaker...")
         # 3. Play a sound exclusively on the right speaker
         # Make sure to provide a valid wav file for your environment
-        dummy_wav = "assets/sound/base-engine.wav"
+        dummy_wav = "assets/sound/base-engine-1.wav"
         try:
             sound1_id = manager.play(
                 sound_name_or_path=dummy_wav,
