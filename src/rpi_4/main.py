@@ -44,6 +44,7 @@ def main():
     sound_manager = SoundManager()
     try:
         sound_manager.start()
+        sound_manager.set_master_volume(100)
     except Exception as e:
         logger.log(f"Error starting SoundManager: {e}")
         return

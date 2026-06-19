@@ -108,16 +108,25 @@ class PlaybackInstance:
 
 
 class SoundManager:
-    """
-    A generic audio manager to play and mix multiple sound files simultaneously.
-    Provides support for master volume, per-sound volume, left/right panning, and pitch adjustment.
+    """A comprehensive audio manager that mixes and plays multiple sound assets simultaneously.
+
+    The SoundManager loads audio from the ``GameSound`` catalog, caches the
+    underlying arrays to minimize disk I/O, and continuously mixes active
+    playback instances using a background thread and a system output stream.
+    It provides overarching controls such as a global master volume with easing,
+    as well as real-time per-sound controls for volume, left/right stereo
+    panning, and pitch adjustments.
     """
 
     def __init__(self, sample_rate: int = _DEFAULT_SAMPLE_RATE):
-        """
-        Initializes the sound manager.
+        """Initialize the sound manager with a specific target sample rate.
 
-        :param sample_rate: The sample rate to use for the output stream.
+        Note that the manager does not start the audio stream immediately upon
+        initialization. Call :meth:`start` to activate the playback thread.
+
+        Args:
+            sample_rate (int): The sample rate in Hz used for the output stream
+                and mixing pipeline. Defaults to 44100 Hz.
         """
         self._sample_rate: int = sample_rate
         self._master_volume: float = 100.0
@@ -148,24 +157,37 @@ class SoundManager:
         return self._audio_cache[file_path]
 
     def _audio_callback(self, outdata: np.ndarray, frames: int, time, status) -> None:
-        """
-        Callback used by sounddevice to fetch the next chunk of mixed audio.
-        """
-        # TODO: fix status
-        # if status:
-        #     logger.log(f"Audio stream status: {status}")
+        """Callback invoked by `sounddevice` to stream the next chunk of mixed audio.
 
-        # Initialize output buffer to zeros
+        This method is called periodically by the background audio thread. It fills
+        the provided output buffer (`outdata`) with the combined audio of all currently
+        active sounds. To prevent audio artifacts like clicks or pops, any dynamic changes to
+        pitch, volume, or stereo panning are smoothed out (eased) over the duration of the chunk.
+
+        Args:
+            outdata (np.ndarray): The numpy array to be filled with audio data.
+                Its shape is `(frames, channels)`.
+            frames (int): The number of sample frames requested by the system.
+            time (CData): A CFFI struct containing timing information (ignored).
+            status (CallbackFlags): Status flags indicating underflow/overflow.
+        """
+        if status:
+            logger.log(f"Audio stream status warning: {status}")
+
+        # Initialize the output buffer with silence
         out = np.zeros((frames, _DEFAULT_CHANNELS), dtype="float32")
 
         with self._lock:
-            # Update master volume easing for the block
+            # 1. Update the global master volume with easing
+            # Easing smoothly interpolates the volume across the current chunk
             start_master_vol = self._master_volume
-            easing_multiplier = (1.0 - _EASING_FACTOR) ** frames
+            easing_multi = (1.0 - _EASING_FACTOR) ** frames
             self._master_volume = (
                 self._target_master_volume
-                - (self._target_master_volume - self._master_volume) * easing_multiplier
+                - (self._target_master_volume - self._master_volume) * easing_multi
             )
+
+            # Create a linear ramp for master volume across the requested frames
             master_vols = (
                 np.linspace(
                     start_master_vol, self._master_volume, frames, dtype=np.float32
@@ -175,122 +197,115 @@ class SoundManager:
 
             finished_keys = []
 
+            # 2. Process each active playback instance
             for sound_id, instance in self._active_sounds.items():
                 if instance.is_finished:
-                    if sound_id not in finished_keys:
-                        finished_keys.append(sound_id)
+                    finished_keys.append(sound_id)
                     continue
 
                 data_len = len(instance.audio_data)
 
-                # We calculate the block's start and end properties
+                # Capture start state for the parameter ramps
                 start_pitch = instance.pitch
                 start_vol = instance.volume
                 start_left = instance.left_volume
                 start_right = instance.right_volume
 
-                # Calculate end state after 'frames' easing ticks
+                # Calculate the exact end state for this chunk
                 instance.pitch = (
                     instance.target_pitch
-                    - (instance.target_pitch - instance.pitch) * easing_multiplier
+                    - (instance.target_pitch - instance.pitch) * easing_multi
                 )
                 instance.volume = (
                     instance.target_volume
-                    - (instance.target_volume - instance.volume) * easing_multiplier
+                    - (instance.target_volume - instance.volume) * easing_multi
                 )
                 instance.left_volume = (
                     instance.target_left_volume
                     - (instance.target_left_volume - instance.left_volume)
-                    * easing_multiplier
+                    * easing_multi
                 )
                 instance.right_volume = (
                     instance.target_right_volume
                     - (instance.target_right_volume - instance.right_volume)
-                    * easing_multiplier
+                    * easing_multi
                 )
 
+                # 3. Create linear ramps for all smooth transitions
                 pitches = np.linspace(
                     start_pitch, instance.pitch, frames, dtype=np.float32
                 )
+                vols = np.linspace(start_vol, instance.volume, frames, dtype=np.float32)
+                lefts = np.linspace(
+                    start_left, instance.left_volume, frames, dtype=np.float32
+                )
+                rights = np.linspace(
+                    start_right, instance.right_volume, frames, dtype=np.float32
+                )
+
+                # Integrate the pitch ramp to find the exact source positions for each frame
                 positions = instance.position + np.cumsum(pitches)
 
-                # Check for end of file
-                if not instance.loop and positions[-1] >= data_len - 1:
-                    valid_frames = np.searchsorted(
-                        positions, data_len - 1, side="right"
-                    )
-                    if valid_frames == 0:
-                        instance.is_finished = True
-                        if sound_id not in finished_keys:
-                            finished_keys.append(sound_id)
-                        continue
+                valid_frames = frames
 
-                    positions = positions[:valid_frames]
-                    pitches = pitches[:valid_frames]
-                    vols = np.linspace(
-                        start_vol, instance.volume, valid_frames, dtype=np.float32
+                # 4. Handle End-Of-File (EOF) for non-looping sounds
+                if not instance.loop and positions[-1] >= data_len - 1:
+                    # Find exactly how many frames we can play before hitting the end of the sound array
+                    valid_frames = int(
+                        np.searchsorted(positions, data_len - 1, side="right")
                     )
-                    lefts = np.linspace(
-                        start_left, instance.left_volume, valid_frames, dtype=np.float32
-                    )
-                    rights = np.linspace(
-                        start_right,
-                        instance.right_volume,
-                        valid_frames,
-                        dtype=np.float32,
-                    )
-                    m_vols = master_vols[:valid_frames]
 
                     instance.is_finished = True
-                    if sound_id not in finished_keys:
-                        finished_keys.append(sound_id)
-                else:
-                    valid_frames = frames
-                    vols = np.linspace(
-                        start_vol, instance.volume, frames, dtype=np.float32
-                    )
-                    lefts = np.linspace(
-                        start_left, instance.left_volume, frames, dtype=np.float32
-                    )
-                    rights = np.linspace(
-                        start_right, instance.right_volume, frames, dtype=np.float32
-                    )
-                    m_vols = master_vols
+                    finished_keys.append(sound_id)
 
-                instance.position = (
-                    positions[-1] if valid_frames > 0 else instance.position
-                )
+                    if valid_frames == 0:
+                        continue  # Sound finished exactly before this chunk started
+
+                    # Truncate all ramps so they align perfectly with the remaining valid frames
+                    positions = positions[:valid_frames]
+                    vols = vols[:valid_frames]
+                    lefts = lefts[:valid_frames]
+                    rights = rights[:valid_frames]
+
+                m_vols = master_vols[:valid_frames]
+
+                # Update the instance's read cursor for the next chunk callback
+                instance.position = positions[-1]
                 if instance.loop:
                     instance.position %= data_len
 
-                if valid_frames > 0:
-                    pos_int = positions.astype(np.int32)
-                    pos_frac = positions - pos_int
+                # 5. Read source audio using fractional positions (Linear Interpolation)
+                # Separating the integer and fractional parts allows us to interpolate smoothly between samples
+                pos_int = positions.astype(np.int32)
+                pos_frac = positions - pos_int
 
-                    if instance.loop:
-                        idx1 = pos_int % data_len
-                        idx2 = (pos_int + 1) % data_len
-                    else:
-                        idx1 = np.minimum(pos_int, data_len - 1)
-                        idx2 = np.minimum(pos_int + 1, data_len - 1)
+                if instance.loop:
+                    idx1 = pos_int % data_len
+                    idx2 = (pos_int + 1) % data_len
+                else:
+                    idx1 = np.minimum(pos_int, data_len - 1)
+                    idx2 = np.minimum(pos_int + 1, data_len - 1)
 
-                    val1 = instance.audio_data[idx1]
-                    val2 = instance.audio_data[idx2]
+                # Fetch adjacent samples and interpolate
+                val1 = instance.audio_data[idx1]
+                val2 = instance.audio_data[idx2]
+                sample_vals = val1 * (1.0 - pos_frac) + val2 * pos_frac
 
-                    sample_vals = val1 * (1.0 - pos_frac) + val2 * pos_frac
+                # 6. Apply volume ramps and stereo panning
+                base_vols = m_vols * (vols / _MAX_VOLUME)
+                left_mults = base_vols * (lefts / _MAX_VOLUME)
+                right_mults = base_vols * (rights / _MAX_VOLUME)
 
-                    base_vols = m_vols * (vols / _MAX_VOLUME)
-                    left_mults = base_vols * (lefts / _MAX_VOLUME)
-                    right_mults = base_vols * (rights / _MAX_VOLUME)
+                # Mix the calculated frames into the global output buffer
+                out[:valid_frames, 0] += sample_vals * left_mults
+                out[:valid_frames, 1] += sample_vals * right_mults
 
-                    out[:valid_frames, 0] += sample_vals * left_mults
-                    out[:valid_frames, 1] += sample_vals * right_mults
-
-            # Cleanup finished sounds
+            # 7. Discard sounds that finished playing during this chunk
             for key in finished_keys:
                 if key in self._active_sounds:
                     del self._active_sounds[key]
 
+        # Finally, commit the mixed chunk back to the sound device buffer
         outdata[:] = out
 
     def set_master_volume(self, volume: float) -> None:
@@ -378,7 +393,13 @@ class SoundManager:
                 self._active_sounds[sound_id].is_finished = True
 
     def start(self) -> None:
-        """Starts the audio output stream."""
+        """Starts the audio output stream and preloads all sounds into memory."""
+        for sound in GameSound:
+            try:
+                self._load_audio(sound)
+            except Exception as e:
+                logger.log(f"Failed to preload {sound.path}: {e}")
+
         try:
             if self._stream is None:
                 self._stream = sd.OutputStream(
@@ -386,7 +407,7 @@ class SoundManager:
                     channels=_DEFAULT_CHANNELS,
                     callback=self._audio_callback,
                 )
-                self._stream.start()  # type: ignore
+                self._stream.start()
         except Exception as e:
             logger.log(f"Error starting audio stream: {e}")
             raise e
@@ -413,9 +434,9 @@ if __name__ == "__main__":
         manager.start()
 
         # 2. Adjust the global master volume
-        manager.set_master_volume(80.0)
-
+        manager.set_master_volume(50.0)
         logger.log("Playing first sound exclusively on the right speaker...")
+
         # 3. Play a sound exclusively on the right speaker
         engine_sound = GameSound.ENGINE
         try:
@@ -432,7 +453,7 @@ if __name__ == "__main__":
             manager.stop_all()
             return
 
-        time.sleep(2)
+        time.sleep(0.5)
 
         logger.log(
             "Playing a second sound over overlapping the first (both speakers, pitched up)..."
@@ -452,33 +473,55 @@ if __name__ == "__main__":
         except Exception as e:
             logger.log(f"Could not play sound '{coin2.display_name}': {e}")
 
-        time.sleep(1)
+        time.sleep(0.5)
 
         logger.log("Playing a third sound (MP3 format) on the left speaker...")
-
-        # 4.5 Play an MP3 sound
-        coin1 = GameSound.COIN_1
-        try:
-            manager.play(
-                sound=coin1,
-                loop=False,
-                pitch=1.0,
-                volume=100.0,
-                left_volume=100.0,
-                right_volume=0.0,
-            )
-        except Exception as e:
-            logger.log(f"Could not play sound '{coin1.display_name}': {e}")
-
-        time.sleep(2)
 
         # 5. Dynamically change properties for the first sound without stopping it
         logger.log("Moving the first sound to the center and lowering pitch...")
         manager.update_sound(sound1_id, pitch=0.8, left_volume=30.0, right_volume=30.0)
 
-        time.sleep(2)
+        time.sleep(0.5)
 
-        # 6. Stop all sounds and shut down the output stream
+        # 6. Overlap with a second engine sound at a different pitch to create a richer effect
+        logger.log(
+            "Adding a second engine sound at a different pitch for a richer effect..."
+        )
+        try:
+            manager.play(
+                sound=engine_sound,
+                loop=True,
+                pitch=1.2,
+                volume=10.0,
+                left_volume=0.0,
+                right_volume=100.0,
+            )
+        except Exception as e:
+            logger.log(f"Could not load wave file {engine_sound.path}: {e}")
+
+        time.sleep(0.5)
+
+        # Add multiple sounds at once to demonstrate mixing
+        logger.log("Adding multiple sounds at once to demonstrate mixing...")
+
+        # play all sounds from the gamesound
+        for sound in GameSound:
+            try:
+                manager.play(
+                    sound=sound,
+                    loop=False,
+                    pitch=1.0,
+                    volume=10.0,
+                    left_volume=100.0,
+                    right_volume=100.0,
+                )
+                time.sleep(0.5)
+            except Exception as e:
+                logger.log(f"Could not play sound '{sound.display_name}': {e}")
+
+        time.sleep(2.0)
+
+        # Stop all sounds and shut down the output stream
         logger.log("Stopping all sounds.")
         manager.stop_all()
 

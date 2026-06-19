@@ -97,6 +97,12 @@ class Game:
         for player in self.__players:
             vehicle = player.vehicle
 
+            if not vehicle.active:
+                # Keep the engine audible but idle while waiting to respawn.
+                self.__update_motor_sound(player)
+                self.__handle_inactive_player_tick(player)
+                continue
+
             # Edge-detect the lane-change button so the coin sound triggers once
             # per press rather than continuously while the button is held.
             current_special_1 = player.controller.special_1
@@ -104,21 +110,6 @@ class Game:
                 self.__previous_special_1.get(player, 0) == 0 and current_special_1 != 0
             )
             self.__previous_special_1[player] = current_special_1
-
-            # logger.log("special_1_pressed: " + str(special_1_pressed) + " soundManager: " + str(self.__sound_manager is not None) + " gameSound: " + str(GameSound is not None))
-            if (
-                special_1_pressed
-                and self.__sound_manager is not None
-                and GameSound is not None
-            ):
-                # logger.log("Playing sound: COIN_2 for player " + player.name)
-                self.__play_positional_sound(player, GameSound.COIN_2, volume=40.0)
-
-            if not vehicle.active:
-                # Keep the engine audible but idle while waiting to respawn.
-                self.__update_motor_sound(player)
-                self.__handle_inactive_player_tick(player)
-                continue
 
             # map the input to acceleration and apply it
             vehicle_acceleration = self.map_forward_press_to_acceleration(
@@ -157,6 +148,16 @@ class Game:
                     player, "lane is ended: missing line for active lane"
                 )
                 continue
+
+            # logger.log("special_1_pressed: " + str(special_1_pressed) + " soundManager: " + str(self.__sound_manager is not None) + " gameSound: " + str(GameSound is not None))
+            if (
+                special_1_pressed
+                and self.__sound_manager is not None
+                and GameSound is not None
+                and current_line.driving_profile.lane_change_allowed
+            ):
+                # logger.log("Playing sound: COIN_2 for player " + player.name)
+                self.__play_positional_sound(player, GameSound.COIN_2, volume=40.0)
 
             profile_reason = self.__get_profile_violation_reason(
                 player, current_line.driving_profile
