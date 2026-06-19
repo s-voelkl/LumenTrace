@@ -2,7 +2,7 @@ import threading
 import uuid
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
@@ -65,13 +65,6 @@ class GameSound(Enum):
     def path(self) -> str:
         """Return the source file path of this sound effect."""
         return self.value.path
-
-
-# Backwards compatible mapping of logical lowercase names to source paths.
-# Derived from ``GameSound`` so the catalog stays single-sourced.
-AVAILABLE_SOUNDS: Dict[str, str] = {
-    sound.name.lower(): sound.path for sound in GameSound
-}
 
 
 class PlaybackInstance:
@@ -139,24 +132,9 @@ class SoundManager:
         # Active sounds currently playing
         self._active_sounds: Dict[str, PlaybackInstance] = {}
 
-    @staticmethod
-    def _resolve_path(sound: Union["GameSound", str]) -> str:
-        """Resolve a sound reference to a concrete file path.
-
-        Args:
-            sound (GameSound | str): A ``GameSound`` member, a logical
-                lowercase name (see ``AVAILABLE_SOUNDS``), or a direct path.
-
-        Returns:
-            str: The resolved file path of the audio asset.
-        """
-        if isinstance(sound, GameSound):
-            return sound.path
-        return AVAILABLE_SOUNDS.get(sound, sound)
-
-    def _load_audio(self, file_path_or_name: Union["GameSound", str]) -> np.ndarray:
-        """Loads and caches audio data from a WAV or MP3 file (or logical name), converting to mono internally."""
-        file_path = self._resolve_path(file_path_or_name)
+    def _load_audio(self, sound: GameSound) -> np.ndarray:
+        """Loads and caches audio data from a GameSound, converting to mono internally."""
+        file_path = sound.path
 
         if file_path not in self._audio_cache:
             # Soundfile >= 1.2.0 supports MP3 directly from libsndfile.
@@ -328,7 +306,7 @@ class SoundManager:
 
     def play(
         self,
-        sound_name_or_path: Union["GameSound", str],
+        sound: GameSound,
         loop: bool = False,
         pitch: float = 1.0,
         volume: float = 100.0,
@@ -336,9 +314,9 @@ class SoundManager:
         right_volume: float = 100.0,
     ) -> str:
         """
-        Starts playing a sound file or logical sound name.
+        Starts playing a sound from the GameSound catalog.
 
-        :param sound_name_or_path: A GameSound member, logical name from AVAILABLE_SOUNDS or path to the audio file (WAV/MP3).
+        :param sound: A GameSound member representing the audio asset to play.
         :param loop: Whether the sound should loop endlessly.
         :param pitch: Speed/pitch multiplier (1.0 = normal).
         :param volume: Overall volume of this sound (0-100).
@@ -346,7 +324,7 @@ class SoundManager:
         :param right_volume: Right speaker modifier (0-100).
         :return: Unique string ID identifying the playback instance.
         """
-        audio_data = self._load_audio(sound_name_or_path)
+        audio_data = self._load_audio(sound)
         instance = PlaybackInstance(
             audio_data=audio_data,
             loop=loop,
@@ -439,11 +417,10 @@ if __name__ == "__main__":
 
         logger.log("Playing first sound exclusively on the right speaker...")
         # 3. Play a sound exclusively on the right speaker
-        # Make sure to provide a valid wav file for your environment
-        dummy_wav = "assets/sound/base-engine-1.wav"
+        engine_sound = GameSound.ENGINE
         try:
             sound1_id = manager.play(
-                sound_name_or_path=dummy_wav,
+                sound=engine_sound,
                 loop=True,
                 pitch=1.0,
                 volume=10.0,
@@ -451,7 +428,7 @@ if __name__ == "__main__":
                 right_volume=100.0,
             )
         except Exception as e:
-            logger.log(f"Could not load wave file {dummy_wav}: {e}")
+            logger.log(f"Could not load wave file {engine_sound.path}: {e}")
             manager.stop_all()
             return
 
@@ -461,11 +438,11 @@ if __name__ == "__main__":
             "Playing a second sound over overlapping the first (both speakers, pitched up)..."
         )
 
-        # 4. Play a second sound overlapping the first using its logical name
+        # 4. Play a second sound overlapping the first
         coin2 = GameSound.COIN_2
         try:
             manager.play(
-                sound_name_or_path=coin2,  # Resolved automatically via AVAILABLE_SOUNDS
+                sound=coin2,
                 loop=False,
                 pitch=1.5,
                 volume=100.0,
@@ -479,11 +456,11 @@ if __name__ == "__main__":
 
         logger.log("Playing a third sound (MP3 format) on the left speaker...")
 
-        # 4.5 Play an MP3 sound (assuming the file exists)
+        # 4.5 Play an MP3 sound
         coin1 = GameSound.COIN_1
         try:
             manager.play(
-                sound_name_or_path=coin1,  # Resolved automatically via AVAILABLE_SOUNDS
+                sound=coin1,
                 loop=False,
                 pitch=1.0,
                 volume=100.0,
