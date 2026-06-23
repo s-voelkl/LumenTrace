@@ -54,9 +54,11 @@ def main():
 
     logger.log("Clearing all LEDs on startup and playing startup sound...")
     clear_all_leds(display, game.lanes)
-    sound_manager.play(GameSound.GAME_INIT)
+    time.sleep(0.25)  # cleaner display clearing
 
-    # wait a short moment
+    # start signal
+    set_all_leds(display, game.lanes, PURPLE)
+    sound_manager.play(GameSound.GAME_INIT)
     time.sleep(1)
 
     logger.log(
@@ -93,8 +95,16 @@ def main():
 
 def clear_all_leds(display: LedDisplay, lanes: list[Lane]) -> None:
     """Clear all LEDs to black before applying new colors on startup."""
+    display.clear()
+    display.render()
+
+
+def set_all_leds(
+    display: LedDisplay, lanes: list[Lane], color: tuple[int, int, int]
+) -> None:
+    """Set all LEDs to a single color before applying new colors on startup."""
     for lane in lanes:
-        display.fill_lane(lane, DARK_PURPLE, 0.1)
+        display.fill_lane(lane, color)
     display.render()
 
 
@@ -321,18 +331,18 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         controller=player_controller_1,
         vehicle=Vehicle(
             lane=lane_0,
-            primary_color=GREEN,
-            accelerate_color=PURPLE,
-            decelerate_color=RED,
+            primary_color=BLUE,
+            accelerate_color=GRAY,
+            decelerate_color=ORANGE,
         ),
     )
     player_2 = Player(
         controller=player_controller_2,
         vehicle=Vehicle(
             lane=lane_2,
-            primary_color=BLUE,
-            accelerate_color=PURPLE,
-            decelerate_color=RED,
+            primary_color=PURPLE,
+            accelerate_color=GRAY,
+            decelerate_color=ORANGE,
         ),
     )
 

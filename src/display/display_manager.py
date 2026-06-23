@@ -41,6 +41,16 @@ class DisplayManager:
         config (DisplayConfig | None): Configuration settings for the display manager.
     """
     
+    # Color constants assigned to class attributes for easy access and future customization.
+    COLOR_RENDER_INTERSECTION = LIGHT_PINK
+    COLOR_RENDER_TRACK_BASE = DARK_PURPLE
+    COLOR_RENDER_TRACK_MODULE_START = DARK_PURPLE
+    COLOR_RENDER_START_OF_TRACK = GRAY
+    COLOR_RENDER_ROUND_ADVANCE_PRIMARY = YELLOW
+    COLOR_RENDER_ROUND_ADVANCE_SECONDARY = WHITE
+    COLOR_RENDER_INACTIVE_PRIMARY = WHITE
+    COLOR_RENDER_INACTIVE_SECONDARY = GRAY
+    
     def __init__(self, display: LedDisplay, config: DisplayConfig | None = None):
         """
         Initialize the DisplayManager.
@@ -191,7 +201,7 @@ class DisplayManager:
                             lane,
                             start_relative_position,
                             end_relative_position,
-                            PINK,
+                            self.COLOR_RENDER_INTERSECTION,
                             color_ratio=0.1,
                         )
                         
@@ -212,7 +222,7 @@ class DisplayManager:
 
         # Fill entire lanes with a faint dark gray base.
         for lane in lanes:
-            self.display.fill_lane(lane, DARK_PURPLE, color_ratio=0.07)
+            self.display.fill_lane(lane, self.COLOR_RENDER_TRACK_BASE, color_ratio=0.07)
 
         # Highlight the first pixel of each module to improve visibility.
         lane_start_positions = {lane: 0.0 for lane in lanes}
@@ -234,7 +244,7 @@ class DisplayManager:
                 self.display.set_lane_pixel_by_relative_position(
                     lane,
                     start_pos / lane_total,
-                    DARK_PURPLE,
+                    self.COLOR_RENDER_TRACK_MODULE_START,
                     color_ratio=0.3,
                 )
 
@@ -276,7 +286,7 @@ class DisplayManager:
                                 lane,
                                 module_start_position / lane_total,
                                 module_end_position / lane_total,
-                                PINK,
+                                self.COLOR_RENDER_INTERSECTION,
                                 color_ratio=0.2,
                             )
                             break
@@ -303,7 +313,7 @@ class DisplayManager:
 
         for lane in lanes:
             if first_module.get_line_for_lane(lane) is not None:
-                self.display.set_lane_pixel_by_relative_position(lane, 0.0, GRAY)
+                self.display.set_lane_pixel_by_relative_position(lane, 0.0, self.COLOR_RENDER_START_OF_TRACK)
 
     def _render_round_advance(self, game: Game):
         players = game.players
@@ -317,9 +327,9 @@ class DisplayManager:
                     ticks_left = self.__vehicle_rounds[player_id]["ticks_left"]
                     change_interval = self.config.round_advance_tick_color_change
                     if (ticks_left // change_interval) % 2 == 0:
-                        color = YELLOW
+                        color = self.COLOR_RENDER_ROUND_ADVANCE_PRIMARY
                     else:
-                        color = WHITE
+                        color = self.COLOR_RENDER_ROUND_ADVANCE_SECONDARY
 
                     # Only pulse the start pixel so the lap-change indicator stays subtle.
                     self.display.set_lane_pixel_by_relative_position(vehicle.lane, 0.0, color)
@@ -344,7 +354,7 @@ class DisplayManager:
                     # Protect against invalid or zero configuration values.
                     if change_interval <= 0:
                         # Fallback to WHITE if configuration is invalid.
-                        color = WHITE
+                        color = self.COLOR_RENDER_INACTIVE_PRIMARY
                     else:
                         # Use modulo to determine position inside the configured
                         # interval and split that interval in half to pick the
@@ -352,7 +362,7 @@ class DisplayManager:
                         # chosen for WHITE.
                         mod = ticks % change_interval
                         half = change_interval // 2
-                        color = WHITE if mod < half else GRAY
+                        color = self.COLOR_RENDER_INACTIVE_PRIMARY if mod < half else self.COLOR_RENDER_INACTIVE_SECONDARY
 
                     self._render_vehicle_pixel_window(
                         game,
