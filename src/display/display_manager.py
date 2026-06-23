@@ -6,19 +6,22 @@ from src.display.led_display import LedDisplay
 from src.display.config import DisplayConfig
 from src.display.color_constants import *
 
-def interpolate_color(color1: tuple[int,int,int], color2: tuple[int,int,int], ratio: float) -> tuple[int,int,int]:
+
+def interpolate_color(
+    color1: tuple[int, int, int], color2: tuple[int, int, int], ratio: float
+) -> tuple[int, int, int]:
     """
     Interpolate between two RGB colors based on a ratio.
-    
+
     This function calculates a new color that is a mix of color1 and color2
     according to the given ratio. A ratio of 0.0 results in color1, a ratio of
     1.0 results in color2, and values in between result in a blended color.
-    
+
     Args:
         color1 (tuple[int, int, int]): The starting RGB color.
         color2 (tuple[int, int, int]): The ending RGB color.
         ratio (float): The interpolation ratio between 0.0 and 1.0.
-        
+
     Returns:
         tuple[int, int, int]: The interpolated RGB color.
     """
@@ -28,19 +31,20 @@ def interpolate_color(color1: tuple[int,int,int], color2: tuple[int,int,int], ra
     b = int(color1[2] + (color2[2] - color1[2]) * ratio)
     return (r, g, b)
 
+
 class DisplayManager:
     """
     Logic component to translate game state into visual components using the hierarchy.
-    
+
     This class manages the rendering logic for the LED display, taking the current
     game state and deciding which visual elements to display based on a defined
     hierarchy (e.g., track start, intersections, vehicles).
-    
+
     Attributes:
         display (Display): The display instance used to render the game state.
         config (DisplayConfig | None): Configuration settings for the display manager.
     """
-    
+
     # Color constants assigned to class attributes for easy access and future customization.
     COLOR_RENDER_INTERSECTION = LIGHT_PINK
     COLOR_RENDER_TRACK_BASE = DARK_PURPLE
@@ -48,13 +52,12 @@ class DisplayManager:
     COLOR_RENDER_START_OF_TRACK = GRAY
     COLOR_RENDER_ROUND_ADVANCE_PRIMARY = YELLOW
     COLOR_RENDER_ROUND_ADVANCE_SECONDARY = WHITE
-    COLOR_RENDER_INACTIVE_PRIMARY = WHITE
-    COLOR_RENDER_INACTIVE_SECONDARY = GRAY
-    
+    COLOR_RENDER_INACTIVE_MODIFIER = GRAY
+
     def __init__(self, display: LedDisplay, config: DisplayConfig | None = None):
         """
         Initialize the DisplayManager.
-        
+
         Args:
             display (Display): The display instance for rendering.
             config (DisplayConfig | None): Configuration settings.
@@ -68,14 +71,14 @@ class DisplayManager:
     def update(self, game: Game):
         """
         Update the display based on the current game state.
-        
+
         This method clears the display and then renders the various visual
         components in a specific hierarchical order, finally pushing the
         updates to the physical LEDs.
-        
+
         Args:
             game (Game): The current game state object.
-            
+
         Returns:
             None
         """
@@ -89,9 +92,9 @@ class DisplayManager:
         #  - round advance animation (blinks lane on round increment)
         #  - inactive vehicles (respawn blinking marker)
         #  - active vehicles (final override for vehicle position / speed color)
-        
+
         self.display.clear()
-        
+
         self._update_round_ticks(game)
         # Render the low-priority base track module visuals first so higher
         # priority layers (intersections, vehicles, etc.) can override them.
@@ -154,15 +157,18 @@ class DisplayManager:
             vehicle = player.vehicle
             if vehicle:
                 if player_id not in self.__vehicle_rounds:
-                    self.__vehicle_rounds[player_id] = {"round": vehicle.round, "ticks_left": 0}
-                
+                    self.__vehicle_rounds[player_id] = {
+                        "round": vehicle.round,
+                        "ticks_left": 0,
+                    }
+
                 state = self.__vehicle_rounds[player_id]
-                
+
                 # Check if round advanced
                 if vehicle.round > state["round"]:
                     state["ticks_left"] = self.config.round_advance_ticks
                     state["round"] = vehicle.round
-                
+
                 # Decrement ticks
                 if state["ticks_left"] > 0:
                     state["ticks_left"] -= 1
@@ -182,15 +188,17 @@ class DisplayManager:
         lanes = game.lanes
         track_modules = game.track_modules
         lane_lengths = {lane: 0.0 for lane in lanes}
-        
+
         for module in track_modules:
             for lane in lanes:
                 line = module.get_line_for_lane(lane)
-                lane_change_allowed = bool(line and line.driving_profile.lane_change_allowed)
+                lane_change_allowed = bool(
+                    line and line.driving_profile.lane_change_allowed
+                )
                 line_length = module.get_line_length_for_lane(lane)
                 start_pos = lane_lengths[lane]
                 end_pos = start_pos + line_length
-                
+
                 if lane_change_allowed and line_length > 0:
                     # lane_total = game.get_track_length_for_lane(lane)
                     lane_total = game.get_lane_track_length(lane)
@@ -204,7 +212,7 @@ class DisplayManager:
                             self.COLOR_RENDER_INTERSECTION,
                             color_ratio=0.1,
                         )
-                        
+
                 lane_lengths[lane] = end_pos
 
     def _render_track_modules(self, game: Game):
@@ -267,9 +275,13 @@ class DisplayManager:
         for player in players:
             vehicle = player.vehicle
             if vehicle and vehicle.lane:
-                module, _ = game.get_track_module_for_lane_position(vehicle.lane, vehicle.position)
+                module, _ = game.get_track_module_for_lane_position(
+                    vehicle.lane, vehicle.position
+                )
                 line = module.get_line_for_lane(vehicle.lane) if module else None
-                lane_change_allowed = bool(line and line.driving_profile.lane_change_allowed)
+                lane_change_allowed = bool(
+                    line and line.driving_profile.lane_change_allowed
+                )
                 if module and lane_change_allowed:
                     lane = vehicle.lane
                     lane_total = game.get_lane_track_length(lane)
@@ -313,17 +325,23 @@ class DisplayManager:
 
         for lane in lanes:
             if first_module.get_line_for_lane(lane) is not None:
-                self.display.set_lane_pixel_by_relative_position(lane, 0.0, self.COLOR_RENDER_START_OF_TRACK)
+                self.display.set_lane_pixel_by_relative_position(
+                    lane, 0.0, self.COLOR_RENDER_START_OF_TRACK
+                )
 
     def _render_round_advance(self, game: Game):
         players = game.players
 
         for player in players:
             vehicle = player.vehicle
-            
+
             if vehicle.lane is not None:
                 player_id = id(player)
-                if vehicle and player_id in self.__vehicle_rounds and self.__vehicle_rounds[player_id]["ticks_left"] > 0:
+                if (
+                    vehicle
+                    and player_id in self.__vehicle_rounds
+                    and self.__vehicle_rounds[player_id]["ticks_left"] > 0
+                ):
                     ticks_left = self.__vehicle_rounds[player_id]["ticks_left"]
                     change_interval = self.config.round_advance_tick_color_change
                     if (ticks_left // change_interval) % 2 == 0:
@@ -332,7 +350,9 @@ class DisplayManager:
                         color = self.COLOR_RENDER_ROUND_ADVANCE_SECONDARY
 
                     # Only pulse the start pixel so the lap-change indicator stays subtle.
-                    self.display.set_lane_pixel_by_relative_position(vehicle.lane, 0.0, color)
+                    self.display.set_lane_pixel_by_relative_position(
+                        vehicle.lane, 0.0, color
+                    )
 
     def _render_inactive_vehicles(self, game: Game):
         players = game.players
@@ -340,37 +360,30 @@ class DisplayManager:
 
         for player in players:
             vehicle = player.vehicle
-            if vehicle and vehicle.lane:
-                # Inactive or respawning vehicles are shown as a blinking marker.
-                # The blink logic uses the configured interval and splits the
-                # interval into two halves. The remainder of `respawn_ticks %
-                # change_interv` selects which half is currently active. This
-                # matches the specification which defines the first half of the
-                # interval as WHITE and the second half as GRAY.
-                if not vehicle.active or vehicle.respawn_ticks > 0:
-                    ticks = vehicle.respawn_ticks
-                    change_interval = self.config.respawn_tick_color_change
-
-                    # Protect against invalid or zero configuration values.
-                    if change_interval <= 0:
-                        # Fallback to WHITE if configuration is invalid.
-                        color = self.COLOR_RENDER_INACTIVE_PRIMARY
-                    else:
-                        # Use modulo to determine position inside the configured
-                        # interval and split that interval in half to pick the
-                        # displayed color. For odd intervals the lower half is
-                        # chosen for WHITE.
-                        mod = ticks % change_interval
-                        half = change_interval // 2
-                        color = self.COLOR_RENDER_INACTIVE_PRIMARY if mod < half else self.COLOR_RENDER_INACTIVE_SECONDARY
-
-                    self._render_vehicle_pixel_window(
-                        game,
-                        vehicle.lane,
-                        vehicle.position,
-                        color,
-                        vehicle_pixel_count,
-                    )
+            if (
+                vehicle
+                and vehicle.lane
+                and (not vehicle.active or vehicle.respawn_ticks > 0)
+            ):
+                module, _ = game.get_track_module_for_lane_position(
+                    vehicle.lane, vehicle.position
+                )
+                if module:
+                    line = module.get_line_for_lane(vehicle.lane)
+                    if line:
+                        dp = line.driving_profile
+                        base_color = self._get_active_color(vehicle, dp)
+                        # make the color weaker for inactive vehicles, using interpolation to blend with gray
+                        color = interpolate_color(
+                            base_color, self.COLOR_RENDER_INACTIVE_MODIFIER, 0.5
+                        )
+                        self._render_vehicle_pixel_window(
+                            game,
+                            vehicle.lane,
+                            vehicle.position,
+                            color,
+                            vehicle_pixel_count,
+                        )
 
     def _render_active_vehicles(self, game: Game):
         players = game.players
@@ -378,8 +391,15 @@ class DisplayManager:
 
         for player in players:
             vehicle = player.vehicle
-            if vehicle and vehicle.lane and vehicle.active and vehicle.respawn_ticks <= 0:
-                module, _ = game.get_track_module_for_lane_position(vehicle.lane, vehicle.position)
+            if (
+                vehicle
+                and vehicle.lane
+                and vehicle.active
+                and vehicle.respawn_ticks <= 0
+            ):
+                module, _ = game.get_track_module_for_lane_position(
+                    vehicle.lane, vehicle.position
+                )
                 if module:
                     line = module.get_line_for_lane(vehicle.lane)
                     if line:
@@ -393,26 +413,40 @@ class DisplayManager:
                             vehicle_pixel_count,
                         )
 
-    def _get_active_color(self, vehicle: Vehicle, dp: DrivingProfile) -> tuple[int,int,int]:
+    def _get_active_color(
+        self, vehicle: Vehicle, dp: DrivingProfile
+    ) -> tuple[int, int, int]:
         """
         Calculate the appropriate color for an active vehicle based on its speed relative to the driving profile limits.
-        
+
         Args:
             vehicle (Vehicle): The active vehicle instance.
             dp (DrivingProfile): The driving profile of the current line segment.
-            
+
         Returns:
             tuple[int, int, int]: The RGB color to display for the active vehicle.
         """
         speed = vehicle.speed
         half_max = dp.max_speed / 2.0
         half_min = abs(dp.min_speed) / 2.0
-        
+
         if speed > half_max:
-            ratio = (speed - half_max) / (dp.max_speed - half_max) if dp.max_speed != half_max else 1.0
-            return interpolate_color(vehicle.primary_color, vehicle.decelerate_color, ratio)
+            ratio = (
+                (speed - half_max) / (dp.max_speed - half_max)
+                if dp.max_speed != half_max
+                else 1.0
+            )
+            return interpolate_color(
+                vehicle.primary_color, vehicle.decelerate_color, ratio
+            )
         elif speed < -half_min:
-            ratio = (abs(speed) - half_min) / (abs(dp.min_speed) - half_min) if abs(dp.min_speed) != half_min else 1.0
-            return interpolate_color(vehicle.primary_color, vehicle.accelerate_color, ratio)
+            ratio = (
+                (abs(speed) - half_min) / (abs(dp.min_speed) - half_min)
+                if abs(dp.min_speed) != half_min
+                else 1.0
+            )
+            return interpolate_color(
+                vehicle.primary_color, vehicle.accelerate_color, ratio
+            )
         else:
             return vehicle.primary_color
