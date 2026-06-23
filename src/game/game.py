@@ -7,7 +7,7 @@ from src.controller.signal_receiver_interface import SignalReceiverInterface
 from .lane import Lane
 from .player import Player
 from .settings import Settings
-from .track_module import TrackModule
+from .track_module import TrackModule, TrackType
 from src.logger.multi_logger import get_logger
 
 # Audio support is optional so the simulation and unit tests can run in
@@ -62,7 +62,7 @@ class Game:
         if self.__sound_manager is not None and MotorSound is not None:
             for player in self.__players:
                 self.__motor_sounds[player] = MotorSound(
-                    self.__sound_manager, max_volume=25, idle_volume=7
+                    self.__sound_manager, max_volume=20, idle_volume=5
                 )
 
         self.__stop_event = threading.Event()
@@ -99,7 +99,7 @@ class Game:
 
             if not vehicle.active:
                 # Keep the engine audible but idle while waiting to respawn.
-                self.__update_motor_sound(player)
+                # self.__update_motor_sound(player)
                 self.__handle_inactive_player_tick(player)
                 continue
 
@@ -193,7 +193,7 @@ class Game:
                     and round_change > 0
                 ):
                     self.__play_positional_sound(
-                        player, GameSound.CAR_LAP_1, volume=80.0
+                        player, GameSound.CAR_LAP_1, volume=90.0
                     )
 
                 self.__record_event(
@@ -241,7 +241,7 @@ class Game:
 
             # Reflect the final speed, acceleration and track position of this
             # tick in the continuous engine sound.
-            self.__update_motor_sound(player)
+            # self.__update_motor_sound(player)
 
         self.__detect_and_apply_collisions()
 
@@ -525,23 +525,30 @@ class Game:
         """Move one player into respawn state and clear pending lane-change state."""
         # logger.log("Collision detected for player " + player.name + ": " + reason)
         if player.vehicle.active:
+            vehicle = player.vehicle
             if self.__sound_manager is not None and GameSound is not None:
-                self.__play_positional_sound(player, GameSound.CAR_CRASH_2, volume=50.0)
+                self.__play_positional_sound(player, GameSound.CAR_CRASH_2, volume=60.0)
+
+            respawn_module_index = self.__resolve_respawn_module_index(
+                vehicle.lane,
+                vehicle.position,
+            )
+            vehicle.set_respawn_module_index(respawn_module_index)
+            vehicle.trigger_respawn(self.__settings.respawn_ticks)
+
             self.__record_event(
                 {
                     "event": "player_fell",
                     "player": player.name,
                     "reason": reason,
-                    "lane": player.vehicle.lane.lane_id
-                    if player.vehicle.lane is not None
-                    else None,
-                    "position": player.vehicle.position,
-                    "speed": player.vehicle.speed,
-                    "acceleration": player.vehicle.acceleration,
+                    "lane": vehicle.lane.lane_id if vehicle.lane is not None else None,
+                    "position": vehicle.position,
+                    "speed": vehicle.speed,
+                    "acceleration": vehicle.acceleration,
                     "respawn_ticks": self.__settings.respawn_ticks,
+                    "respawn_module_index": respawn_module_index,
                 }
             )
-            player.vehicle.trigger_respawn(self.__settings.respawn_ticks)
 
     def __lane_gap_reason(self, player: Player, delta_position: float) -> str | None:
         """Return a short reason when movement enters a lane gap."""
@@ -872,6 +879,30 @@ class Game:
         motor_sound.update(speed_ratio, acceleration_ratio, ratio_left)
 
     # collision and respawn
+    def __resolve_respawn_module_index(
+        self, lane: Lane | None, position: float
+    ) -> int | None:
+        """Resolve preferred respawn module and apply one-step loop avoidance.
+        
+        If the module where the vehicle fell is a LOOPING module, step back one 
+        module to avoid respawning in the same looping section.
+        """
+        if lane is None or not self.__track_modules:
+            return None
+
+        module_index, _ = self.__get_track_module_index_and_local_position(lane, position)
+        if module_index is None:
+            return None
+
+        module = self.__track_modules[module_index]
+        
+        # Apply loop avoidance: if the current module is a looping module,
+        # respawn one module earlier.
+        if module.track_type == TrackType.LOOPING and len(self.__track_modules) > 1:
+            module_index = (module_index - 1) % len(self.__track_modules)
+
+        return module_index
+
     def __is_lane_available_for_respawn(self, lane: Lane, module_index: int) -> bool:
         """Return whether lane is free of active vehicles in a given module index."""
         for player in self.__players:
@@ -888,8 +919,68 @@ class Game:
 
         return True
 
+    def __count_active_vehicles_in_module(self, module_index: int) -> int:
+        """Count active vehicles that currently resolve to one module index."""
+        count = 0
+        for player in self.__players:
+            vehicle = player.vehicle
+            if not vehicle.active or vehicle.lane is None:
+                continue
+
+            active_module_index, _ = self.__get_track_module_index_and_local_position(
+                vehicle.lane,
+                vehicle.position,
+            )
+            if active_module_index == module_index:
+                count += 1
+
+        return count
+
+    def __candidate_respawn_lanes(
+        self, module_index: int, preferred_lane: Lane | None
+    ) -> list[Lane]:
+        """Return lane order for respawn: preferred lane first, then remaining lanes."""
+        module = self.__track_modules[module_index]
+        lanes_with_line = [
+            lane for lane in self.__lanes if module.get_line_for_lane(lane) is not None
+        ]
+        if preferred_lane is None or preferred_lane not in lanes_with_line:
+            return lanes_with_line
+
+        return [preferred_lane] + [lane for lane in lanes_with_line if lane != preferred_lane]
+
+    def __spawn_player_on_module_lane(
+        self, player: Player, module_index: int, lane: Lane
+    ) -> bool:
+        """Spawn one player at module start on the selected lane."""
+        if not self.__is_lane_available_for_respawn(lane, module_index):
+            return False
+
+        vehicle = player.vehicle
+        spawn_position = self.__build_global_lane_position(lane, module_index, 0.0)
+        vehicle.set_lane(lane)
+        vehicle.set_position(spawn_position)
+        vehicle.set_speed(0)
+        vehicle.set_acceleration(
+            0, self.__settings.min_acceleration, self.__settings.max_acceleration
+        )
+        vehicle.set_respawn_ticks(0)
+        vehicle.set_active(True)
+        vehicle.clear_lane_change()
+        vehicle.set_respawn_module_index(None)
+        self.__record_event(
+            {
+                "event": "player_respawned",
+                "player": player.name,
+                "lane": lane.lane_id,
+                "module_index": module_index,
+                "position": vehicle.position,
+            }
+        )
+        return True
+
     def __try_respawn_player(self, player: Player) -> bool:
-        """Try to respawn one player at position 0 on the first module.
+        """Try to respawn one player using module-aware spawn rules.
 
         Returns:
             bool: ``True`` when respawn succeeded.
@@ -897,31 +988,38 @@ class Game:
         if not self.__track_modules:
             return False
 
-        first_module_index = 0
-        first_module = self.__track_modules[first_module_index]
-        for lane in self.__lanes:
-            if first_module.get_line_for_lane(lane) is None:
-                continue
-            if not self.__is_lane_available_for_respawn(lane, first_module_index):
-                continue
+        vehicle = player.vehicle
+        preferred_module_index = vehicle.respawn_module_index
+        if preferred_module_index is None:
+            preferred_module_index = self.__resolve_respawn_module_index(
+                vehicle.lane,
+                vehicle.position,
+            )
+        if preferred_module_index is None:
+            preferred_module_index = 0
 
-            player.vehicle.set_lane(lane)
-            player.vehicle.set_position(0)
-            player.vehicle.set_speed(0)
-            player.vehicle.set_acceleration(
-                0, self.__settings.min_acceleration, self.__settings.max_acceleration
-            )
-            player.vehicle.set_respawn_ticks(0)
-            player.vehicle.set_active(True)
-            self.__record_event(
-                {
-                    "event": "player_respawned",
-                    "player": player.name,
-                    "lane": lane.lane_id,
-                    "position": player.vehicle.position,
-                }
-            )
-            return True
+        preferred_module_index %= len(self.__track_modules)
+
+        for lane in self.__candidate_respawn_lanes(preferred_module_index, vehicle.lane):
+            if self.__spawn_player_on_module_lane(player, preferred_module_index, lane):
+                return True
+
+        fallback_candidates: list[tuple[int, int]] = []
+        for module_index, module in enumerate(self.__track_modules):
+            has_free_lane = False
+            for lane in self.__candidate_respawn_lanes(module_index, vehicle.lane):
+                if self.__is_lane_available_for_respawn(lane, module_index):
+                    has_free_lane = True
+                    break
+
+            if has_free_lane:
+                active_count = self.__count_active_vehicles_in_module(module_index)
+                fallback_candidates.append((active_count, module_index))
+
+        for _, module_index in sorted(fallback_candidates, key=lambda item: (item[0], item[1])):
+            for lane in self.__candidate_respawn_lanes(module_index, vehicle.lane):
+                if self.__spawn_player_on_module_lane(player, module_index, lane):
+                    return True
 
         return False
 

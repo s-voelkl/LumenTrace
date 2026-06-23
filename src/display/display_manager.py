@@ -365,25 +365,19 @@ class DisplayManager:
                 and vehicle.lane
                 and (not vehicle.active or vehicle.respawn_ticks > 0)
             ):
-                module, _ = game.get_track_module_for_lane_position(
-                    vehicle.lane, vehicle.position
+                # Inactive vehicles keep a stable muted color: 40% primary + 60% gray.
+                color = interpolate_color(
+                    vehicle.primary_color,
+                    self.COLOR_RENDER_INACTIVE_MODIFIER,
+                    0.6,
                 )
-                if module:
-                    line = module.get_line_for_lane(vehicle.lane)
-                    if line:
-                        dp = line.driving_profile
-                        base_color = self._get_active_color(vehicle, dp)
-                        # make the color weaker for inactive vehicles, using interpolation to blend with gray
-                        color = interpolate_color(
-                            base_color, self.COLOR_RENDER_INACTIVE_MODIFIER, 0.5
-                        )
-                        self._render_vehicle_pixel_window(
-                            game,
-                            vehicle.lane,
-                            vehicle.position,
-                            color,
-                            vehicle_pixel_count,
-                        )
+                self._render_vehicle_pixel_window(
+                    game,
+                    vehicle.lane,
+                    vehicle.position,
+                    color,
+                    vehicle_pixel_count,
+                )
 
     def _render_active_vehicles(self, game: Game):
         players = game.players

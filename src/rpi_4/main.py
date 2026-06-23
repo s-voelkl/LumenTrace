@@ -321,7 +321,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     settings = Settings(
         max_speed=max_speed,
         respawn_ticks=75,
-        friction_percent=0.04,
+        friction_percent=0.05,
         acceleration_multiplier=0.06,
         lane_change_window=5,
         vehicle_crash_distance=3.0,
@@ -370,12 +370,12 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.75),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.90),
                     lane=lane_0,
                     line_length=22.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.85),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.95),
                     lane=lane_2,
                     line_length=32.0,
                 ),
@@ -415,12 +415,12 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.5,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.75),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.85),
                     lane=lane_0,
                     line_length=94.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.65),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.75),
                     lane=lane_2,
                     line_length=66.5,
                 ),
@@ -450,14 +450,14 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             lines=[
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed, min_speed=max_speed * 0.6
+                        max_speed=max_speed, min_speed=max_speed * 0.5
                     ),
                     lane=lane_0,
                     line_length=110.0,
                 ),
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed, min_speed=max_speed * 0.6
+                        max_speed=max_speed, min_speed=max_speed * 0.5
                     ),
                     lane=lane_2,
                     line_length=110.0,
