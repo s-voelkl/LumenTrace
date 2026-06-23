@@ -59,7 +59,7 @@ def main():
     # start signal
     set_all_leds(display, game.lanes, PURPLE)
     sound_manager.play(GameSound.GAME_INIT)
-    time.sleep(1)
+    # time.sleep(1)
 
     logger.log(
         "Setup of Game, SignalReceiver, and PlayerController complete. "
@@ -75,14 +75,14 @@ def main():
     # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
     # effect plays in parallel, before the game loop is started.
     # uncomment for immediate startup
-    wait_for_start_signal(game)
+    # wait_for_start_signal(game)
 
     # stop waiting music
     sound_manager.stop_sound(vibe_music)
 
     # uncomment for start sequence
     logger.log("Start signal received. Running start sequence.")
-    run_start_sequence(display, game, sound_manager)
+    # run_start_sequence(display, game, sound_manager)
 
     logger.log("Start sequence complete. Starting game loop.")
     try:
@@ -104,7 +104,7 @@ def set_all_leds(
 ) -> None:
     """Set all LEDs to a single color before applying new colors on startup."""
     for lane in lanes:
-        display.fill_lane(lane, color)
+        display.fill_lane(lane, color, color_ratio=0.3)
     display.render()
 
 
@@ -331,18 +331,18 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         controller=player_controller_1,
         vehicle=Vehicle(
             lane=lane_0,
-            primary_color=BLUE,
+            primary_color=LIGHT_BLUE,
             accelerate_color=GRAY,
-            decelerate_color=ORANGE,
+            decelerate_color=LIME,
         ),
     )
     player_2 = Player(
         controller=player_controller_2,
         vehicle=Vehicle(
             lane=lane_2,
-            primary_color=PURPLE,
+            primary_color=MAGENTA,
             accelerate_color=GRAY,
-            decelerate_color=ORANGE,
+            decelerate_color=RED_PURPLISH,
         ),
     )
 

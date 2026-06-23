@@ -230,7 +230,7 @@ class DisplayManager:
 
         # Fill entire lanes with a faint dark gray base.
         for lane in lanes:
-            self.display.fill_lane(lane, self.COLOR_RENDER_TRACK_BASE, color_ratio=0.07)
+            self.display.fill_lane(lane, self.COLOR_RENDER_TRACK_BASE, color_ratio=0.1)
 
         # Highlight the first pixel of each module to improve visibility.
         lane_start_positions = {lane: 0.0 for lane in lanes}
