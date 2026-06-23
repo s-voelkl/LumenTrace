@@ -58,7 +58,7 @@ def main():
 
     # start signal
     set_all_leds(display, game.lanes, DARK_PURPLE)
-    sound_manager.play(GameSound.GAME_INIT, volume=30)
+    sound_manager.play(GameSound.GAME_INIT, volume=20)
     time.sleep(1)
 
     logger.log(
@@ -373,12 +373,12 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.4,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.90),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.85),
                     lane=lane_0,
                     line_length=22.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.95),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.90),
                     lane=lane_2,
                     line_length=32.0,
                 ),
@@ -418,12 +418,12 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.1,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.85),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.80),
                     lane=lane_0,
                     line_length=94.5,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.75),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.70),
                     lane=lane_2,
                     line_length=66.5,
                 ),
@@ -495,7 +495,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
                     line_length=41.1,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.95),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.93),
                     lane=lane_2,
                     line_length=57.6,
                 ),
