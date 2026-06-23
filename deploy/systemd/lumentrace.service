@@ -1,0 +1,16 @@
+[Unit]
+Description=LumenTrace Docker Compose Service
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/lumentrace/Documents/repos/LumenTrace
+ExecStart=/usr/bin/docker compose -f /home/lumentrace/Documents/repos/LumenTrace/docker-compose.yaml up -d
+ExecStop=/usr/bin/docker compose -f /home/lumentrace/Documents/repos/LumenTrace/docker-compose.yaml down
+RemainAfterExit=yes
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

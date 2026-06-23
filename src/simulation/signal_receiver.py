@@ -14,6 +14,7 @@ try:
 except ImportError:  # pragma: no cover - only relevant on non-Windows systems
     msvcrt = None
 
+
 class SimulationSignalReceiver(SignalReceiverInterface):
     """Provide deterministic controller values for simulation runs.
 
@@ -25,11 +26,9 @@ class SimulationSignalReceiver(SignalReceiverInterface):
     def __init__(
         self,
         controllers: list[PlayerController],
-        lane_change_period_ticks: int = 2,
         keyboard_controls_enabled: bool = True,
     ) -> None:
         self.__controllers = controllers if controllers is not None else []
-        self.__lane_change_period_ticks = max(1, lane_change_period_ticks)
         self.__keyboard_controls_enabled = keyboard_controls_enabled
         self.__tick = 0
         self.__manual_forward_press: float | None = None
@@ -55,7 +54,10 @@ class SimulationSignalReceiver(SignalReceiverInterface):
 
         normalized = key.lower()
         if normalized in {"1", "2", "3", "4", "5", "6", "7", "8", "9"}:
-            self.__manual_forward_press = float(int(normalized) * 10)
+            # Map 1-9 linearly into the active acceleration range [42000, 65535]
+            # used by the game logic.
+            fraction = int(normalized) / 10.0
+            self.__manual_forward_press = 42000.0 + fraction * (65535.0 - 42000.0)
             return True
         if normalized == "0":
             self.__manual_forward_press = 0.0
@@ -88,15 +90,18 @@ class SimulationSignalReceiver(SignalReceiverInterface):
             tuple[float, float]: ``(forward_press, special_1)`` values.
         """
         # Use simple sawtooth-like segments with per-controller phase offsets.
+        # Values are scaled into the active range [42000, 65535] used by Game.
         phase = (self.__tick + controller_index * 17) % 120
         if phase < 30:
-            forward_press = 70.0
+            percentage = 0.70
         elif phase < 60:
-            forward_press = 42.0
+            percentage = 0.42
         elif phase < 90:
-            forward_press = 84.0
+            percentage = 0.84
         else:
-            forward_press = 28.0
+            percentage = 0.28
+
+        forward_press = 42000.0 + percentage * (65535.0 - 42000.0)
 
         # Trigger lane-change intent.
         special_1 = random.choice([0.0] * 2 + [1.0])
@@ -110,18 +115,24 @@ class SimulationSignalReceiver(SignalReceiverInterface):
         for controller_index, controller in enumerate(self.__controllers):
             if controller_index == 0:
                 # Player 1 is manual-only during simulation.
-                forward_press = self.__manual_forward_press if self.__manual_forward_press is not None else 0.0
+                forward_press = (
+                    self.__manual_forward_press
+                    if self.__manual_forward_press is not None
+                    else 0.0
+                )
                 special_1 = 1.0 if self.__manual_special_1_pulse else 0.0
             else:
-                forward_press, special_1 = self.__build_controller_values(controller_index)
+                forward_press, special_1 = self.__build_controller_values(
+                    controller_index
+                )
 
             controller.update_input("adc_0", forward_press)
-            controller.update_input("adc_1", special_1)
+            controller.update_input("dig_0", special_1)
             controller_data.append(
                 {
                     "controller_id": controller.controller_id,
                     "adc_0": forward_press,
-                    "adc_1": special_1,
+                    "dig_0": special_1,
                 }
             )
 

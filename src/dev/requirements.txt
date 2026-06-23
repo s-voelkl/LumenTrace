@@ -5,5 +5,9 @@ pyserial
 setuptools
 wheel
 paho-mqtt
+pytest
 pytest-cov
 mpremote
+numpy
+sounddevice
+soundfile

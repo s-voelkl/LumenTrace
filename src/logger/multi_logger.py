@@ -10,7 +10,7 @@ from .pylogger import get_pylogger
 class MultiLogger:
     """Forward log calls to the stdlib logger and MQTT logger."""
 
-    def __init__(self, credentials_path: str | None = None, logger_name: str = "pylogger_example"):
+    def __init__(self, credentials_path: str | None = None, logger_name: str = "pylogger"):
         self._pylogger = get_pylogger(logger_name)
         self._mqtt_logger = get_mqtt_logger(credentials_path)
 
@@ -33,7 +33,7 @@ class MultiLogger:
 _logger: MultiLogger | None = None
 
 
-def get_logger(credentials_path: str | None = None, logger_name: str = "pylogger_example") -> MultiLogger:
+def get_logger(credentials_path: str | None = None, logger_name: str = "pylogger") -> MultiLogger:
     """Get or create the shared combined logger instance."""
     global _logger  # pylint: disable=global-statement
     if _logger is None:

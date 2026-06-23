@@ -7,7 +7,7 @@ class Settings:
         respawn_ticks: int = 200,
         friction_percent: float = 0.02,
         acceleration_multiplier: float = 0.03,
-        lane_change_ticks: int = 25,
+        lane_change_window: float = 20.0,
         vehicle_crash_distance: float = 5.0,
     ):
         self.__max_speed = max_speed if max_speed > 0 else 100.0
@@ -16,7 +16,7 @@ class Settings:
         self.__respawn_ticks = respawn_ticks if respawn_ticks > 0 else 200
         self.__friction_percent = friction_percent if friction_percent > 0 else 0.02
         self.__acceleration_multiplier = acceleration_multiplier if acceleration_multiplier > 0 else 0.03
-        self.__lane_change_ticks = lane_change_ticks if lane_change_ticks > 0 else 25
+        self.__lane_change_window = lane_change_window if lane_change_window > 0 else 20.0
         self.__vehicle_crash_distance = vehicle_crash_distance if vehicle_crash_distance > 0 else 5.0
 
 
@@ -46,8 +46,8 @@ class Settings:
         return self.__acceleration_multiplier
 
     @property
-    def lane_change_ticks(self) -> int:
-        return self.__lane_change_ticks
+    def lane_change_window(self) -> float:
+        return self.__lane_change_window
 
     @property
     def vehicle_crash_distance(self) -> float:

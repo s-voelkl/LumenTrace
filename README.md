@@ -2,14 +2,148 @@
 
 A high-performance MCU-based LED racing simulator. Bringing the classic slot car experience to the world of addressable LEDs with real-time physics and advanced light effects.
 
-## Startup Instructions
+## Docker
 
-Using docker with the files ``src/Dockerfile``, ``src/.dockerignore`` and ``src/docker-compose.yaml``, the project can be built and run with:
+Docker is used to provide a consistent, isolated environment for running the LumenTrace application.
+It automatically handles the installation of required system-level libraries
+(like `libportaudio2` for audio and build tools for C extensions like `RPi.GPIO` and `rpi-ws281x`)
+without modifying the host system.
+Using `docker-compose` also guarantees that the application is granted the necessary
+privileged access required for hardware GPIO, audio, and UART communication on the Raspberry Pi.
+
+### Startup Instructions
+
+Using docker with the files `Dockerfile`, `.dockerignore` and `docker-compose.yaml`, the project environment can be built and started with the following commands:
 
 ```bash
-docker compose -f src/docker-compose.yaml build
-docker compose -f src/docker-compose.yaml up
+sudo docker compose -f docker-compose.yaml build
+sudo docker compose -f docker-compose.yaml up -d
 ```
+
+Stopping / Deleting the container:
+
+```bash
+sudo docker compose -f docker-compose.yaml down
+```
+
+### Autostart On Raspberry Pi Boot
+
+The compose service already uses a restart policy (`restart: unless-stopped`) in `docker-compose.yaml`.
+To make sure it starts automatically after Raspberry Pi reboot, enable Docker on boot and register the provided systemd service.
+
+1. Enable Docker daemon at boot:
+
+```bash
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
+2. Build and start LumenTrace once (detached):
+
+```bash
+cd /home/lumentrace/Documents/repos//LumenTrace
+sudo docker compose -f docker-compose.yaml build
+sudo docker compose -f docker-compose.yaml up -d
+```
+
+3. Install and enable the LumenTrace systemd unit:
+
+```bash
+sudo cp deploy/systemd/lumentrace.service /etc/systemd/system/lumentrace.service
+sudo systemctl daemon-reload
+sudo systemctl enable lumentrace.service
+sudo systemctl start lumentrace.service
+```
+
+4. Verify status:
+
+```bash
+sudo systemctl status lumentrace.service
+sudo docker compose -f docker-compose.yaml ps
+```
+
+### Stop While Running
+
+If LumenTrace is running and should be stopped immediately:
+
+```bash
+sudo systemctl stop lumentrace.service
+```
+
+Alternative compose commands (from the project directory):
+
+```bash
+cd /home/pi/LumenTrace
+sudo docker compose -f docker-compose.yaml stop   # stop containers
+sudo docker compose -f docker-compose.yaml down   # stop and remove containers/network
+```
+
+To prevent automatic start on the next reboot:
+
+```bash
+sudo systemctl disable lumentrace.service
+```
+
+To start it again later:
+
+```bash
+sudo systemctl start lumentrace.service
+```
+
+If your repository path is not `/home/lumentrace/Documents/repos/LumenTrace`, update `WorkingDirectory`, `ExecStart`, and `ExecStop` in `deploy/systemd/lumentrace.service` before copying the file to `/etc/systemd/system/`.
+### Audio Troubleshooting
+
+If the game starts but sound does not play:
+
+1. **Check Docker container logs for audio device detection:**
+
+```bash
+sudo docker compose -f docker-compose.yaml logs lumentrace | grep -i "audio\|device"
+```
+
+The logs will show which audio device was detected and any errors. The game logs available devices on startup in the format:
+
+```
+Available audio devices:
+  Device 0: bcm2835 Headphones (out: 8 channels)
+  Device 1: USB Audio Device (out: 2 channels)
+Default output device: [1, 0]
+Audio stream started successfully.
+```
+
+2. **Rebuild the container to ensure audio libraries are installed:**
+
+```bash
+sudo docker compose -f docker-compose.yaml build --no-cache
+```
+
+3. **Verify device accessibility inside the container:**
+
+```bash
+# List audio devices inside the container
+sudo docker compose -f docker-compose.yaml exec -T lumentrace aplay -l
+
+# Check /dev/snd permissions inside the container
+sudo docker compose -f docker-compose.yaml exec -T lumentrace ls -la /dev/snd/
+```
+
+4. **Fix for "Playback open error: -524":**
+
+This error indicates the audio device files cannot be accessed inside the container. Restart the container to reapply device mount permissions:
+
+```bash
+sudo docker compose -f docker-compose.yaml restart
+```
+
+The `/dev/snd:/dev/snd:rw` volume mount is already configured in `docker-compose.yaml`.
+
+5. **Raspberry Pi USB Sound Card Setup:**
+
+For detailed setup instructions specific to Raspberry Pi with USB sound cards, see [docs/rpi_4/rpi_4_config.md](docs/rpi_4/rpi_4_config.md#sound-mit-usb-soundkarte).
+
+6. **Audio Graceful Degradation:**
+
+If audio devices are unavailable, the game will log a warning and continue running without sound. This is by design to ensure the game loop always runs, even in headless or audio-disabled environments.
 
 ## Used Technologies
 
@@ -39,7 +173,6 @@ available at `src/dev/simulation.py`.
 - Input script: `src/simulation/signal_receiver.py`
 
 ![Simulation Terminal Screenshot](docs/Simulation_Example_1.png)
-
 
 The simulation dashboard displays:
 
@@ -77,18 +210,19 @@ Track layout used by the simulation:
 - When position exceeds lane length, position wraps around and `round` is incremented and the position is reset.
 - Reverse movement is also handled, including safe behavior for negative movement near lap boundaries.
 
-### Lane Change (Timed Multi-Hop)
+### Lane Change
 
-- Lane changes are triggered by `special_1` using a configurable threshold (`special_1_threshold`).
-- The lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`.
-- A lane change is executed as one or more timed adjacent hops:
-  - Example rightward: `1 -> 2 -> 3 -> 4` (lane order is determined by the sorted list in `game.lanes` from left (first) to right (last))
-  - Example leftward: `1 <- 2 <- 3 <- 4`
-- Each hop takes a fixed configurable tick count (`lane_change_ticks`), during which the vehicle is in a transition state.
+- Lane changes are triggered by pressing the `special_1` button.
+- A lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`. This is typically used for intersection modules.
+- By default, there are two main lanes: the left lane and the right lane. Intersections introduce a temporary middle lane to facilitate the switch.
+- A manual lane change from the outer lanes to the middle lane can be initiated anywhere on the module, except for the last `lane_change_window` units before the end of the module.
+- After pressing the button, the vehicle switches to the middle lane.
+- From the middle lane, the player can switch to the target outer lane manually by pressing the button again, provided the vehicle has travelled at least `lane_change_window` units on the middle lane.
+- The vehicle continues on the middle lane until it reaches the end of the module (specifically, `lane_change_window` units before the end). At that point, it automatically switches to the target outer lane, completing the lane change smoothly if the player hasn't already changed lanes manually.
 
 ### Position Conversion During Lane Change
 
-- On each hop, the vehicle keeps its relative progress within the current track module.
+- When the vehicle switches to or from the middle lane, it keeps its relative progress within the current track module.
 - Conversion is proportional:
   - progress = `source_position / source_line_length`
   - target_position = `progress * target_line_length`
@@ -99,7 +233,6 @@ Track layout used by the simulation:
 - A vehicle falls immediately when its current speed or acceleration violates the driving profile of the active line:
   - `speed` must remain within `[min_speed, max_speed]`
   - `acceleration` must remain within `[min_acceleration, max_acceleration]`
-- A vehicle also falls when it moves into a lane gap, meaning the current lane has no valid continuation in the next/previous module for the movement direction.
 - Collision detection is evaluated for vehicles on the same lane.
   - If two vehicles are within collision distance, the vehicle in front falls.
   - The collision happens, if the position distance between the `settings.__vehicle_crash_distance` is violated.
@@ -160,12 +293,7 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 
 ## Next steps
 
-- configuration of parameters for the game
-- full sound implementation
-- fixing lane change controlls
 - game state control (rounds done, LCD display for information, start button)
-- LED display adjustments (colors, effects), e.g. when a round advance is made, when a crash happens, when reaching a too high speed, ...
-- placing the LED strips on the physical track modules of the track.
 - handling the hardware and wires for long term stability
 
 ## Hardware
@@ -173,3 +301,54 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 <!-- TODO: Hardware details -->
 <!-- TODO: Picture of the hardware setup -->
 <!-- TODO: Picture of the running LED Strip -->
+
+## Sound Engineering
+
+LumenTrace features a real-time audio engine that turns the race into an immersive, spatial experience. All sound is mixed live on the Raspberry Pi and played back in stereo, so what you hear reflects what is happening on the track at every moment.
+
+### Real-time audio mixer
+
+A central sound manager (`src/sound/sound_manager.py`) mixes any number of sounds simultaneously through a single stereo output stream. Every sound can be controlled independently while it plays:
+
+- **Volume** – per-sound loudness plus a global master volume.
+- **Pitch** – dynamic speed/pitch shifting, used to make the engine rev up and down.
+- **Stereo panning** – independent left/right balance so sounds can be placed on the left or right side of the track.
+
+To keep playback smooth and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using NumPy array vectorization. Instead of iterating frame-by-frame, arrays are processed in blocks dynamically adapting pitch and volume targets across the entire chunk. The engine continuously eases every change (volume, pitch and panning) toward its target value, avoiding audible clicks and pops without stalling the processing thread. All sounds are referenced through a named catalog (`GameSound`), so each effect has a clear, human-readable name and a single source path.
+
+### Engine sounds
+
+Each car has its own continuous engine sound (`src/sound/motor_sound.py`) that reacts to how it is being driven:
+
+- **Background rumble** follows the car's current **speed** – the faster the car, the higher and louder the engine note.
+- **Acceleration layer** adds extra power and volume while the car is actively **accelerating**, so pressing the throttle is clearly audible.
+- **Stereo position** follows the **track module** the car is currently on. Each track module defines a `sound_stereo_ratio_left` value (0.0 = fully right, 0.5 = centered, 1.0 = fully left), letting the engine sound travel between the left and right speakers as the car moves through left and right curves.
+
+### Event sounds
+
+On top of the engine, the game plays positional one-shot effects that respond to key race moments. Where it makes sense, these effects are panned to the position of the car that triggered them:
+
+- **Start sequence** – a "3, 2, 1, GO!" signal plays in sync with the red/yellow/green countdown lights when all players hold their start button.
+- **New lap** – a confirmation sound when a car completes a lap.
+- **Lane change** – a short cue when a player presses the lane-change button.
+- **Crash** – an impact sound when two cars collide or a car falls off the track.
+- **Warning** – an alert when a car's speed or acceleration gets close to the limits allowed by the current track module's driving profile, hinting that the car is about to fall.
+
+## Sound Effects Sources
+
+- base-engine-1.wav
+- startup-sound.mp3: <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
+- car-crash-1.mp3: <a href="https://pixabay.com/de/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=376874">DRAGON-STUDIO</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=376874">Pixabay</a>
+- car-crash-2.mp3: <a href="https://pixabay.com/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=450447">DRAGON-STUDIO</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=450447">Pixabay</a>
+- car-lap-1.mp3: <a href="https://pixabay.com/users/moeeza3-39561198/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=395038">Moeez Ahmad</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=395038">Pixabay</a>
+- car-lap-2.mp3: <a href="https://pixabay.com/users/soundreality-31074404/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=151963">Jurij</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=151963">Pixabay</a>
+- race-finish.mp3: <a href="https://pixabay.com/users/bombinsound-54782632/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=537796">Bomb Sound</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=537796">Pixabay</a>
+- coin-1.mp3: <a href="https://pixabay.com/de/users/u_u9ahoqos39-45535899/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=233860">u_u9ahoqos39</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=233860">Pixabay</a>
+- coin-2.mp3: <a href="https://pixabay.com/users/driken5482-45721595/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=236671">Driken Stan</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=236671">Pixabay</a>
+- warning-1.mp3: <a href="https://pixabay.com/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=386172">DRAGON-STUDIO</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=386172">Pixabay</a>
+- warning-2.mp3: <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=104576">freesound_community</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=104576">Pixabay</a>
+- game-initialization.mp3: <a href="https://pixabay.com/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=472358">DRAGON-STUDIO</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=472358">Pixabay</a>
+- vibe-1-retro.mp3: <a href="https://pixabay.com/users/tg14_studios-55924971/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=541395">TG14_Studios</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=541395">Pixabay</a>
+- vibe-2-retro.mp3: <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=59892">freesound_community</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=59892">Pixabay</a>
+- vibe-3-retro.mp3: <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=41048">freesound_community</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=41048">Pixabay</a>
+- punch-1.mp3: from <a href="https://pixabay.com/sound-effects/retro-hurt-sound-03-474780/">Pixabay</a>
