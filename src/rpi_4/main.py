@@ -47,9 +47,9 @@ def main():
         sound_manager.set_master_volume(100)
     except Exception as e:
         logger.log(f"Error starting SoundManager: {e}")
-        return
+        logger.log("Continuing without audio.")
 
-    logger.log("SoundManager started successfully. Building game and display...")
+    logger.log("SoundManager initialized. Building game and display...")
     game, display = build_game(sound_manager)
 
     logger.log("Clearing all LEDs on startup and playing startup sound...")

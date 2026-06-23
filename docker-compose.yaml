@@ -15,6 +15,14 @@ services:
     privileged: true # Admin (sudo) privileges for GPIO and hardware access
     volumes:
       - /dev:/dev
+      - /run/dbus:/run/dbus:ro  # For PulseAudio/ALSA device detection
+      - /dev/snd:/dev/snd:rw  # Explicit RW access to ALSA devices
+    device_cgroup_rules:
+      - 'c 116:* rmw'  # Audio device access (ALSA)
+      - 'c 189:* rmw'  # USB device access (sound cards typically use major device 189)
+    environment:
+      - ALSA_CARD=3  # Force use of USB Audio Device (card 3 from detection)
+      - PULSE_SERVER=unix:/run/pulse/native  # Optional: PulseAudio socket
     # "Your kernel does not support memory limit capabilities or the cgroup is 
     # not mounted. Limitation discarded. 0.0s
     # deploy:

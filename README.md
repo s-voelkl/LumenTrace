@@ -91,6 +91,59 @@ sudo systemctl start lumentrace.service
 ```
 
 If your repository path is not `/home/lumentrace/Documents/repos/LumenTrace`, update `WorkingDirectory`, `ExecStart`, and `ExecStop` in `deploy/systemd/lumentrace.service` before copying the file to `/etc/systemd/system/`.
+### Audio Troubleshooting
+
+If the game starts but sound does not play:
+
+1. **Check Docker container logs for audio device detection:**
+
+```bash
+sudo docker compose -f docker-compose.yaml logs lumentrace | grep -i "audio\|device"
+```
+
+The logs will show which audio device was detected and any errors. The game logs available devices on startup in the format:
+
+```
+Available audio devices:
+  Device 0: bcm2835 Headphones (out: 8 channels)
+  Device 1: USB Audio Device (out: 2 channels)
+Default output device: [1, 0]
+Audio stream started successfully.
+```
+
+2. **Rebuild the container to ensure audio libraries are installed:**
+
+```bash
+sudo docker compose -f docker-compose.yaml build --no-cache
+```
+
+3. **Verify device accessibility inside the container:**
+
+```bash
+# List audio devices inside the container
+sudo docker compose -f docker-compose.yaml exec -T lumentrace aplay -l
+
+# Check /dev/snd permissions inside the container
+sudo docker compose -f docker-compose.yaml exec -T lumentrace ls -la /dev/snd/
+```
+
+4. **Fix for "Playback open error: -524":**
+
+This error indicates the audio device files cannot be accessed inside the container. Restart the container to reapply device mount permissions:
+
+```bash
+sudo docker compose -f docker-compose.yaml restart
+```
+
+The `/dev/snd:/dev/snd:rw` volume mount is already configured in `docker-compose.yaml`.
+
+5. **Raspberry Pi USB Sound Card Setup:**
+
+For detailed setup instructions specific to Raspberry Pi with USB sound cards, see [docs/rpi_4/rpi_4_config.md](docs/rpi_4/rpi_4_config.md#sound-mit-usb-soundkarte).
+
+6. **Audio Graceful Degradation:**
+
+If audio devices are unavailable, the game will log a warning and continue running without sound. This is by design to ensure the game loop always runs, even in headless or audio-disabled environments.
 
 ## Used Technologies
 

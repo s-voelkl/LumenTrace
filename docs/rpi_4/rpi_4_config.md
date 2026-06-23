@@ -34,7 +34,51 @@ sudo .venv/bin/python -m src.rpi_4.main
 
 ## Installationen
 
-Sound mit USB Soundkarte in den Geräteeinstellungen einstellen.
+### Sound mit USB Soundkarte
+
+Ensure the USB sound card is recognized and set as the default:
+
+```bash
+# List all audio devices
+aplay -l
+
+# Identify your USB sound card (usually appears as a separate card, e.g., "card 3: USB Audio Device")
+# Set the USB sound card as default (update card number if different):
+echo "defaults.pcm.card 3" | sudo tee -a /etc/asound.conf
+echo "defaults.ctl.card 3" | sudo tee -a /etc/asound.conf
+
+# Verify the USB sound card is now default
+aplay -l
+cat /etc/asound.conf
+
+# Test audio output on Raspberry Pi (before Docker)
+speaker-test -c 2 -t sine -f 1000 -l 1
+```
+
+Once Docker is running, verify audio inside the container:
+
+```bash
+sudo docker compose -f docker-compose.yaml exec -T lumentrace aplay -l
+sudo docker compose -f docker-compose.yaml exec -T lumentrace speaker-test -c 2 -t sine -f 1000 -l 1
+```
+
+If playback fails with "Playback open error: -524", the device file permissions are not accessible inside the container:
+
+```bash
+# Check that /dev/snd is properly accessible on the host
+ls -la /dev/snd/
+
+# Restart the Docker container to apply new device permissions
+sudo docker compose -f docker-compose.yaml restart
+
+# Ensure /dev/snd is explicitly mounted with RW access in docker-compose.yaml (already configured)
+```
+
+If `speaker-test` is not found inside the container, check Docker logs for audio device errors:
+
+```bash
+sudo docker compose -f docker-compose.yaml logs lumentrace | grep -i "audio\|device\|asound"
+```
 
 ### Docker installieren
 

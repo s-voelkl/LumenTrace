@@ -20,12 +20,16 @@ WORKDIR /app
 
 # Install build tools required to compile native C extensions
 # (RPi.GPIO and rpi-ws281x build C code for GPIO/UART access).
+# Also install audio libraries for sound output on Raspberry Pi.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gcc \
         make \
         build-essential \
         libportaudio2 \
+        libasound2 \
+        pulseaudio-utils \
+        alsa-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
