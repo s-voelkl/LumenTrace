@@ -59,11 +59,11 @@ class Game:
         self.__motor_sounds: dict[Player, Any] = {}
         self.__previous_special_1: dict[Player, float] = {}
         self.__warning_active: dict[Player, bool] = {}
-        if self.__sound_manager is not None and MotorSound is not None:
-            for player in self.__players:
-                self.__motor_sounds[player] = MotorSound(
-                    self.__sound_manager, max_volume=20, idle_volume=5
-                )
+        # if self.__sound_manager is not None and MotorSound is not None:
+        #     for player in self.__players:
+        #         self.__motor_sounds[player] = MotorSound(
+        #             self.__sound_manager, max_volume=20, idle_volume=5
+        #         )
 
         self.__stop_event = threading.Event()
         self.__threads: list[threading.Thread] = []
@@ -99,7 +99,7 @@ class Game:
 
             if not vehicle.active:
                 # Keep the engine audible but idle while waiting to respawn.
-                # self.__update_motor_sound(player)
+                self.__update_motor_sound(player)
                 self.__handle_inactive_player_tick(player)
                 continue
 
@@ -241,7 +241,7 @@ class Game:
 
             # Reflect the final speed, acceleration and track position of this
             # tick in the continuous engine sound.
-            # self.__update_motor_sound(player)
+            self.__update_motor_sound(player)
 
         self.__detect_and_apply_collisions()
 
@@ -330,7 +330,7 @@ class Game:
 
         # Start the continuous per-player engine loops before the worker
         # threads begin updating their pitch and volume each tick.
-        self.__start_motor_sounds()
+        # self.__start_motor_sounds()
 
         # Each worker owns one responsibility so timing stays predictable and easy to review.
         self.__stop_event.clear()
@@ -813,7 +813,8 @@ class Game:
         )
 
     @staticmethod
-    def __is_near_profile_bounds(vehicle, profile: Any, threshold: float = 0.1) -> bool:
+    def __is_near_profile_bounds(vehicle, profile: Any, threshold: float = 0.1, 
+            settings_max_speed: float = 100) -> bool:
         """Return whether speed or acceleration is close to a profile limit.
 
         A value is considered "near a bound" when it falls within ``threshold``
@@ -826,10 +827,17 @@ class Game:
             vehicle: Vehicle whose speed and acceleration are inspected.
             profile (Any): Driving profile providing the min/max bounds.
             threshold (float): Fraction of the span treated as the warning band.
+            settings_max_speed (float): The settings maximum speed limit.
 
         Returns:
             bool: ``True`` when speed or acceleration is within the warning band.
         """
+        # If the profile max speed is >= settings max speed, the profile is not
+        # constraining the vehicle beyond the settings limit, so no warning is needed.
+        is_profile_constraining = profile.max_speed < settings_max_speed
+
+        if not is_profile_constraining:
+            return False
 
         def near(value: float, lower: float, upper: float) -> bool:
             span = upper - lower
@@ -854,11 +862,11 @@ class Game:
         if self.__sound_manager is None or GameSound is None:
             return
 
-        is_near = self.__is_near_profile_bounds(player.vehicle, profile)
+        is_near = self.__is_near_profile_bounds(player.vehicle, profile, settings_max_speed=self.settings.max_speed)
         was_near = self.__warning_active.get(player, False)
 
         if is_near and not was_near:
-            self.__play_positional_sound(player, GameSound.WARNING_2, volume=20.0)
+            self.__play_positional_sound(player, GameSound.WARNING_2, volume=15.0)
 
         self.__warning_active[player] = is_near
 
