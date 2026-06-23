@@ -17,7 +17,7 @@ Using docker with the files `Dockerfile`, `.dockerignore` and `docker-compose.ya
 
 ```bash
 sudo docker compose -f docker-compose.yaml build
-sudo docker compose -f docker-compose.yaml up
+sudo docker compose -f docker-compose.yaml up -d
 ```
 
 Stopping / Deleting the container:
@@ -25,6 +25,72 @@ Stopping / Deleting the container:
 ```bash
 sudo docker compose -f docker-compose.yaml down
 ```
+
+### Autostart On Raspberry Pi Boot
+
+The compose service already uses a restart policy (`restart: unless-stopped`) in `docker-compose.yaml`.
+To make sure it starts automatically after Raspberry Pi reboot, enable Docker on boot and register the provided systemd service.
+
+1. Enable Docker daemon at boot:
+
+```bash
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
+2. Build and start LumenTrace once (detached):
+
+```bash
+cd /home/lumentrace/Documents/repos//LumenTrace
+sudo docker compose -f docker-compose.yaml build
+sudo docker compose -f docker-compose.yaml up -d
+```
+
+3. Install and enable the LumenTrace systemd unit:
+
+```bash
+sudo cp deploy/systemd/lumentrace.service /etc/systemd/system/lumentrace.service
+sudo systemctl daemon-reload
+sudo systemctl enable lumentrace.service
+sudo systemctl start lumentrace.service
+```
+
+4. Verify status:
+
+```bash
+sudo systemctl status lumentrace.service
+sudo docker compose -f docker-compose.yaml ps
+```
+
+### Stop While Running
+
+If LumenTrace is running and should be stopped immediately:
+
+```bash
+sudo systemctl stop lumentrace.service
+```
+
+Alternative compose commands (from the project directory):
+
+```bash
+cd /home/pi/LumenTrace
+sudo docker compose -f docker-compose.yaml stop   # stop containers
+sudo docker compose -f docker-compose.yaml down   # stop and remove containers/network
+```
+
+To prevent automatic start on the next reboot:
+
+```bash
+sudo systemctl disable lumentrace.service
+```
+
+To start it again later:
+
+```bash
+sudo systemctl start lumentrace.service
+```
+
+If your repository path is not `/home/lumentrace/Documents/repos/LumenTrace`, update `WorkingDirectory`, `ExecStart`, and `ExecStop` in `deploy/systemd/lumentrace.service` before copying the file to `/etc/systemd/system/`.
 
 ## Used Technologies
 
