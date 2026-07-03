@@ -163,6 +163,9 @@ class SoundManager:
         the provided output buffer (`outdata`) with the combined audio of all currently
         active sounds. To prevent audio artifacts like clicks or pops, any dynamic changes to
         pitch, volume, or stereo panning are smoothed out (eased) over the duration of the chunk.
+        
+        Optimized to perform block-level parameter updates and linear interpolation,
+        drastically reducing the computational workload compared to sample-by-sample ramping.
 
         Args:
             outdata (np.ndarray): The numpy array to be filled with audio data.
@@ -171,31 +174,18 @@ class SoundManager:
             time (CData): A CFFI struct containing timing information (ignored).
             status (CallbackFlags): Status flags indicating underflow/overflow.
         """
-        # if status:
-        #     logger.log(f"Audio stream status warning: {status}")
-
         # Initialize the output buffer with silence
         out = np.zeros((frames, _DEFAULT_CHANNELS), dtype="float32")
 
         with self._lock:
-            # 1. Update the global master volume with easing
-            # Easing smoothly interpolates the volume across the current chunk
-            start_master_vol = self._master_volume
-            easing_multi = (1.0 - _EASING_FACTOR) ** frames
-            self._master_volume = (
-                self._target_master_volume
-                - (self._target_master_volume - self._master_volume) * easing_multi
-            )
-
-            # Create a linear ramp for master volume across the requested frames
-            master_vols = (
-                np.linspace(
-                    start_master_vol, self._master_volume, frames, dtype=np.float32
-                )
-                / _MAX_VOLUME
-            )
+            # 1. Update the global master volume at the block level
+            self._master_volume += _EASING_FACTOR * (self._target_master_volume - self._master_volume)
+            master_mult = self._master_volume / _MAX_VOLUME
 
             finished_keys = []
+            
+            # Generate the frame indices once per callback instead of per-sound
+            arange_frames = np.arange(frames, dtype=np.float32)
 
             # 2. Process each active playback instance
             for sound_id, instance in self._active_sounds.items():
@@ -203,71 +193,30 @@ class SoundManager:
                     finished_keys.append(sound_id)
                     continue
 
+                # Block-level easing for instance parameters (pitch, volume, panning)
+                instance.pitch += _EASING_FACTOR * (instance.target_pitch - instance.pitch)
+                instance.volume += _EASING_FACTOR * (instance.target_volume - instance.volume)
+                instance.left_volume += _EASING_FACTOR * (instance.target_left_volume - instance.left_volume)
+                instance.right_volume += _EASING_FACTOR * (instance.target_right_volume - instance.right_volume)
+
                 data_len = len(instance.audio_data)
+                pitch = instance.pitch
 
-                # Capture start state for the parameter ramps
-                start_pitch = instance.pitch
-                start_vol = instance.volume
-                start_left = instance.left_volume
-                start_right = instance.right_volume
-
-                # Calculate the exact end state for this chunk
-                instance.pitch = (
-                    instance.target_pitch
-                    - (instance.target_pitch - instance.pitch) * easing_multi
-                )
-                instance.volume = (
-                    instance.target_volume
-                    - (instance.target_volume - instance.volume) * easing_multi
-                )
-                instance.left_volume = (
-                    instance.target_left_volume
-                    - (instance.target_left_volume - instance.left_volume)
-                    * easing_multi
-                )
-                instance.right_volume = (
-                    instance.target_right_volume
-                    - (instance.target_right_volume - instance.right_volume)
-                    * easing_multi
-                )
-
-                # 3. Create linear ramps for all smooth transitions
-                pitches = np.linspace(
-                    start_pitch, instance.pitch, frames, dtype=np.float32
-                )
-                vols = np.linspace(start_vol, instance.volume, frames, dtype=np.float32)
-                lefts = np.linspace(
-                    start_left, instance.left_volume, frames, dtype=np.float32
-                )
-                rights = np.linspace(
-                    start_right, instance.right_volume, frames, dtype=np.float32
-                )
-
-                # Integrate the pitch ramp to find the exact source positions for each frame
-                positions = instance.position + np.cumsum(pitches)
-
+                # 3. Calculate source positions using constant pitch step across the block
+                positions = instance.position + arange_frames * pitch
                 valid_frames = frames
 
                 # 4. Handle End-Of-File (EOF) for non-looping sounds
                 if not instance.loop and positions[-1] >= data_len - 1:
-                    # Find exactly how many frames we can play before hitting the end of the sound array
-                    valid_frames = int(
-                        np.searchsorted(positions, data_len - 1, side="right")
-                    )
-
+                    # Find exactly how many frames we can play before hitting the end
+                    valid_frames = int(np.searchsorted(positions, data_len - 1, side="right"))
                     instance.is_finished = True
                     finished_keys.append(sound_id)
 
                     if valid_frames == 0:
                         continue  # Sound finished exactly before this chunk started
 
-                    # Truncate all ramps so they align perfectly with the remaining valid frames
                     positions = positions[:valid_frames]
-                    vols = vols[:valid_frames]
-                    lefts = lefts[:valid_frames]
-                    rights = rights[:valid_frames]
-
-                m_vols = master_vols[:valid_frames]
 
                 # Update the instance's read cursor for the next chunk callback
                 instance.position = positions[-1]
@@ -275,7 +224,6 @@ class SoundManager:
                     instance.position %= data_len
 
                 # 5. Read source audio using fractional positions (Linear Interpolation)
-                # Separating the integer and fractional parts allows us to interpolate smoothly between samples
                 pos_int = positions.astype(np.int32)
                 pos_frac = positions - pos_int
 
@@ -291,21 +239,21 @@ class SoundManager:
                 val2 = instance.audio_data[idx2]
                 sample_vals = val1 * (1.0 - pos_frac) + val2 * pos_frac
 
-                # 6. Apply volume ramps and stereo panning
-                base_vols = m_vols * (vols / _MAX_VOLUME)
-                left_mults = base_vols * (lefts / _MAX_VOLUME)
-                right_mults = base_vols * (rights / _MAX_VOLUME)
+                # 6. Apply block-level scalar volume and panning multipliers
+                base_vol = master_mult * (instance.volume / _MAX_VOLUME)
+                left_mult = base_vol * (instance.left_volume / _MAX_VOLUME)
+                right_mult = base_vol * (instance.right_volume / _MAX_VOLUME)
 
-                # Mix the calculated frames into the global output buffer
-                out[:valid_frames, 0] += sample_vals * left_mults
-                out[:valid_frames, 1] += sample_vals * right_mults
+                # Mix calculated frames directly into the global output buffer (scalar multiplication)
+                out[:valid_frames, 0] += sample_vals * left_mult
+                out[:valid_frames, 1] += sample_vals * right_mult
 
             # 7. Discard sounds that finished playing during this chunk
             for key in finished_keys:
                 if key in self._active_sounds:
                     del self._active_sounds[key]
 
-        # Finally, commit the mixed chunk back to the sound device buffer
+        # Commit the mixed chunk back to the sound device buffer
         outdata[:] = out
 
     def set_master_volume(self, volume: float) -> None:
@@ -402,17 +350,6 @@ class SoundManager:
 
         try:
             if self._stream is None:
-                # Log available audio devices for debugging
-                # logger.log("Available audio devices:")
-                # try:
-                #     devices = sd.query_devices()
-                #     for i, device in enumerate(devices):
-                #         logger.log(f"  Device {i}: {device['name']} (out: {device['max_output_channels']} channels)")
-                #     default_device = sd.default.device
-                #     logger.log(f"Default output device: {default_device}")
-                # except Exception as device_error:
-                #     logger.log(f"Warning: Could not query audio devices: {device_error}")
-
                 # Attempt to create output stream on the default device
                 self._stream = sd.OutputStream(
                     samplerate=self._sample_rate,
