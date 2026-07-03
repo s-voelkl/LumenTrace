@@ -84,29 +84,8 @@ cat /etc/asound.conf
 speaker-test -c 2 -t sine -f 1000 -l 1
 ```
 
-Once Docker is running, verify audio inside the container:
-
-```bash
-sudo docker compose -f docker-compose.yaml exec -T lumentrace aplay -l
-sudo docker compose -f docker-compose.yaml exec -T lumentrace speaker-test -c 2 -t sine -f 1000 -l 1
-```
-
-If playback fails with "Playback open error: -524", restart the Docker container to re-apply the `/dev/snd` device permissions [README.md]:
-
-```bash
-sudo docker compose -f docker-compose.yaml restart
-```
-
-### Docker installieren
-
-```shell
-sudo apt update && sudo apt upgrade -y
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-```
-
-Starte den Raspberry neu, dann mit ``docker --version`` überprüfen, ob die Installation erfolgreich war.
-Docker Compose auch mit ``docker compose version`` überprüfen.
+For instructions on how to install and run the application with **Docker**, please see:
+[docs/rpi_4/rpi_4_docker.md](rpi_4_docker.md)
 
 ## Hardware-Set
 
