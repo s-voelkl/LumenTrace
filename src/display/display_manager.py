@@ -109,8 +109,10 @@ class DisplayManager:
         self._render_round_advance(game)
         self._render_inactive_vehicles(game)
         self._render_active_vehicles(game)
-        self._render_vehicle_front_lights(game)
-        self._render_vehicle_rear_lights(game)
+        
+        if game.settings.directional_vehicle_lights:
+            self._render_vehicle_front_lights(game)
+            self._render_vehicle_rear_lights(game)
 
         self.display.render()
 
@@ -471,7 +473,7 @@ class DisplayManager:
                 and vehicle.lane
                 and vehicle.active
                 and vehicle.respawn_ticks <= 0
-                and vehicle.acceleration < 0
+                and vehicle.acceleration <= 0
             ):
                 lane_total = game.get_lane_track_length(vehicle.lane)
                 if lane_total <= 0:

@@ -61,11 +61,12 @@ class Game:
         self.__motor_sounds: dict[Player, Any] = {}
         self.__previous_special_1: dict[Player, float] = {}
         self.__warning_active: dict[Player, bool] = {}
-        # if self.__sound_manager is not None and MotorSound is not None:
-        #     for player in self.__players:
-        #         self.__motor_sounds[player] = MotorSound(
-        #             self.__sound_manager, max_volume=20, idle_volume=5
-        #         )
+        
+        if self.__sound_manager is not None and MotorSound is not None:
+            for player in self.__players:
+                self.__motor_sounds[player] = MotorSound(
+                    self.__sound_manager, max_volume=20, idle_volume=5
+                )
 
         self.__stop_event = threading.Event()
         self.__threads: list[threading.Thread] = []
