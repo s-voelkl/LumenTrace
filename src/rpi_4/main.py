@@ -109,7 +109,7 @@ def main():
             sound_manager.play(GameSound.RACE_FINISH, volume=30)
             logger.log("Race finished. Restarting...")
             time.sleep(4)
-            
+            game.clear_round_counters()
             # ensure cleanup of game resources before next iteration
             del game  
 
@@ -118,7 +118,6 @@ def clear_all_leds(display: LedDisplay, lanes: list[Lane]) -> None:
     """Clear all LEDs to black before applying new colors on startup."""
     display.clear()
     display.render()
-
 
 def set_all_leds(
     display: LedDisplay, lanes: list[Lane], color: tuple[int, int, int]
@@ -376,10 +375,25 @@ def build_game(
     # prevent conflicting with the PWM-driven track lines on GPIO 18/19.
     # Colors are matched to the primary colors of each player's vehicle.
     
-    # Re-initialize the panels ONLY on the first run
+    # round counter panels
     round_counters = {
-        RoundCounter(pin=10, zigzag=True, color=player_1.vehicle.primary_color, brightness=50),
-        RoundCounter(pin=21, zigzag=True, color=player_2.vehicle.primary_color, brightness=50)
+        "player_1": RoundCounter(
+            pin=10, 
+            zigzag=True, 
+            color=player_1.vehicle.primary_color, 
+            brightness=50
+        ),
+        "player_2": RoundCounter(
+            pin=21, 
+            zigzag=True, 
+            color=player_2.vehicle.primary_color, 
+            brightness=50
+        )
+    }
+    
+    session_round_counters = {
+        player_1: round_counters["player_1"],
+        player_2: round_counters["player_2"],
     }
 
     max_speed: int = 100
@@ -583,7 +597,7 @@ def build_game(
         lanes=[lane_0, lane_1, lane_2],
         display_manager=display_manager,
         sound_manager=sound_manager,
-        round_counters=round_counters,
+        round_counters=session_round_counters,
     )
 
     return game, display

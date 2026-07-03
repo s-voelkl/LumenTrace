@@ -1,9 +1,10 @@
 import threading
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Dict
 
 from src.controller.signal_receiver_interface import SignalReceiverInterface
+from src.round_counter.round_counter import RoundCounter
 from .lane import Lane
 from .player import Player
 from .settings import Settings
@@ -39,7 +40,7 @@ class Game:
         lanes: list[Lane],
         display_manager,  # explicitly not imported to avoid circular dependency
         sound_manager=None,
-        round_counters={},  # explicitly not imported to avoid circular dependency
+        round_counters: Dict[Player, RoundCounter]={},  # explicitly not imported to avoid circular dependency
     ):
 
         self.__players = players if players else []
@@ -419,7 +420,7 @@ class Game:
     def __update_round_counter(self):
         if not self.__round_counters:
             return
-
+        
         # Periodically iterate over all players and push updates to their assigned panel
         for player in self.__players:
             if player in self.__round_counters:
@@ -427,6 +428,7 @@ class Game:
                 round_val = player.vehicle.round
                 try:
                     round_counter.display_round(round_val)
+                    logger.log(f"Updated round counter for player {player.name} to {round_val}")
                 except Exception as e:
                     logger.log(
                         f"Error updating round counter for player {player.name}: {e}"
@@ -435,9 +437,16 @@ class Game:
                 logger.log(f"Player {player.name} has won the game!")
                 self.stop_game()
                 break
-
-        # update with the current game state:
-        # for each player (up to n screens), display the current round.
+            
+    def clear_round_counters(self):
+        """Clear all round counters to reset the display."""
+        for player, round_counter in self.__round_counters.items():
+            try:
+                round_counter.clear()
+            except Exception as e:
+                logger.log(
+                    f"Error clearing round counter for player {player.name}: {e}"
+                )
 
     def tick_once(
         self,
@@ -1176,3 +1185,7 @@ class Game:
     def recent_events(self) -> list[dict[str, Any]]:
         """Return in-memory structured event history for local simulations."""
         return list(self.__event_history)
+
+    @property
+    def round_counters(self) -> dict[Player, RoundCounter]:
+        return self.__round_counters
