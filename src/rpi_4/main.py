@@ -382,8 +382,8 @@ def build_game(
     
     # Re-initialize the panels ONLY on the first run
     if not round_counters:
-        # round_counters[0] = RoundCounter(pin=10, zigzag=True, color=player_1.vehicle.primary_color, brightness=50)
-        # round_counters[1] = RoundCounter(pin=21, zigzag=True, color=player_2.vehicle.primary_color, brightness=50)
+        round_counters[0] = RoundCounter(pin=10, zigzag=True, color=player_1.vehicle.primary_color, brightness=50)
+        round_counters[1] = RoundCounter(pin=21, zigzag=True, color=player_2.vehicle.primary_color, brightness=50)
         pass
 
     max_speed: int = 100
