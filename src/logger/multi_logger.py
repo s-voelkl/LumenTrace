@@ -9,6 +9,9 @@ from .pylogger import get_pylogger
 
 class MultiLogger:
     """Forward log calls to the stdlib logger and MQTT logger."""
+    
+    # logger boolean if deactivated
+    __logger_active = False
 
     def __init__(self, credentials_path: str | None = None, logger_name: str = "pylogger"):
         self._pylogger = get_pylogger(logger_name)
@@ -16,14 +19,16 @@ class MultiLogger:
 
     def log(self, message: str, qos: int = 1) -> None:
         """Log a plain text message to both backends."""
-        self._pylogger.info(message)
-        self._mqtt_logger.log(message, qos)
+        if self.__logger_active:
+            self._pylogger.info(message)
+            self._mqtt_logger.log(message, qos)
 
     def log_json(self, data: dict[str, Any], qos: int = 1) -> None:
         """Log a JSON payload to both backends."""
-        payload = json.dumps(data)
-        self._pylogger.info(payload)
-        self._mqtt_logger.log_json(data, qos)
+        if self.__logger_active:
+            payload = json.dumps(data)
+            self._pylogger.info(payload)
+            self._mqtt_logger.log_json(data, qos)
 
     def stop(self) -> None:
         """Stop the MQTT backend."""
