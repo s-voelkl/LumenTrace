@@ -77,13 +77,15 @@ This project separates LED rendering into two responsibilities: color/buffer man
 
 Display hierarchy (applied from low priority -> high priority):
 
-1. Track module base: entire lanes are painted a faint dark gray (ratio ~0.05) and each module's first pixel is emphasized (ratio ~0.1) to make module boundaries visible.
-2. Intersection module: track modules with allowed lane changes are painted with a light gray base.
-3. Intersection animation: when a vehicle is currently on an intersection the lane is temporarily overlaid (light color) to indicate the interaction.
-4. Start of the track: the first pixel of every lane is marked as a start/end line (gray).
-5. Round advance: when a vehicle completes a lap the start pixel blinks between yellow/white for a configured number of ticks.
-6. Inactive vehicles (respawn): vehicles that are inactive or respawning blink between white and track-start color according to `respawn_tick_color_change`.
-7. Active vehicle: final override — vehicle sprite is drawn centered on the vehicle position. Color depends on the driving profile and vehicle speed. Speeds near zero use the vehicle's primary color; values beyond thresholds interpolate toward accelerate/decelerate warning colors.
+1. **Track module base**: Entire lanes are painted a faint dark gray (ratio ~0.1) and each module's first pixel is emphasized (ratio ~0.3) to make module boundaries visible.
+2. **Intersection module**: Track modules with allowed lane changes are painted with a light pink base (ratio ~0.1).
+3. **Intersection animation**: When a vehicle is currently on an intersection the lane is temporarily overlaid with light pink (ratio ~0.2) to indicate the interaction.
+4. **Start of the track**: The first pixel of every lane is marked as a start/end line (gray).
+5. **Round advance**: When a vehicle completes a lap the start pixel blinks between yellow and white for a configured number of ticks.
+6. **Inactive vehicles (respawn)**: Vehicles that are inactive or respawning blink between their primary color and gray (40% primary + 60% gray).
+7. **Active vehicle**: Final override — vehicle sprite is drawn centered on the vehicle position. Color depends on the driving profile and vehicle speed. Speeds near zero use the vehicle's primary color; values beyond thresholds interpolate toward accelerate/decelerate warning colors.
+8. **Vehicle front lights**: Overlay front lighting (light gray) for vehicles that are currently accelerating.
+9. **Vehicle rear lights**: Overlay rear brake lighting (red) for vehicles that are currently decelerating.
 
 How the strips are controlled
 
@@ -217,8 +219,11 @@ On top of the engine, the game plays positional one-shot effects that respond to
 - Fallen vehicles become inactive and enter a respawn state (`settings.respawn_ticks`, `vehicle.respawn_ticks`, `vehicle.active`).
 - While `vehicle.active` is `False`, vehicles are ignored in the race.
 - After the `vehicle.respawn_ticks` count down to `0`, the vehicle attempts to respawn:
-  - Try `position = 0` on any unoccupied lane that exists in the first track module. Unoccupied means no active vehicle is on the module. The vehicle speed and acceleration are reset to `0`.
-  - If no lane is available, the vehicle remains inactive and tries again in the next tick.
+  - If the module where the vehicle fell is a LOOPING module, step back one module to avoid respawning in the same looping section (unless it's the only module).
+  - Try `position = 0` on the preferred lane within the target respawn module. If not available, try other unoccupied lanes on that module. Unoccupied means no active vehicle is on the module.
+  - If no lane is available on the target module, fallback to the previous modules, checking all lanes from outer (most active vehicles) to inner. 
+  - The vehicle speed and acceleration are reset to `0`, `vehicle.respawn_ticks` to `0`, and its lane change state is cleared.
+  - If no lane is available across all candidate modules, the vehicle remains inactive and tries again in the next tick.
 - Respawn does not increment `vehicle.round`.
 
 ## Design
