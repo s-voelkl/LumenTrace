@@ -100,5 +100,3 @@ For instructions on how to install and run the application with **Docker**, plea
 Von Makerspace:
 
 - SanDisk Extreme 32GB V30 U3 A1 mit Adapter --> steckt im RPI 4
-
-```

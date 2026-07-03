@@ -53,6 +53,8 @@ class DisplayManager:
     COLOR_RENDER_ROUND_ADVANCE_PRIMARY = YELLOW
     COLOR_RENDER_ROUND_ADVANCE_SECONDARY = WHITE
     COLOR_RENDER_INACTIVE_MODIFIER = GRAY
+    COLOR_RENDER_FRONT_LIGHT = LIGHT_GRAY
+    COLOR_RENDER_REAR_LIGHT = RED
 
     def __init__(self, display: LedDisplay, config: DisplayConfig | None = None):
         """
@@ -92,6 +94,8 @@ class DisplayManager:
         #  - round advance animation (blinks lane on round increment)
         #  - inactive vehicles (respawn blinking marker)
         #  - active vehicles (final override for vehicle position / speed color)
+        #  - vehicle front lights (white/gray highlight when accelerating)
+        #  - vehicle rear lights (red highlight when braking)
 
         self.display.clear()
 
@@ -105,6 +109,8 @@ class DisplayManager:
         self._render_round_advance(game)
         self._render_inactive_vehicles(game)
         self._render_active_vehicles(game)
+        self._render_vehicle_front_lights(game)
+        self._render_vehicle_rear_lights(game)
 
         self.display.render()
 
@@ -416,6 +422,66 @@ class DisplayManager:
                             color,
                             vehicle_pixel_count,
                         )
+
+    def _render_vehicle_front_lights(self, game: Game):
+        """
+        Overlay front lighting for vehicles that are currently accelerating.
+
+        If `vehicle.acceleration > 0`, the leading pixel of the vehicle sprite
+        is overwritten with `COLOR_RENDER_FRONT_LIGHT`.
+        """
+        players = game.players
+        vehicle_pixel_count = self._get_vehicle_pixel_count(game)
+        offset = vehicle_pixel_count // 2
+
+        for player in players:
+            vehicle = player.vehicle
+            if (
+                vehicle
+                and vehicle.lane
+                and vehicle.active
+                and vehicle.respawn_ticks <= 0
+                and vehicle.acceleration > 0
+            ):
+                lane_total = game.get_lane_track_length(vehicle.lane)
+                if lane_total <= 0:
+                    continue
+
+                arr = self.display.virtual_arrays.get(vehicle.lane.lane_id)
+                if arr is not None and len(arr) > 0:
+                    center_idx = int((vehicle.position / lane_total) * (len(arr) - 1))
+                    front_idx = (center_idx + offset) % len(arr)
+                    arr[front_idx] = self.COLOR_RENDER_FRONT_LIGHT
+
+    def _render_vehicle_rear_lights(self, game: Game):
+        """
+        Overlay rear brake lighting for vehicles that are currently decelerating.
+
+        If `vehicle.acceleration < 0`, the trailing pixel of the vehicle sprite
+        is overwritten with `COLOR_RENDER_REAR_LIGHT`.
+        """
+        players = game.players
+        vehicle_pixel_count = self._get_vehicle_pixel_count(game)
+        offset = vehicle_pixel_count // 2
+
+        for player in players:
+            vehicle = player.vehicle
+            if (
+                vehicle
+                and vehicle.lane
+                and vehicle.active
+                and vehicle.respawn_ticks <= 0
+                and vehicle.acceleration < 0
+            ):
+                lane_total = game.get_lane_track_length(vehicle.lane)
+                if lane_total <= 0:
+                    continue
+
+                arr = self.display.virtual_arrays.get(vehicle.lane.lane_id)
+                if arr is not None and len(arr) > 0:
+                    center_idx = int((vehicle.position / lane_total) * (len(arr) - 1))
+                    rear_idx = (center_idx - offset) % len(arr)
+                    arr[rear_idx] = self.COLOR_RENDER_REAR_LIGHT
 
     def _get_active_color(
         self, vehicle: Vehicle, dp: DrivingProfile
