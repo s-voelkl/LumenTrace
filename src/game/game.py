@@ -39,7 +39,7 @@ class Game:
         lanes: list[Lane],
         display_manager,  # explicitly not imported to avoid circular dependency
         sound_manager=None,
-        round_counters=None,  # explicitly not imported to avoid circular dependency
+        round_counters={},  # explicitly not imported to avoid circular dependency
     ):
 
         self.__players = players if players else []
@@ -61,12 +61,6 @@ class Game:
         self.__motor_sounds: dict[Player, Any] = {}
         self.__previous_special_1: dict[Player, float] = {}
         self.__warning_active: dict[Player, bool] = {}
-        
-        if self.__sound_manager is not None and MotorSound is not None:
-            for player in self.__players:
-                self.__motor_sounds[player] = MotorSound(
-                    self.__sound_manager, max_volume=20, idle_volume=5
-                )
 
         self.__stop_event = threading.Event()
         self.__threads: list[threading.Thread] = []
@@ -256,8 +250,6 @@ class Game:
                 "players": [
                     {
                         "name": player.name,
-                        "wins": player.wins,
-                        "losses": player.losses,
                         "vehicle": {
                             "position": player.vehicle.position,
                             "lane": player.vehicle.lane.lane_id
@@ -327,14 +319,24 @@ class Game:
         self.__record_event(
             {
                 "event": "game_started",
+                "fetch_interval_s": fetch_interval_s,
+                "display_interval_s": display_interval_s,
+                "game_tick_interval_s": game_tick_interval_s,
+                "round_counter_interval_s": round_counter_interval_s,
             }
         )
 
         self.__game_tick_interval_s = game_tick_interval_s
+        
+        if self.__sound_manager is not None and MotorSound is not None:
+            for player in self.__players:
+                self.__motor_sounds[player] = MotorSound(
+                    self.__sound_manager, max_volume=15, idle_volume=5
+                )
 
         # Start the continuous per-player engine loops before the worker
         # threads begin updating their pitch and volume each tick.
-        # self.__start_motor_sounds()
+        self.__start_motor_sounds()
 
         # Each worker owns one responsibility so timing stays predictable and easy to review.
         self.__stop_event.clear()
@@ -363,7 +365,6 @@ class Game:
                 args=(self.__update_round_counter, round_counter_interval_s),
                 daemon=False,
             ),
-            # sound logic
         ]
 
         for thread in self.__threads:

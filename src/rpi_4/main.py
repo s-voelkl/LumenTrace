@@ -53,18 +53,13 @@ def main():
     except Exception as e:
         logger.log(f"Error starting SoundManager: {e}")
         logger.log("Continuing without audio.")
-        
-    # Cache physical strips and panels once outside the loop.
-    # This prevents rpi-ws281x hardware re-initialization errors on restarts.
-    real_strips = {}
-    round_counters: dict[int, RoundCounter] = {}
 
     first_run: bool = True
     
     while True:
         # new game for every loop iteration, to ensure a clean state.
         logger.log("SoundManager initialized. Building game and display...")
-        game, led_display = build_game(sound_manager, real_strips, round_counters)
+        game, led_display = build_game(sound_manager)
 
         if first_run:
             logger.log("Clearing all LEDs on startup and playing startup sound...")
@@ -114,6 +109,9 @@ def main():
             sound_manager.play(GameSound.RACE_FINISH, volume=30)
             logger.log("Race finished. Restarting...")
             time.sleep(4)
+            
+            # ensure cleanup of game resources before next iteration
+            del game  
 
 
 def clear_all_leds(display: LedDisplay, lanes: list[Lane]) -> None:
@@ -253,9 +251,7 @@ def run_start_sequence(
 
 
 def build_game(
-        sound_manager: ThreadedSoundManager, 
-        real_strips: dict[int, any], 
-        round_counters: dict[int, RoundCounter]
+        sound_manager: ThreadedSoundManager
     ) -> tuple[Game, LedDisplay]:
     """
     Builds and configures the Game object with lanes, players, and track modules.
@@ -298,7 +294,7 @@ def build_game(
     leds_main_strip_1 = leds_total_strip_1 - leds_add_strip_1
 
     # Initialize physical strips ONLY on the first run
-    if not real_strips and RPI_WS281X_AVAILABLE and PixelStrip is not None:
+    if RPI_WS281X_AVAILABLE and PixelStrip is not None:
         strip0 = PixelStrip(
             num=leds_total_strip_0,
             pin=18,
@@ -381,10 +377,10 @@ def build_game(
     # Colors are matched to the primary colors of each player's vehicle.
     
     # Re-initialize the panels ONLY on the first run
-    if not round_counters:
-        round_counters[0] = RoundCounter(pin=10, zigzag=True, color=player_1.vehicle.primary_color, brightness=50)
-        round_counters[1] = RoundCounter(pin=21, zigzag=True, color=player_2.vehicle.primary_color, brightness=50)
-        pass
+    round_counters = {
+        RoundCounter(pin=10, zigzag=True, color=player_1.vehicle.primary_color, brightness=50),
+        RoundCounter(pin=21, zigzag=True, color=player_2.vehicle.primary_color, brightness=50)
+    }
 
     max_speed: int = 100
     settings = Settings(
@@ -394,7 +390,7 @@ def build_game(
         acceleration_multiplier=0.07,
         lane_change_window=5,
         vehicle_crash_distance=3.0,
-        rounds_to_win=1,
+        rounds_to_win=5,
     )
 
     track_modules: list[TrackModule] = [
