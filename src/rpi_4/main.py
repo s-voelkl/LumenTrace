@@ -53,22 +53,29 @@ def main():
     except Exception as e:
         logger.log(f"Error starting SoundManager: {e}")
         logger.log("Continuing without audio.")
+        
+    # Cache physical strips and panels once outside the loop.
+    # This prevents rpi-ws281x hardware re-initialization errors on restarts.
+    real_strips = {}
+    round_counters: dict[int, RoundCounter] = {}
 
     first_run: bool = True
+    
     while True:
         # new game for every loop iteration, to ensure a clean state.
         logger.log("SoundManager initialized. Building game and display...")
-        game, display = build_game(sound_manager)
+        game, led_display = build_game(sound_manager, real_strips, round_counters)
 
         if first_run:
             logger.log("Clearing all LEDs on startup and playing startup sound...")
-            clear_all_leds(display, game.lanes)
+            clear_all_leds(led_display, game.lanes)
             time.sleep(0.25)  # cleaner display clearing
 
             # startup sound and initial LED colors
-            set_all_leds(display, game.lanes, DARK_PURPLE)
+            set_all_leds(led_display, game.lanes, DARK_PURPLE)
             sound_manager.play(GameSound.GAME_INIT, volume=20)
             time.sleep(1)
+            first_run = False
 
         logger.log(
             "Setup of Game, SignalReceiver, and PlayerController complete. "
@@ -76,7 +83,7 @@ def main():
         )
 
         # start waiting music, end if the start signal is received
-        vibe_music: str = sound_manager.play(GameSound.VIBE_2, loop=True, volume=10)
+        # vibe_music: str = sound_manager.play(GameSound.VIBE_2, loop=True, volume=10)
 
         # Game startup:
         # The game waits for an initial signal of all player controllers pressing
@@ -84,14 +91,14 @@ def main():
         # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
         # effect plays in parallel, before the game loop is started.
         # uncomment for immediate startup
-        wait_for_start_signal(game)
+        # wait_for_start_signal(game)
 
         # stop waiting music
-        sound_manager.stop_sound(vibe_music)
+        # sound_manager.stop_sound(vibe_music)
 
         # uncomment for start sequence
         logger.log("Start signal received. Running start sequence.")
-        run_start_sequence(display, game, sound_manager)
+        # run_start_sequence(led_display, game, sound_manager)
 
         logger.log("Start sequence complete. Starting game loop.")
         try:
@@ -106,7 +113,7 @@ def main():
             sound_manager.stop_all()
             sound_manager.play(GameSound.RACE_FINISH, volume=30)
             logger.log("Race finished. Restarting...")
-            time.sleep(2)
+            time.sleep(4)
 
 
 def clear_all_leds(display: LedDisplay, lanes: list[Lane]) -> None:
@@ -245,7 +252,11 @@ def run_start_sequence(
     fill_first_track_module(display, game, BLACK)
 
 
-def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
+def build_game(
+        sound_manager: ThreadedSoundManager, 
+        real_strips: dict[int, any], 
+        round_counters: dict[int, RoundCounter]
+    ) -> tuple[Game, LedDisplay]:
     """
     Builds and configures the Game object with lanes, players, and track modules.
 
@@ -269,9 +280,9 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     )
     # signal_receiver = SignalReceiver(controllers=[player_controller_1])
 
-    lane_0 = Lane()  # 0
-    lane_1 = Lane()  # 1
-    lane_2 = Lane()  # 2
+    lane_0 = Lane()  # 0 -> inner
+    lane_1 = Lane()  # 1 -> middle
+    lane_2 = Lane()  # 2 -> outer
 
     # Configuring display and display manager
     real_strips = {}
@@ -286,7 +297,8 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     leds_main_strip_0 = leds_total_strip_0 - leds_add_strip_0
     leds_main_strip_1 = leds_total_strip_1 - leds_add_strip_1
 
-    if RPI_WS281X_AVAILABLE and PixelStrip is not None:
+    # Initialize physical strips ONLY on the first run
+    if not real_strips and RPI_WS281X_AVAILABLE and PixelStrip is not None:
         strip0 = PixelStrip(
             num=leds_total_strip_0,
             pin=18,
@@ -367,14 +379,12 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     # We assign GPIO 10 (SPI) and GPIO 21 (PCM) as separate output pins to
     # prevent conflicting with the PWM-driven track lines on GPIO 18/19.
     # Colors are matched to the primary colors of each player's vehicle.
-    round_counters = {
-        player_1: RoundCounter(
-            pin=10, zigzag=True, color=player_1.vehicle.primary_color
-        ),
-        player_2: RoundCounter(
-            pin=21, zigzag=True, color=player_2.vehicle.primary_color
-        ),
-    }
+    
+    # Re-initialize the panels ONLY on the first run
+    if not round_counters:
+        # round_counters[0] = RoundCounter(pin=10, zigzag=True, color=player_1.vehicle.primary_color, brightness=50)
+        # round_counters[1] = RoundCounter(pin=21, zigzag=True, color=player_2.vehicle.primary_color, brightness=50)
+        pass
 
     max_speed: int = 100
     settings = Settings(
@@ -384,7 +394,7 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
         acceleration_multiplier=0.07,
         lane_change_window=5,
         vehicle_crash_distance=3.0,
-        rounds_to_win=20,
+        rounds_to_win=1,
     )
 
     track_modules: list[TrackModule] = [

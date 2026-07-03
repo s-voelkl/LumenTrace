@@ -16,7 +16,7 @@ class ThreadedSoundManager:
     or input processing threads) from the sound manager's internal locking.
     It queues all play, update, and stop requests into a thread-safe Queue,
     which are sequentially executed by a dedicated background worker thread.
-
+    
     It exposes the same public interface as SoundManager, allowing it to act
     as a transparent, drop-in replacement.
     """
