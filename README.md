@@ -52,64 +52,7 @@ Track layout used by the simulation:
 - Standard modules: 2 lanes, lane change disabled
 - Intersection module: 3 temporary lanes, lane change enabled
 
-## Game Mechanics
-
-### Acceleration and Friction
-
-- Controller input `forward_press` is mapped to vehicle acceleration each game tick. The mapping is configured as inputs [42000, 65536] to outputs [0, 100] with linear interpolation.
-- Friction is applied continuously and reduces current speed by a configurable percentage.
-- Positive and negative movement are supported. If acceleration would invert speed direction in one step, speed is clamped to `0` first to keep transitions stable.
-
-### Speed Update and Limits
-
-- Speed is updated every tick as:
-  - `speed += acceleration * acceleration_multiplier`
-- Speed is clamped to `[-max_speed, +max_speed]`.
-- This allows realistic throttle behavior while preventing unstable values at high update rates.
-- A goal is to specify the friction and acceleration multipliers such that the vehicle can't possibly exceed the `max_speed` at all.
-
-### Position and Round (Lap) Handling
-
-- Position is updated from speed using the active game-tick interval.
-- Each lane has its own total track length (sum of line lengths across modules).
-- When position exceeds lane length, position wraps around and `round` is incremented and the position is reset.
-- Reverse movement is also handled, including safe behavior for negative movement near lap boundaries.
-
-### Lane Change
-
-- Lane changes are triggered by pressing the `special_1` button.
-- A lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`. This is typically used for intersection modules.
-- By default, there are two main lanes: the left lane and the right lane. Intersections introduce a temporary middle lane to facilitate the switch.
-- A manual lane change from the outer lanes to the middle lane can be initiated anywhere on the module, except for the last `lane_change_window` units before the end of the module.
-- After pressing the button, the vehicle switches to the middle lane.
-- From the middle lane, the player can switch to the target outer lane manually by pressing the button again, provided the vehicle has travelled at least `lane_change_window` units on the middle lane.
-- The vehicle continues on the middle lane until it reaches the end of the module (specifically, `lane_change_window` units before the end). At that point, it automatically switches to the target outer lane, completing the lane change smoothly if the player hasn't already changed lanes manually.
-
-### Position Conversion During Lane Change
-
-- When the vehicle switches to or from the middle lane, it keeps its relative progress within the current track module.
-- Conversion is proportional:
-  - progress = `source_position / source_line_length`
-  - target_position = `progress * target_line_length`
-- This keeps cars visually and physically aligned when lane geometries have different lengths.
-
-### Falling, Collision, and Respawn
-
-- A vehicle falls immediately when its current speed or acceleration violates the driving profile of the active line:
-  - `speed` must remain within `[min_speed, max_speed]`
-  - `acceleration` must remain within `[min_acceleration, max_acceleration]`
-- Collision detection is evaluated for vehicles on the same lane.
-  - If two vehicles are within collision distance, the vehicle in front falls.
-  - The collision happens, if the position distance between the `settings.__vehicle_crash_distance` is violated.
-
-### Respawn System
-
-- Fallen vehicles become inactive and enter a respawn state (`settings.respawn_ticks`, `vehicle.respawn_ticks`, `vehicle.active`).
-- While `vehicle.active` is `False`, vehicles are ignored in the race.
-- After the `vehicle.respawn_ticks` count down to `0`, the vehicle attempts to respawn:
-  - Try `position = 0` on any unoccupied lane that exists in the first track module. Unoccupied means no active vehicle is on the module. The vehicle speed and acceleration are reset to `0`.
-  - If no lane is available, the vehicle remains inactive and tries again in the next tick.
-- Respawn does not increment `vehicle.round`.
+## Hardware
 
 ## Architecture
 
@@ -155,17 +98,6 @@ Tuning and configuration
 - Module boundary brightness and base-track ratio are implemented as small color ratios applied when filling lanes and pixels.
 
 A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
-
-## Next steps
-
-- game state control (rounds done, LCD display for information, start button)
-- handling the hardware and wires for long term stability
-
-## Hardware
-
-<!-- TODO: Hardware details -->
-<!-- TODO: Picture of the hardware setup -->
-<!-- TODO: Picture of the running LED Strip -->
 
 ## Sound Engineering
 
@@ -228,3 +160,68 @@ On top of the engine, the game plays positional one-shot effects that respond to
 - vibe-2-retro.mp3: <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=59892">freesound_community</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=59892">Pixabay</a>
 - vibe-3-retro.mp3: <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=41048">freesound_community</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=41048">Pixabay</a>
 - punch-1.mp3: from <a href="https://pixabay.com/sound-effects/retro-hurt-sound-03-474780/">Pixabay</a>
+
+
+## Game Mechanics
+
+### Acceleration and Friction
+
+- Controller input `forward_press` is mapped to vehicle acceleration each game tick. The mapping is configured as inputs [42000, 65536] to outputs [0, 100] with linear interpolation.
+- Friction is applied continuously and reduces current speed by a configurable percentage.
+- Positive and negative movement are supported. If acceleration would invert speed direction in one step, speed is clamped to `0` first to keep transitions stable.
+
+### Speed Update and Limits
+
+- Speed is updated every tick as:
+  - `speed += acceleration * acceleration_multiplier`
+- Speed is clamped to `[-max_speed, +max_speed]`.
+- This allows realistic throttle behavior while preventing unstable values at high update rates.
+- A goal is to specify the friction and acceleration multipliers such that the vehicle can't possibly exceed the `max_speed` at all.
+
+### Position and Round (Lap) Handling
+
+- Position is updated from speed using the active game-tick interval.
+- Each lane has its own total track length (sum of line lengths across modules).
+- When position exceeds lane length, position wraps around and `round` is incremented and the position is reset.
+- Reverse movement is also handled, including safe behavior for negative movement near lap boundaries.
+
+### Lane Change
+
+- Lane changes are triggered by pressing the `special_1` button.
+- A lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`. This is typically used for intersection modules.
+- By default, there are two main lanes: the left lane and the right lane. Intersections introduce a temporary middle lane to facilitate the switch.
+- A manual lane change from the outer lanes to the middle lane can be initiated anywhere on the module, except for the last `lane_change_window` units before the end of the module.
+- After pressing the button, the vehicle switches to the middle lane.
+- From the middle lane, the player can switch to the target outer lane manually by pressing the button again, provided the vehicle has travelled at least `lane_change_window` units on the middle lane.
+- The vehicle continues on the middle lane until it reaches the end of the module (specifically, `lane_change_window` units before the end). At that point, it automatically switches to the target outer lane, completing the lane change smoothly if the player hasn't already changed lanes manually.
+
+### Position Conversion During Lane Change
+
+- When the vehicle switches to or from the middle lane, it keeps its relative progress within the current track module.
+- Conversion is proportional:
+  - progress = `source_position / source_line_length`
+  - target_position = `progress * target_line_length`
+- This keeps cars visually and physically aligned when lane geometries have different lengths.
+
+### Falling, Collision, and Respawn
+
+- A vehicle falls immediately when its current speed or acceleration violates the driving profile of the active line:
+  - `speed` must remain within `[min_speed, max_speed]`
+  - `acceleration` must remain within `[min_acceleration, max_acceleration]`
+- Collision detection is evaluated for vehicles on the same lane.
+  - If two vehicles are within collision distance, the vehicle in front falls.
+  - The collision happens, if the position distance between the `settings.__vehicle_crash_distance` is violated.
+
+### Respawn System
+
+- Fallen vehicles become inactive and enter a respawn state (`settings.respawn_ticks`, `vehicle.respawn_ticks`, `vehicle.active`).
+- While `vehicle.active` is `False`, vehicles are ignored in the race.
+- After the `vehicle.respawn_ticks` count down to `0`, the vehicle attempts to respawn:
+  - Try `position = 0` on any unoccupied lane that exists in the first track module. Unoccupied means no active vehicle is on the module. The vehicle speed and acceleration are reset to `0`.
+  - If no lane is available, the vehicle remains inactive and tries again in the next tick.
+- Respawn does not increment `vehicle.round`.
+
+## Design
+
+### 3D-Printed Objects
+
