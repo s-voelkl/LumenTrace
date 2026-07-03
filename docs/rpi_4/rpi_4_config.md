@@ -81,7 +81,7 @@ echo "defaults.ctl.card 0" | sudo tee -a /etc/asound.conf
 cat /etc/asound.conf
 
 # Test audio output on Raspberry Pi (before Docker)
-speaker-test -c 2 -t sine -f 1000 -l 1
+sudo speaker-test -c 2 -t sine -f 1000 -l 1 -D sysdefault:CARD=2
 ```
 
 For instructions on how to install and run the application with **Docker**, please see:
