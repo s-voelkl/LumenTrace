@@ -64,20 +64,23 @@ module hollow_cut(w, d, h) {
             cube([w - 2*wall, d - 2*wall, h - wall], center = true);
 }
 
-// Cyberpunk-Antennen: eckige Masten (Diamant-Querschnitt), Querstrebe,
-// asymmetrische schraege Ausleger und eine Tech-Box an der Basis.
+// Cyberpunk-Antennen, SUPPORTFREI konstruiert: gestapelte Tech-Basis,
+// spitzer Eckmast und schraege Y-Streben (nach oben-aussen, ~28 Grad von
+// vertikal -> ueberhangfrei druckbar). KEINE horizontalen Querbalken mehr,
+// die sonst massiven Support ausloesen.
 module antennas(z, main = 28, side = 16, spread = 5) {
     translate([0, 0, z]) {
-        // Tech-Box an der Basis
-        translate([0, 0, 1.5]) cube([7, 7, 3], center = true);
-        // Hauptmast, eckig verjuengt
-        rotate([0, 0, 45]) cylinder(h = main, d1 = 3.4, d2 = 1.0, $fn = 4);
-        // Querstrebe (Funk-Kreuz)
-        translate([0, 0, main*0.6]) cube([2*spread + 5, 1.2, 1.2], center = true);
-        translate([0, 0, main*0.6]) cube([1.2, 2*spread + 5, 1.2], center = true);
-        // asymmetrische Ausleger
-        translate([ spread, 0, 0]) rotate([0,  16, 0]) cylinder(h = side, d1 = 1.8, d2 = 0.4, $fn = 4);
-        translate([-spread, 0, 0]) rotate([0, -8, 0])  cylinder(h = side*0.65, d1 = 1.8, d2 = 0.4, $fn = 4);
+        // gestapelte Tech-Basis (Setbacks, druckbar)
+        translate([0, 0, 1.5]) cube([7.5, 7.5, 3], center = true);
+        translate([0, 0, 4.2]) cube([5, 5, 2.5], center = true);
+        // Hauptmast, eckig, spitz zulaufend
+        rotate([0, 0, 45]) cylinder(h = main, d1 = 3.0, d2 = 0.7, $fn = 4);
+        // 4 schraege Y-Streben nach oben-aussen (selbststuetzend)
+        for (a = [0, 90, 180, 270])
+            rotate([0, 0, a])
+                translate([1.5, 0, 5])
+                    rotate([0, 28, 0])
+                        cylinder(h = side*0.7, d1 = 1.4, d2 = 0.3, $fn = 4);
     }
 }
 
@@ -89,13 +92,14 @@ module roof_cut(w, d, z, ang = 22) {
                 cube([w + 20, d + 40, 60], center = true);
 }
 
-// Auskragender Tech-Arm (Kragarm) auf Hoehe z, in +X-Richtung.
+// Auskragender Tech-Arm (Kragarm) auf Hoehe z, 45 Grad nach oben-aussen
+// geneigt -> selbststuetzend, kein Support noetig.
 module outrigger(z, len = 14, thick = 4) {
-    translate([0, 0, z]) {
-        rotate([0, 90, 0])
+    translate([0, 0, z])
+        rotate([0, 45, 0]) {
             cylinder(h = len, d = thick, $fn = 4);
-        translate([len, 0, 0]) cube([5, 7, 9], center = true);
-    }
+            translate([0, 0, len]) cube([6, 7, 6], center = true);
+        }
 }
 
 // ============================ GEBAEUDE =============================
