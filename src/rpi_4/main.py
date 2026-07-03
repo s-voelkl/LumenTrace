@@ -370,30 +370,31 @@ def build_game(
         ),
     )
 
-    # 1. Instantiate the round counters.
+    # Instantiate the round counters.
     # We assign GPIO 10 (SPI) and GPIO 21 (PCM) as separate output pins to
     # prevent conflicting with the PWM-driven track lines on GPIO 18/19.
     # Colors are matched to the primary colors of each player's vehicle.
-    
-    # round counter panels
+    # Handles WS2812 color arrangements cleanly
     round_counters = {
         "player_1": RoundCounter(
             pin=10, 
             zigzag=True, 
             color=player_1.vehicle.primary_color, 
-            brightness=50
+            brightness=50,
+            color_order="GRB" 
         ),
-        "player_2": RoundCounter(
-            pin=21, 
-            zigzag=True, 
-            color=player_2.vehicle.primary_color, 
-            brightness=50
-        )
+        # "player_2": RoundCounter(
+        #     pin=21, 
+        #     zigzag=True, 
+        #     color=player_2.vehicle.primary_color, 
+        #     brightness=50,
+        #     color_order="GRB"
+        # )
     }
     
     session_round_counters = {
         player_1: round_counters["player_1"],
-        player_2: round_counters["player_2"],
+        # player_2: round_counters["player_2"],
     }
 
     max_speed: int = 100
@@ -511,14 +512,14 @@ def build_game(
             lines=[
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed, min_speed=max_speed * 0.5
+                        max_speed=max_speed, min_speed=max_speed * 0.4
                     ),
                     lane=lane_0,
                     line_length=110.0,
                 ),
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed, min_speed=max_speed * 0.5
+                        max_speed=max_speed, min_speed=max_speed * 0.4
                     ),
                     lane=lane_2,
                     line_length=110.0,
