@@ -38,7 +38,7 @@ sudo systemctl enable docker
 sudo systemctl start docker
 ```
 
-2. Build and start LumenTrace once (detached):
+1. Build and start LumenTrace once (detached):
 
 ```bash
 cd /home/lumentrace/Documents/repos//LumenTrace
@@ -46,7 +46,7 @@ sudo docker compose -f docker-compose.yaml build
 sudo docker compose -f docker-compose.yaml up -d
 ```
 
-3. Install and enable the LumenTrace systemd unit:
+1. Install and enable the LumenTrace systemd unit:
 
 ```bash
 sudo cp deploy/systemd/lumentrace.service /etc/systemd/system/lumentrace.service
@@ -55,7 +55,7 @@ sudo systemctl enable lumentrace.service
 sudo systemctl start lumentrace.service
 ```
 
-4. Verify status:
+1. Verify status:
 
 ```bash
 sudo systemctl status lumentrace.service
@@ -91,59 +91,60 @@ sudo systemctl start lumentrace.service
 ```
 
 If your repository path is not `/home/lumentrace/Documents/repos/LumenTrace`, update `WorkingDirectory`, `ExecStart`, and `ExecStop` in `deploy/systemd/lumentrace.service` before copying the file to `/etc/systemd/system/`.
+
 ### Audio Troubleshooting
 
 If the game starts but sound does not play:
 
 1. **Check Docker container logs for audio device detection:**
 
-```bash
-sudo docker compose -f docker-compose.yaml logs lumentrace | grep -i "audio\|device"
-```
+    ```bash
+    sudo docker compose -f docker-compose.yaml logs lumentrace | grep -i "audio\|device"
+    ```
 
-The logs will show which audio device was detected and any errors. The game logs available devices on startup in the format:
+    The logs will show which audio device was detected and any errors. The game logs available devices on startup in the format:
 
-```
-Available audio devices:
-  Device 0: bcm2835 Headphones (out: 8 channels)
-  Device 1: USB Audio Device (out: 2 channels)
-Default output device: [1, 0]
-Audio stream started successfully.
-```
+    ```txt
+    Available audio devices:
+      Device 0: bcm2835 Headphones (out: 8 channels)
+      Device 1: USB Audio Device (out: 2 channels)
+    Default output device: [1, 0]
+    Audio stream started successfully.
+    ```
 
 2. **Rebuild the container to ensure audio libraries are installed:**
 
-```bash
-sudo docker compose -f docker-compose.yaml build --no-cache
-```
+    ```bash
+    sudo docker compose -f docker-compose.yaml build --no-cache
+    ```
 
 3. **Verify device accessibility inside the container:**
 
-```bash
-# List audio devices inside the container
-sudo docker compose -f docker-compose.yaml exec -T lumentrace aplay -l
+    ```bash
+    # List audio devices inside the container
+    sudo docker compose -f docker-compose.yaml exec -T lumentrace aplay -l
 
-# Check /dev/snd permissions inside the container
-sudo docker compose -f docker-compose.yaml exec -T lumentrace ls -la /dev/snd/
-```
+    # Check /dev/snd permissions inside the container
+    sudo docker compose -f docker-compose.yaml exec -T lumentrace ls -la /dev/snd/
+    ```
 
 4. **Fix for "Playback open error: -524":**
 
-This error indicates the audio device files cannot be accessed inside the container. Restart the container to reapply device mount permissions:
+    This error indicates the audio device files cannot be accessed inside the container. Restart the container to reapply device mount permissions:
 
-```bash
-sudo docker compose -f docker-compose.yaml restart
-```
+    ```bash
+    sudo docker compose -f docker-compose.yaml restart
+    ```
 
-The `/dev/snd:/dev/snd:rw` volume mount is already configured in `docker-compose.yaml`.
+    The `/dev/snd:/dev/snd:rw` volume mount is already configured in `docker-compose.yaml`.
 
 5. **Raspberry Pi USB Sound Card Setup:**
 
-For detailed setup instructions specific to Raspberry Pi with USB sound cards, see [docs/rpi_4/rpi_4_config.md](docs/rpi_4/rpi_4_config.md#sound-mit-usb-soundkarte).
+    For detailed setup instructions specific to Raspberry Pi with USB sound cards, see [docs/rpi_4/rpi_4_config.md](docs/rpi_4/rpi_4_config.md#sound-mit-usb-soundkarte).
 
 6. **Audio Graceful Degradation:**
 
-If audio devices are unavailable, the game will log a warning and continue running without sound. This is by design to ensure the game loop always runs, even in headless or audio-disabled environments.
+    If audio devices are unavailable, the game will log a warning and continue running without sound. This is by design to ensure the game loop always runs, even in headless or audio-disabled environments.
 
 ## Used Technologies
 
@@ -308,13 +309,24 @@ LumenTrace features a real-time audio engine that turns the race into an immersi
 
 ### Real-time audio mixer
 
-A central sound manager (`src/sound/sound_manager.py`) mixes any number of sounds simultaneously through a single stereo output stream. Every sound can be controlled independently while it plays:
+A low-level sound manager (`src/sound/sound_manager.py`) mixes any number of sounds simultaneously through a single stereo output stream. Every sound can be controlled independently while it plays:
 
 - **Volume** – per-sound loudness plus a global master volume.
 - **Pitch** – dynamic speed/pitch shifting, used to make the engine rev up and down.
 - **Stereo panning** – independent left/right balance so sounds can be placed on the left or right side of the track.
 
 To keep playback smooth and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using NumPy array vectorization. Instead of iterating frame-by-frame, arrays are processed in blocks dynamically adapting pitch and volume targets across the entire chunk. The engine continuously eases every change (volume, pitch and panning) toward its target value, avoiding audible clicks and pops without stalling the processing thread. All sounds are referenced through a named catalog (`GameSound`), so each effect has a clear, human-readable name and a single source path.
+
+### Thread Isolation & Concurrency Control
+
+Because real-time audio relies on extremely strict timing guarantees, executing Python-based audio callback routines synchronously alongside high-frequency game ticks, screen rendering, and hardware fetching can lead to Global Interpreter Lock (GIL) starvation and severe lock contention.
+
+To eliminate these bottlenecks, LumenTrace isolates the audio interface using a **Thread-Safe Asynchronous Command Queue** pattern (`src/sound/threaded_sound_manager.py`):
+
+- **Non-blocking Wrapper (`ThreadedSoundManager`):** Acts as a transparent proxy wrapping the low-level `SoundManager`. Calling threads (such as `GameTickThread` or input fetchers) never block or wait on the underlying mixer locks.
+- **FIFO Command Queue:** Methods like `play()`, `update_sound()`, `stop_sound()`, and `stop_all()` immediately enqueue commands as lightweight, fire-and-forget tuples, generating trackable UUIDs instantly on the caller thread.
+- **Dedicated Sound Worker Thread:** A background worker thread (`SoundWorkerThread`) continuously consumes the command queue and applies state changes to the actual `SoundManager`. This guarantees that high-frequency engine parameter updates do not block or stutter the physics loop.
+- **Persistent Streams across Restarts:** The asynchronous `stop_all` implementation selectively clears active playback instances under lock instead of tearing down the audio stream. This keeps the output stream alive and responsive across multiple game restarts and lobby resets without requiring a full audio stream re-initialization.
 
 ### Engine sounds
 
@@ -334,7 +346,7 @@ On top of the engine, the game plays positional one-shot effects that respond to
 - **Crash** – an impact sound when two cars collide or a car falls off the track.
 - **Warning** – an alert when a car's speed or acceleration gets close to the limits allowed by the current track module's driving profile, hinting that the car is about to fall.
 
-## Sound Effects Sources
+### Sound Effects Sources
 
 - base-engine-1.wav
 - startup-sound.mp3: <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
