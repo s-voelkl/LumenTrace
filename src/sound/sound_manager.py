@@ -418,6 +418,8 @@ class SoundManager:
                     samplerate=self._sample_rate,
                     channels=_DEFAULT_CHANNELS,
                     callback=self._audio_callback,
+                    blocksize=1024,  # Larger block size gives more execution time per callback
+                    latency="high",  # Instructs the OS driver to use safer, larger buffer sizes
                 )
                 self._stream.start()
                 logger.log("Audio stream started successfully.")

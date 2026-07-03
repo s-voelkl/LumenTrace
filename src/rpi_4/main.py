@@ -12,6 +12,8 @@ from src.display.config import DisplayConfig
 from src.display.color_constants import *
 from src.round_counter.round_counter import RoundCounter
 from src.sound.sound_manager import SoundManager, GameSound
+from src.sound.threaded_sound_manager import ThreadedSoundManager
+
 from src.game.game import Game
 from src.game.lane import Lane
 from src.game.player import Player
@@ -42,7 +44,9 @@ def main():
     """
     logger.log("Raspberry Pi 4: Main script running.")
 
-    sound_manager = SoundManager()
+    # Instantiate the low-level manager and wrap it inside the threaded manager
+    raw_sound_manager = SoundManager()
+    sound_manager = ThreadedSoundManager(raw_sound_manager)
     try:
         sound_manager.start()
         sound_manager.set_master_volume(100)
@@ -208,7 +212,7 @@ def fill_first_track_module(
 def run_start_sequence(
     display: LedDisplay,
     game: Game,
-    sound_manager: SoundManager,
+    sound_manager: ThreadedSoundManager,
     step_seconds: float = 1.0,
 ) -> None:
     """Run the 3-2-1-GO start animation together with the start sound.
@@ -220,7 +224,7 @@ def run_start_sequence(
     Args:
         display (LedDisplay): Display used for the countdown animation.
         game (Game): Game providing the track layout for the animation.
-        sound_manager (SoundManager): Manager used to play the start sound.
+        sound_manager (ThreadedSoundManager): Manager used to play the start sound.
         step_seconds (float): Duration of each countdown step in seconds.
 
     Returns:
@@ -241,7 +245,7 @@ def run_start_sequence(
     fill_first_track_module(display, game, BLACK)
 
 
-def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
+def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     """
     Builds and configures the Game object with lanes, players, and track modules.
 
@@ -251,7 +255,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     and the display manager for the game simulation.
 
     Args:
-        sound_manager (SoundManager): Shared audio manager passed to the game so
+        sound_manager (ThreadedSoundManager): Shared audio manager passed to the game so
             it can trigger sound effects and per-player engine sounds.
 
     Returns:
