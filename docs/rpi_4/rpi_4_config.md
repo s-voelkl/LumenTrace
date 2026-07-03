@@ -8,7 +8,7 @@
 - Zeitzone: Europe/Berlin
 - Tastaturlayout: de
 - Wlan: Erst mal das bei SimonV "BND-Spionage 5"
-- SSh aktivieren: Ja, mit Passwort (lumentrace) 
+- SSh aktivieren: Ja, mit Passwort (lumentrace)
 - Raspberry Pi Connect: Ja, mit einem Raspberry Pi Account. Siehe Privatnachricht für Zugangsdaten.
 
 ## Verbindung (SSH)
@@ -20,35 +20,64 @@
 
 ## Codeausführung
 
-- Ordner finden: ``cd ./documents/repos/lumentrace``
+- Ordner finden: ``cd /home/lumentrace/Documents/repos/LumenTrace``
 - Enviroment erstellen: ``python3 -m venv .venv``
 - Environment aktivieren: ``source .venv/bin/activate``
 - Pip packages installieren: ``pip install -r ./src/rpi_4/requirements.txt``
 - Pip package list checken: ``pip list``
-- Code ausführen: ``sudo .venv/bin/python -m src.rpi_4.main`` (updated, wichtig für Memory-Zugriff durch die rpi_ws281x library)
+- Code ausführen: ``sudo .venv/bin/python -m src.rpi_4.main`` (Wichtig für Memory-Zugriff durch die rpi_ws281x library)
 
 ```shell
 source .venv/bin/activate
 sudo .venv/bin/python -m src.rpi_4.main
 ```
 
+## Hardware-Vorbereitung (SPI & PCM)
+
+The round counters use **GPIO 10 (SPI)** and **GPIO 21 (PCM)**. You must configure your Raspberry Pi host to enable these modules and prevent onboard audio drivers from blocking them.
+
+### 1. Enable SPI (Player 1 Round Counter)
+
+Run `sudo raspi-config` on the host, go to **Interface Options** -> **SPI**, select **Yes** to enable it, and reboot.
+Alternatively, verify that the following parameter is present in `/boot/firmware/config.txt`:
+
+```ini
+dtparam=spi=on
+```
+
+### 2. Disable Onboard Audio (Player 2 Round Counter / PCM)
+
+Onboard audio drives analog jack/PWM sounds via PCM, which conflicts with GPIO 21 [3]. Open `/boot/firmware/config.txt` on the host:
+
+```bash
+sudo nano /boot/firmware/config.txt
+```
+
+Locate `dtparam=audio=on` and change it to `off`:
+
+```ini
+dtparam=audio=off
+```
+
+Reboot the Raspberry Pi to apply changes.
+
+---
+
 ## Installationen
 
 ### Sound mit USB Soundkarte
 
-Ensure the USB sound card is recognized and set as the default:
+Disabling onboard audio means your USB Sound Card will shift to default index **0** instead of **3**.
 
 ```bash
-# List all audio devices
+# List all audio devices to verify that USB Audio is now Card 0
 aplay -l
 
-# Identify your USB sound card (usually appears as a separate card, e.g., "card 3: USB Audio Device")
-# Set the USB sound card as default (update card number if different):
-echo "defaults.pcm.card 3" | sudo tee -a /etc/asound.conf
-echo "defaults.ctl.card 3" | sudo tee -a /etc/asound.conf
+# Set your USB sound card as the system default:
+echo "defaults.pcm.card 0" | sudo tee -a /etc/asound.conf
+echo "defaults.ctl.card 0" | sudo tee -a /etc/asound.conf
 
-# Verify the USB sound card is now default
-aplay -l
+# Verify the changes
 cat /etc/asound.conf
 
 # Test audio output on Raspberry Pi (before Docker)
@@ -62,22 +91,10 @@ sudo docker compose -f docker-compose.yaml exec -T lumentrace aplay -l
 sudo docker compose -f docker-compose.yaml exec -T lumentrace speaker-test -c 2 -t sine -f 1000 -l 1
 ```
 
-If playback fails with "Playback open error: -524", the device file permissions are not accessible inside the container:
+If playback fails with "Playback open error: -524", restart the Docker container to re-apply the `/dev/snd` device permissions [README.md]:
 
 ```bash
-# Check that /dev/snd is properly accessible on the host
-ls -la /dev/snd/
-
-# Restart the Docker container to apply new device permissions
 sudo docker compose -f docker-compose.yaml restart
-
-# Ensure /dev/snd is explicitly mounted with RW access in docker-compose.yaml (already configured)
-```
-
-If `speaker-test` is not found inside the container, check Docker logs for audio device errors:
-
-```bash
-sudo docker compose -f docker-compose.yaml logs lumentrace | grep -i "audio\|device\|asound"
 ```
 
 ### Docker installieren
@@ -104,3 +121,5 @@ Docker Compose auch mit ``docker compose version`` überprüfen.
 Von Makerspace:
 
 - SanDisk Extreme 32GB V30 U3 A1 mit Adapter --> steckt im RPI 4
+
+```
