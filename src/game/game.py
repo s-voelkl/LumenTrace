@@ -39,7 +39,7 @@ class Game:
         lanes: list[Lane],
         display_manager,  # explicitly not imported to avoid circular dependency
         sound_manager=None,
-        lcd_screens=None,  # explicitly not imported to avoid circular dependency
+        round_counters=None,  # explicitly not imported to avoid circular dependency
     ):
 
         self.__players = players if players else []
@@ -53,7 +53,7 @@ class Game:
         self.__event_history: list[dict[str, Any]] = []
         self.__event_history_limit = 200
         self.__tick_count = 0
-        self.__lcd_screens = lcd_screens if lcd_screens else {}
+        self.__round_counters = round_counters if round_counters else {}
 
         # Per-player audio state. Motor sounds are continuous engine loops,
         # while the edge-tracking dictionaries make one-shot effects (lane
@@ -321,7 +321,7 @@ class Game:
         fetch_interval_s: float = 0.01,
         display_interval_s: float = 0.02,
         game_tick_interval_s: float = 0.02,
-        lcd_update_interval_s: float = 0.3,
+        round_counter_interval_s: float = 0.5,
     ):
         self.__record_event(
             {
@@ -358,8 +358,8 @@ class Game:
             ),
             threading.Thread(
                 target=self.__run_periodic_loop,
-                name="GameLCDUpdateThread",
-                args=(self.__update_lcd, lcd_update_interval_s),
+                name="GameRoundCounterUpdateThread",
+                args=(self.__update_round_counter, round_counter_interval_s),
                 daemon=False,
             ),
             # sound logic
@@ -380,6 +380,12 @@ class Game:
 
     def stop_game(self):
         self.__stop_event.set()
+
+        if self.__sound_manager is not None:
+            self.__sound_manager.stop_all()
+
+        # if self.__display_manager is not None:
+        #     self.__display_manager.clear_all()
 
     def __run_periodic_loop(
         self, action: Callable[[], None], interval_s: float
@@ -408,9 +414,25 @@ class Game:
             self.__event_history = self.__event_history[-self.__event_history_limit :]
         logger.log_json(event)
 
-    def __update_lcd(self):
-        if self.__lcd_screens is None:
+    def __update_round_counter(self):
+        if not self.__round_counters:
             return
+
+        # Periodically iterate over all players and push updates to their assigned panel
+        for player in self.__players:
+            if player in self.__round_counters:
+                round_counter = self.__round_counters[player]
+                round_val = player.vehicle.round
+                try:
+                    round_counter.display_round(round_val)
+                except Exception as e:
+                    logger.log(
+                        f"Error updating round counter for player {player.name}: {e}"
+                    )
+            if player.vehicle.round >= self.__settings.rounds_to_win:
+                logger.log(f"Player {player.name} has won the game!")
+                self.stop_game()
+                break
 
         # update with the current game state:
         # for each player (up to n screens), display the current round.

@@ -10,6 +10,7 @@ from src.display.led_display import (
 from src.display.display_manager import DisplayManager
 from src.display.config import DisplayConfig
 from src.display.color_constants import *
+from src.round_counter.round_counter import RoundCounter
 from src.sound.sound_manager import SoundManager, GameSound
 from src.game.game import Game
 from src.game.lane import Lane
@@ -49,48 +50,59 @@ def main():
         logger.log(f"Error starting SoundManager: {e}")
         logger.log("Continuing without audio.")
 
-    logger.log("SoundManager initialized. Building game and display...")
-    game, display = build_game(sound_manager)
+    first_run: bool = True
+    while True:
+        # new game for every loop iteration, to ensure a clean state.
+        logger.log("SoundManager initialized. Building game and display...")
+        game, display = build_game(sound_manager)
 
-    logger.log("Clearing all LEDs on startup and playing startup sound...")
-    clear_all_leds(display, game.lanes)
-    time.sleep(0.25)  # cleaner display clearing
+        if first_run:
+            logger.log("Clearing all LEDs on startup and playing startup sound...")
+            clear_all_leds(display, game.lanes)
+            time.sleep(0.25)  # cleaner display clearing
 
-    # start signal
-    set_all_leds(display, game.lanes, DARK_PURPLE)
-    sound_manager.play(GameSound.GAME_INIT, volume=20)
-    time.sleep(1)
+            # startup sound and initial LED colors
+            set_all_leds(display, game.lanes, DARK_PURPLE)
+            sound_manager.play(GameSound.GAME_INIT, volume=20)
+            time.sleep(1)
 
-    logger.log(
-        "Setup of Game, SignalReceiver, and PlayerController complete. "
-        "Waiting for all players to press their start button."
-    )
-
-    # start waiting music, end if the start signal is received
-    vibe_music: str = sound_manager.play(GameSound.VIBE_2, loop=True, volume=10)
-
-    # Game startup:
-    # The game waits for an initial signal of all player controllers pressing
-    # their button (``PlayerController.special_1``) for at least one second.
-    # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
-    # effect plays in parallel, before the game loop is started.
-    # uncomment for immediate startup
-    wait_for_start_signal(game)
-
-    # stop waiting music
-    sound_manager.stop_sound(vibe_music)
-
-    # uncomment for start sequence
-    logger.log("Start signal received. Running start sequence.")
-    run_start_sequence(display, game, sound_manager)
-
-    logger.log("Start sequence complete. Starting game loop.")
-    try:
-        game.start_game(
-            fetch_interval_s=0.02, display_interval_s=0.02, game_tick_interval_s=0.02
+        logger.log(
+            "Setup of Game, SignalReceiver, and PlayerController complete. "
+            "Waiting for all players to press their start button."
         )
-    finally:
-        sound_manager.stop_all()
+
+        # start waiting music, end if the start signal is received
+        vibe_music: str = sound_manager.play(GameSound.VIBE_2, loop=True, volume=10)
+
+        # Game startup:
+        # The game waits for an initial signal of all player controllers pressing
+        # their button (``PlayerController.special_1``) for at least one second.
+        # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
+        # effect plays in parallel, before the game loop is started.
+        # uncomment for immediate startup
+        wait_for_start_signal(game)
+
+        # stop waiting music
+        sound_manager.stop_sound(vibe_music)
+
+        # uncomment for start sequence
+        logger.log("Start signal received. Running start sequence.")
+        run_start_sequence(display, game, sound_manager)
+
+        logger.log("Start sequence complete. Starting game loop.")
+        try:
+            game.start_game(
+                fetch_interval_s=0.02,
+                display_interval_s=0.02,
+                game_tick_interval_s=0.02,
+                round_counter_interval_s=0.5,
+            )
+        finally:
+            # end of game
+            sound_manager.stop_all()
+            sound_manager.play(GameSound.RACE_FINISH, volume=30)
+            logger.log("Race finished. Restarting...")
+            time.sleep(2)
 
 
 def clear_all_leds(display: LedDisplay, lanes: list[Lane]) -> None:
@@ -301,11 +313,19 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         VirtualLedStrip(
             lane=lane_0, real_strip_id=0, min_index=0, max_index=leds_main_strip_0 - 1
         ),
+        # Intersection 1 middle lane segment
         VirtualLedStrip(
             lane=lane_1,
             real_strip_id=0,
             min_index=leds_main_strip_0,
             max_index=leds_total_strip_0 - 1,
+        ),
+        # Intersection 2 middle lane segment
+        VirtualLedStrip(
+            lane=lane_1,
+            real_strip_id=1,
+            min_index=leds_main_strip_1,
+            max_index=leds_total_strip_1 - 1,
         ),
         VirtualLedStrip(
             lane=lane_2, real_strip_id=1, min_index=0, max_index=leds_main_strip_1 - 1
@@ -319,17 +339,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
     display_config = DisplayConfig()
     display_manager = DisplayManager(display, display_config)
 
-    # settings
-    max_speed: int = 100
-    settings = Settings(
-        max_speed=max_speed,
-        respawn_ticks=75,
-        friction_percent=0.05,
-        acceleration_multiplier=0.07,
-        lane_change_window=5,
-        vehicle_crash_distance=3.0,
-    )
-
+    # players
     player_1 = Player(
         controller=player_controller_1,
         vehicle=Vehicle(
@@ -347,6 +357,30 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             accelerate_color=GRAY,
             decelerate_color=RED_PURPLISH,
         ),
+    )
+
+    # 1. Instantiate the round counters.
+    # We assign GPIO 10 (SPI) and GPIO 21 (PCM) as separate output pins to
+    # prevent conflicting with the PWM-driven track lines on GPIO 18/19.
+    # Colors are matched to the primary colors of each player's vehicle.
+    round_counters = {
+        player_1: RoundCounter(
+            pin=10, zigzag=True, color=player_1.vehicle.primary_color
+        ),
+        player_2: RoundCounter(
+            pin=21, zigzag=True, color=player_2.vehicle.primary_color
+        ),
+    }
+
+    max_speed: int = 100
+    settings = Settings(
+        max_speed=max_speed,
+        respawn_ticks=75,
+        friction_percent=0.05,
+        acceleration_multiplier=0.07,
+        lane_change_window=5,
+        vehicle_crash_distance=3.0,
+        rounds_to_win=20,
     )
 
     track_modules: list[TrackModule] = [
@@ -401,7 +435,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
                         max_speed=max_speed, lane_change_allowed=True
                     ),
                     lane=lane_1,
-                    line_length=45.5,  # TODO: edit this intersection!
+                    line_length=45.5,
                 ),
                 Line(
                     driving_profile=DrivingProfile(
@@ -468,17 +502,28 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
             ],
         ),
         TrackModule(
-            track_type=TrackType.STRAIGHT,
+            track_type=TrackType.INTERSECTION,
             part_length=34.2,
             sound_stereo_ratio_left=0.8,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
                     lane=lane_0,
                     line_length=34.0,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed),
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
+                    lane=lane_1,
+                    line_length=34.2,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed, lane_change_allowed=True
+                    ),
                     lane=lane_2,
                     line_length=34.3,
                 ),
@@ -528,6 +573,7 @@ def build_game(sound_manager: SoundManager) -> tuple[Game, LedDisplay]:
         lanes=[lane_0, lane_1, lane_2],
         display_manager=display_manager,
         sound_manager=sound_manager,
+        round_counters=round_counters,
     )
 
     return game, display

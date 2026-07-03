@@ -263,14 +263,18 @@ class DisplayManager:
         Overlay animation for vehicles currently on an intersection.
 
         If a vehicle is resolved to a module with type `INTERSECTION`, the
-        entire lane is painted `LIGHT_PINK`. This runs before active
-        vehicle rendering so single-pixel vehicle markers can still
-        override the animation when applicable.
+        entire lane segment for that module is painted `LIGHT_PINK`. This runs
+        before active vehicle rendering so single-pixel vehicle markers can
+        still override the animation when applicable.
 
         Args:
             game (Game): Current game instance exposing players.
         """
         players = game.players
+
+        # Use a set to track which modules we have already rendered animations for
+        # in this tick to avoid redundant fills if multiple players are in the same module.
+        rendered_modules: set[int] = set()
 
         for player in players:
             vehicle = player.vehicle
@@ -278,32 +282,38 @@ class DisplayManager:
                 module, _ = game.get_track_module_for_lane_position(
                     vehicle.lane, vehicle.position
                 )
-                line = module.get_line_for_lane(vehicle.lane) if module else None
+                if not module or id(module) in rendered_modules:
+                    continue
+
+                line = module.get_line_for_lane(vehicle.lane)
                 lane_change_allowed = bool(
                     line and line.driving_profile.lane_change_allowed
                 )
-                if module and lane_change_allowed:
+
+                if lane_change_allowed:
                     lane = vehicle.lane
                     lane_total = game.get_lane_track_length(lane)
                     if lane_total <= 0:
                         continue
 
+                    # Find the global start position of this module for the current lane.
                     module_start_position = 0.0
                     for track_module in game.track_modules:
                         line_length = track_module.get_line_length_for_lane(lane)
-                        module_end_position = module_start_position + line_length
 
-                        if track_module is module and line_length > 0:
-                            self.display.fill_lane_section_by_relative_position(
-                                lane,
-                                module_start_position / lane_total,
-                                module_end_position / lane_total,
-                                self.COLOR_RENDER_INTERSECTION,
-                                color_ratio=0.2,
-                            )
+                        if track_module is module:
+                            if line_length > 0:
+                                self.display.fill_lane_section_by_relative_position(
+                                    lane,
+                                    module_start_position / lane_total,
+                                    (module_start_position + line_length) / lane_total,
+                                    self.COLOR_RENDER_INTERSECTION,
+                                    color_ratio=0.2,
+                                )
+                                rendered_modules.add(id(module))
                             break
 
-                        module_start_position = module_end_position
+                        module_start_position += line_length
 
     def _render_start_of_track(self, game: Game):
         """
