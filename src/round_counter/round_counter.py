@@ -1,16 +1,16 @@
+import time
 from typing import Tuple
 from src.logger.multi_logger import get_logger
 
 logger = get_logger()
 
 try:
-    from rpi_ws281x import PixelStrip
-
+    from rpi_ws281x import PixelStrip, Color, ws
     RPI_WS281X_AVAILABLE = True
 except ImportError:
     RPI_WS281X_AVAILABLE = False
 
-    # Mock fallback class for testing and local dry-runs on non-Pi platforms
+    # Mock fallback classes for testing and local dry-runs on non-Pi platforms
     class PixelStrip:
         def __init__(self, *args, **kwargs):
             pass
@@ -24,10 +24,15 @@ except ImportError:
         def show(self):
             pass
 
+    def Color(red: int, green: int, blue: int, white: int = 0) -> int:
+        return (white << 24) | (red << 16) | (green << 8) | blue
+
+    class ws:
+        WS2811_STRIP_GRB = 0x00100800
+        WS2811_STRIP_RGB = 0x00100008
+
 
 # 3x5 font mapping for digits '0' through '9'.
-# Each element represents 5 rows and 3 columns.
-# 1 denotes an active pixel, 0 denotes an inactive pixel.
 FONT_3X5 = {
     "0": [[1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 1]],
     "1": [[0, 1, 0], [1, 1, 0], [0, 1, 0], [0, 1, 0], [1, 1, 1]],
@@ -55,6 +60,7 @@ class RoundCounter:
         brightness: int = 64,
         zigzag: bool = True,
         color: Tuple[int, int, int] = (255, 255, 255),
+        color_order: str = "GRB",
     ):
         """Initializes the round counter.
 
@@ -64,6 +70,7 @@ class RoundCounter:
             zigzag (bool): Set to True if the physical matrix panel uses
                 serpentine/zigzag layout; False for row-by-row progressive layout.
             color (Tuple[int, int, int]): The RGB color utilized to draw the digits.
+            color_order (str): The color sequence expected by the matrix ("GRB" or "RGB").
         """
         self.pin = pin
         self.brightness = brightness
@@ -75,10 +82,17 @@ class RoundCounter:
         if RPI_WS281X_AVAILABLE:
             # Map standard channels based on chosen GPIO pins on the Pi 4.
             # PWM0 channels are GPIO 12/18. PWM1 channels are GPIO 13/19.
-            # SPI uses 10 (channel 0). PCM uses 21 (channel 0).
             channel = 0
-            if pin in (13, 19):
+            if pin in (13, 19, 21):
+                # GPIO 21 shares PWM1/PCM resources.
                 channel = 1
+
+            # Select correct color formatting based on hardware specifications
+            strip_type_map = {
+                "RGB": ws.WS2811_STRIP_RGB,
+                "GRB": ws.WS2811_STRIP_GRB,
+            }
+            strip_type = strip_type_map.get(color_order.upper(), ws.WS2811_STRIP_GRB)
 
             try:
                 self.strip = PixelStrip(
@@ -89,6 +103,7 @@ class RoundCounter:
                     invert=False,
                     brightness=brightness,
                     channel=channel,
+                    strip_type=strip_type
                 )
                 self.strip.begin()
                 self.clear()
@@ -120,7 +135,6 @@ class RoundCounter:
         Args:
             value (int): Number representing the round.
         """
-        # Constrain value strictly between 0 and 99
         val_clamped = max(0, min(99, value))
 
         if val_clamped == self.current_value:
@@ -158,8 +172,8 @@ class RoundCounter:
         # Write the buffer array to the NeoPixel hardware
         if self.strip:
             for idx, rgb in enumerate(buffer):
-                # Formulate standard 24-bit GRB/RGB hex representation
-                color_val = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
+                # Create standard GRB/RGB hex representation via native rpi_ws281x utility
+                color_val = Color(rgb[0], rgb[1], rgb[2])
                 self.strip.setPixelColor(idx, color_val)
             self.strip.show()
 
@@ -170,3 +184,18 @@ class RoundCounter:
             for idx in range(64):
                 self.strip.setPixelColor(idx, 0)
             self.strip.show()
+            
+            
+if __name__ == "__main__":
+    # Example usage for testing purposes
+    counter = RoundCounter(
+        pin=10, 
+        zigzag=True, 
+        color=(0, 255, 0),
+        brightness=50,
+        color_order="GRB" 
+    )
+    for i in range(100):
+        counter.display_round(i)
+        time.sleep(0.1)
+    counter.clear()
