@@ -9,26 +9,33 @@ class Settings:
         acceleration_multiplier: float = 0.03,
         lane_change_window: float = 20.0,
         vehicle_crash_distance: float = 5.0,
+        rounds_to_win: int = 20,
     ):
         self.__max_speed = max_speed if max_speed > 0 else 100.0
         self.__min_acceleration = min_acceleration if min_acceleration < 0 else -100.0
         self.__max_acceleration = max_acceleration if max_acceleration > 0 else 100.0
         self.__respawn_ticks = respawn_ticks if respawn_ticks > 0 else 200
         self.__friction_percent = friction_percent if friction_percent > 0 else 0.02
-        self.__acceleration_multiplier = acceleration_multiplier if acceleration_multiplier > 0 else 0.03
-        self.__lane_change_window = lane_change_window if lane_change_window > 0 else 20.0
-        self.__vehicle_crash_distance = vehicle_crash_distance if vehicle_crash_distance > 0 else 5.0
-
+        self.__acceleration_multiplier = (
+            acceleration_multiplier if acceleration_multiplier > 0 else 0.03
+        )
+        self.__lane_change_window = (
+            lane_change_window if lane_change_window > 0 else 20.0
+        )
+        self.__vehicle_crash_distance = (
+            vehicle_crash_distance if vehicle_crash_distance > 0 else 5.0
+        )
+        self.__rounds_to_win = rounds_to_win if rounds_to_win > 0 else 20
 
     # Getters
     @property
     def max_speed(self) -> float:
         return self.__max_speed
-    
+
     @property
     def min_acceleration(self) -> float:
         return self.__min_acceleration
-    
+
     @property
     def max_acceleration(self) -> float:
         return self.__max_acceleration
@@ -52,3 +59,7 @@ class Settings:
     @property
     def vehicle_crash_distance(self) -> float:
         return self.__vehicle_crash_distance
+
+    @property
+    def rounds_to_win(self) -> int:
+        return self.__rounds_to_win

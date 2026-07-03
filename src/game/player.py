@@ -1,23 +1,21 @@
 from src.controller.player_controller import PlayerController
 from .vehicle import Vehicle
 
+
 class Player:
-    
     # static player count to generate default player names
     __player_count = 0
-    
+
     def __init__(self, controller: PlayerController, vehicle: Vehicle, name: str = ""):
         Player.__player_count += 1
         self.__name = name if name else f"Player {Player.__player_count}"
-        self.__controller = controller 
+        self.__controller = controller
         self.__vehicle = vehicle
-        self.__wins = 0
-        self.__losses = 0
-        
+
     def __del__(self):
         # decrement player count when a player instance is deleted
-        Player.__player_count -= 1    
-    
+        Player.__player_count -= 1
+
     # Getters
     @property
     def name(self) -> str:
@@ -30,11 +28,3 @@ class Player:
     @property
     def vehicle(self) -> Vehicle:
         return self.__vehicle
-
-    @property
-    def wins(self) -> int:
-        return self.__wins
-
-    @property
-    def losses(self) -> int:
-        return self.__losses

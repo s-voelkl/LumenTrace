@@ -39,6 +39,7 @@ class Game:
         lanes: list[Lane],
         display_manager,  # explicitly not imported to avoid circular dependency
         sound_manager=None,
+        lcd_screens=None,  # explicitly not imported to avoid circular dependency
     ):
 
         self.__players = players if players else []
@@ -52,6 +53,7 @@ class Game:
         self.__event_history: list[dict[str, Any]] = []
         self.__event_history_limit = 200
         self.__tick_count = 0
+        self.__lcd_screens = lcd_screens if lcd_screens else {}
 
         # Per-player audio state. Motor sounds are continuous engine loops,
         # while the edge-tracking dictionaries make one-shot effects (lane
@@ -319,6 +321,7 @@ class Game:
         fetch_interval_s: float = 0.01,
         display_interval_s: float = 0.02,
         game_tick_interval_s: float = 0.02,
+        lcd_update_interval_s: float = 0.3,
     ):
         self.__record_event(
             {
@@ -351,6 +354,12 @@ class Game:
                 target=self.__run_periodic_loop,
                 name="GameTickThread",
                 args=(self.__game_loop, game_tick_interval_s),
+                daemon=False,
+            ),
+            threading.Thread(
+                target=self.__run_periodic_loop,
+                name="GameLCDUpdateThread",
+                args=(self.__update_lcd, lcd_update_interval_s),
                 daemon=False,
             ),
             # sound logic
@@ -399,6 +408,13 @@ class Game:
             self.__event_history = self.__event_history[-self.__event_history_limit :]
         logger.log_json(event)
 
+    def __update_lcd(self):
+        if self.__lcd_screens is None:
+            return
+
+        # update with the current game state:
+        # for each player (up to n screens), display the current round.
+
     def tick_once(
         self,
         *,
@@ -424,6 +440,18 @@ class Game:
             self.fetch_data()
 
         self.__game_loop()
+
+        # check win condition
+        if self.__settings is not None and self.__settings.rounds_to_win is not None:
+            for player in self.__players:
+                if player.vehicle.round >= self.__settings.rounds_to_win:
+                    self.__record_event(
+                        {
+                            "event": "player_won",
+                            "player": player.name,
+                            "rounds": player.vehicle.round,
+                        }
+                    )
 
         if show_display:
             self.display()
@@ -813,8 +841,9 @@ class Game:
         )
 
     @staticmethod
-    def __is_near_profile_bounds(vehicle, profile: Any, threshold: float = 0.1, 
-            settings_max_speed: float = 100) -> bool:
+    def __is_near_profile_bounds(
+        vehicle, profile: Any, threshold: float = 0.1, settings_max_speed: float = 100
+    ) -> bool:
         """Return whether speed or acceleration is close to a profile limit.
 
         A value is considered "near a bound" when it falls within ``threshold``
@@ -862,7 +891,9 @@ class Game:
         if self.__sound_manager is None or GameSound is None:
             return
 
-        is_near = self.__is_near_profile_bounds(player.vehicle, profile, settings_max_speed=self.settings.max_speed)
+        is_near = self.__is_near_profile_bounds(
+            player.vehicle, profile, settings_max_speed=self.settings.max_speed
+        )
         was_near = self.__warning_active.get(player, False)
 
         if is_near and not was_near:
@@ -891,19 +922,21 @@ class Game:
         self, lane: Lane | None, position: float
     ) -> int | None:
         """Resolve preferred respawn module and apply one-step loop avoidance.
-        
-        If the module where the vehicle fell is a LOOPING module, step back one 
+
+        If the module where the vehicle fell is a LOOPING module, step back one
         module to avoid respawning in the same looping section.
         """
         if lane is None or not self.__track_modules:
             return None
 
-        module_index, _ = self.__get_track_module_index_and_local_position(lane, position)
+        module_index, _ = self.__get_track_module_index_and_local_position(
+            lane, position
+        )
         if module_index is None:
             return None
 
         module = self.__track_modules[module_index]
-        
+
         # Apply loop avoidance: if the current module is a looping module,
         # respawn one module earlier.
         if module.track_type == TrackType.LOOPING and len(self.__track_modules) > 1:
@@ -955,7 +988,9 @@ class Game:
         if preferred_lane is None or preferred_lane not in lanes_with_line:
             return lanes_with_line
 
-        return [preferred_lane] + [lane for lane in lanes_with_line if lane != preferred_lane]
+        return [preferred_lane] + [
+            lane for lane in lanes_with_line if lane != preferred_lane
+        ]
 
     def __spawn_player_on_module_lane(
         self, player: Player, module_index: int, lane: Lane
@@ -1008,7 +1043,9 @@ class Game:
 
         preferred_module_index %= len(self.__track_modules)
 
-        for lane in self.__candidate_respawn_lanes(preferred_module_index, vehicle.lane):
+        for lane in self.__candidate_respawn_lanes(
+            preferred_module_index, vehicle.lane
+        ):
             if self.__spawn_player_on_module_lane(player, preferred_module_index, lane):
                 return True
 
@@ -1024,7 +1061,9 @@ class Game:
                 active_count = self.__count_active_vehicles_in_module(module_index)
                 fallback_candidates.append((active_count, module_index))
 
-        for _, module_index in sorted(fallback_candidates, key=lambda item: (item[0], item[1])):
+        for _, module_index in sorted(
+            fallback_candidates, key=lambda item: (item[0], item[1])
+        ):
             for lane in self.__candidate_respawn_lanes(module_index, vehicle.lane):
                 if self.__spawn_player_on_module_lane(player, module_index, lane):
                     return True
