@@ -113,7 +113,14 @@ A low-level sound manager (`src/sound/sound_manager.py`) mixes any number of sou
 - **Pitch** – dynamic speed/pitch shifting, used to make the engine rev up and down.
 - **Stereo panning** – independent left/right balance so sounds can be placed on the left or right side of the track.
 
-To keep playback smooth and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using NumPy array vectorization. Instead of iterating frame-by-frame, arrays are processed in blocks dynamically adapting pitch and volume targets across the entire chunk. The engine continuously eases every change (volume, pitch and panning) toward its target value, avoiding audible clicks and pops without stalling the processing thread. All sounds are referenced through a named catalog (`GameSound`), so each effect has a clear, human-readable name and a single source path.
+To maximize execution speed and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using a **block-level updates architecture** powered by NumPy vectorization:
+
+- **Single Frame Indexing:** Rather than generating index arrays inside loops, a single frame index array (`np.arange`) is created once per callback block.
+- **No Cumulative Ramping:** Dynamic playback positions are calculated using linear offsets (`arange_frames * pitch`) instead of sequential cumulative sums (`np.cumsum`), bypassing costly sample-by-sample pitch ramping.
+- **Scalar Mixing Operations:** Dynamic parameter arrays are replaced with block-level scalar factors (`left_mult`, `right_mult`). Multiplications in the mixing stage are completed directly as fast scalar-by-array operations, avoiding expensive element-wise array generation and multiplications (such as `np.linspace` calls).
+- **Smooth Easing:** The mixer gently adjusts overall volume, pitch, and panning properties block-by-block. This provides smooth, click-free parameter transitions at default block sizes (e.g. 1024 frames, ~23ms) while significantly reducing CPU overhead.
+
+All sounds are referenced through a named catalog (`GameSound`), so each effect has a clear, human-readable name and a single source path.
 
 ### Thread Isolation & Concurrency Control
 
