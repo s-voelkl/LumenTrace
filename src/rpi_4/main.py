@@ -4,12 +4,12 @@ from src.logger.multi_logger import get_logger
 from src.display.led_display import (
     LedDisplay,
     VirtualLedStrip,
-    PixelStrip,
+    PixelStrip,  # type: ignore
     RPI_WS281X_AVAILABLE,
 )
 from src.display.display_manager import DisplayManager
 from src.display.config import DisplayConfig
-from src.display.color_constants import *
+from src.display.color_constants import *  # noqa: F403
 from src.round_counter.round_counter import RoundCounter
 from src.sound.sound_manager import SoundManager, GameSound
 from src.sound.threaded_sound_manager import ThreadedSoundManager
@@ -55,7 +55,7 @@ def main():
         logger.log("Continuing without audio.")
 
     first_run: bool = True
-    
+
     while True:
         # new game for every loop iteration, to ensure a clean state.
         logger.log("SoundManager initialized. Building game and display...")
@@ -103,6 +103,9 @@ def main():
                 game_tick_interval_s=0.02,
                 round_counter_interval_s=0.5,
             )
+        except Exception as e:
+            logger.log(f"Error during game loop: {e}")
+            raise e
         finally:
             # end of game
             sound_manager.stop_all()
@@ -111,13 +114,14 @@ def main():
             time.sleep(4)
             game.clear_round_counters()
             # ensure cleanup of game resources before next iteration
-            del game  
+            del game
 
 
 def clear_all_leds(display: LedDisplay, lanes: list[Lane]) -> None:
     """Clear all LEDs to black before applying new colors on startup."""
     display.clear()
     display.render()
+
 
 def set_all_leds(
     display: LedDisplay, lanes: list[Lane], color: tuple[int, int, int]
@@ -249,9 +253,7 @@ def run_start_sequence(
     fill_first_track_module(display, game, BLACK)
 
 
-def build_game(
-        sound_manager: ThreadedSoundManager
-    ) -> tuple[Game, LedDisplay]:
+def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     """
     Builds and configures the Game object with lanes, players, and track modules.
 
@@ -376,25 +378,20 @@ def build_game(
     # Colors are matched to the primary colors of each player's vehicle.
     # Handles WS2812 color arrangements cleanly
     round_counters = {
-        "player_1": RoundCounter(
-            pin=10, 
-            zigzag=True, 
-            color=player_1.vehicle.primary_color, 
+        player_1: RoundCounter(
+            pin=10,
+            zigzag=True,
+            color=player_1.vehicle.primary_color,
             brightness=50,
-            color_order="GRB" 
+            color_order="GRB",
         ),
-        # "player_2": RoundCounter(
-        #     pin=21, 
-        #     zigzag=True, 
-        #     color=player_2.vehicle.primary_color, 
-        #     brightness=50,
-        #     color_order="GRB"
-        # )
-    }
-    
-    session_round_counters = {
-        player_1: round_counters["player_1"],
-        # player_2: round_counters["player_2"],
+        player_2: RoundCounter(
+            pin=21,
+            zigzag=True,
+            color=player_2.vehicle.primary_color,
+            brightness=50,
+            color_order="GRB",
+        ),
     }
 
     max_speed: int = 100
@@ -598,7 +595,7 @@ def build_game(
         lanes=[lane_0, lane_1, lane_2],
         display_manager=display_manager,
         sound_manager=sound_manager,
-        round_counters=session_round_counters,
+        round_counters=round_counters,
     )
 
     return game, display

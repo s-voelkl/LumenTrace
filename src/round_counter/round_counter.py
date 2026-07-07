@@ -6,6 +6,7 @@ logger = get_logger()
 
 try:
     from rpi_ws281x import PixelStrip, Color, ws
+
     RPI_WS281X_AVAILABLE = True
 except ImportError:
     RPI_WS281X_AVAILABLE = False
@@ -72,6 +73,10 @@ class RoundCounter:
             color (Tuple[int, int, int]): The RGB color utilized to draw the digits.
             color_order (str): The color sequence expected by the matrix ("GRB" or "RGB").
         """
+        logger.log(
+            __file__
+            + f" -> __init__: Initializing RoundCounter on pin {pin} with brightness {brightness}, zigzag={zigzag}, color={color}, color_order={color_order}"
+        )
         self.pin = pin
         self.brightness = brightness
         self.zigzag = zigzag
@@ -103,7 +108,7 @@ class RoundCounter:
                     invert=False,
                     brightness=brightness,
                     channel=channel,
-                    strip_type=strip_type
+                    strip_type=strip_type,
                 )
                 self.strip.begin()
                 self.clear()
@@ -121,6 +126,10 @@ class RoundCounter:
         Returns:
             int: The mapped position inside the 64-pixel buffer.
         """
+        logger.log(
+            __file__
+            + f" -> _get_pixel_index: Mapping row {row}, col {col} to pixel index."
+        )
         if self.zigzag:
             if row % 2 == 0:
                 return row * 8 + col
@@ -135,6 +144,7 @@ class RoundCounter:
         Args:
             value (int): Number representing the round.
         """
+        logger.log(__file__ + f" -> display_round: Displaying round {value}")
         val_clamped = max(0, min(99, value))
 
         if val_clamped == self.current_value:
@@ -179,23 +189,44 @@ class RoundCounter:
 
     def clear(self) -> None:
         """Resets all display pixels to the off state."""
+        logger.log(__file__ + " -> clear: Clearing the round counter display.")
         self.current_value = -1
         if self.strip:
             for idx in range(64):
                 self.strip.setPixelColor(idx, 0)
             self.strip.show()
-            
-            
+
+
 if __name__ == "__main__":
-    # Example usage for testing purposes
+    # --- Minimal Example ---
+    # Minimal setup using only the required BCM pin number.
+    # counter = RoundCounter(pin=10)
+    # counter.display_round(1)
+
+    # --- Selected Features Example ---
+    # Here we show custom colors, brightness, and color order.
+    # The pin should match your physical connection on the Raspberry Pi.
     counter = RoundCounter(
-        pin=10, 
-        zigzag=True, 
-        color=(0, 255, 0),
-        brightness=50,
-        color_order="GRB" 
+        pin=10,
+        zigzag=True,  # Matrix uses serpentine/zigzag layout
+        color=(0, 255, 100),  # Cyan-ish green
+        brightness=40,  # 0-255 range
+        color_order="GRB",  # Green-Red-Blue (Standard for most WS2812Bs)
     )
-    for i in range(100):
-        counter.display_round(i)
-        time.sleep(0.1)
-    counter.clear()
+
+    try:
+        logger.log("RoundCounter demonstration: cycling digits...")
+        # Step through a small range of numbers to verify both digits work.
+        for i in [0, 8, 15, 42, 99]:
+            logger.log(f"Rendering round: {i}")
+            counter.display_round(i)
+            time.sleep(0.5)
+
+        logger.log("Clearing panel.")
+        counter.clear()
+
+    except KeyboardInterrupt:
+        # Graceful exit on Ctrl+C
+        if counter:
+            counter.clear()
+        logger.log("Demonstration stopped by user.")
