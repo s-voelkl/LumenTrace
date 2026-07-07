@@ -101,6 +101,32 @@ Tuning and configuration
 
 A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 
+## Round Counter Hardware Integration
+
+To track player progress, the game integrates 8x8 WS2812B LED matrices to display round numbers (00–99) using a 3x5 font mapping.
+
+### Initial Architecture & Bottlenecks
+
+Initially, the round counters were configured on separate physical control lines:
+
+- **Player 1 matrix** on GPIO 10 (SPI)
+- **Player 2 matrix** on GPIO 21 (PCM)
+- **Track lines** on GPIO 18 and 19 (PWM)
+
+This setup failed due to several hardware and library-level constraints:
+
+- **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping failures (`mmap() failed`).
+- **Peripheral Clashes**: The underlying `rpi_ws281x` C driver cannot mix PWM, SPI, and PCM peripherals concurrently in the same process space.
+- **Channel Caps**: The driver structure is hardware-capped at 2 active physical channels.
+
+### Resolved Design (Chaining)
+
+The solution leverages the existing `VirtualLedStrip` concept by chaining the matrices to the end of the track strips:
+
+1. **Physical Chaining**: The `Data In` (DI) of each matrix is wired to the `Data Out` (DO) of its corresponding track strip.
+2. **Single-Driver Coordination**: The `num` parameter of the physical strips is increased to encompass the matrix pixels, keeping the physical control line count at 2 (GPIO 18 & 19).
+3. **Index Offsetting**: The `RoundCounter` is refactored to write directly to the track's existing `PixelStrip` starting at the correct pixel offset, bypassing hardware re-initialization.
+
 ## Sound Engineering
 
 LumenTrace features a real-time audio engine that turns the race into an immersive, spatial experience. All sound is mixed live on the Raspberry Pi and played back in stereo, so what you hear reflects what is happening on the track at every moment.
@@ -170,7 +196,6 @@ On top of the engine, the game plays positional one-shot effects that respond to
 - vibe-3-retro.mp3: <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=41048">freesound_community</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=41048">Pixabay</a>
 - punch-1.mp3: from <a href="https://pixabay.com/sound-effects/retro-hurt-sound-03-474780/">Pixabay</a>
 
-
 ## Game Mechanics
 
 ### Acceleration and Friction
@@ -228,7 +253,7 @@ On top of the engine, the game plays positional one-shot effects that respond to
 - After the `vehicle.respawn_ticks` count down to `0`, the vehicle attempts to respawn:
   - If the module where the vehicle fell is a LOOPING module, step back one module to avoid respawning in the same looping section (unless it's the only module).
   - Try `position = 0` on the preferred lane within the target respawn module. If not available, try other unoccupied lanes on that module. Unoccupied means no active vehicle is on the module.
-  - If no lane is available on the target module, fallback to the previous modules, checking all lanes from outer (most active vehicles) to inner. 
+  - If no lane is available on the target module, fallback to the previous modules, checking all lanes from outer (most active vehicles) to inner.
   - The vehicle speed and acceleration are reset to `0`, `vehicle.respawn_ticks` to `0`, and its lane change state is cleared.
   - If no lane is available across all candidate modules, the vehicle remains inactive and tries again in the next tick.
 - Respawn does not increment `vehicle.round`.
@@ -236,4 +261,3 @@ On top of the engine, the game plays positional one-shot effects that respond to
 ## Design
 
 ### 3D-Printed Objects
-
