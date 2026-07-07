@@ -285,14 +285,20 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     real_strips = {}
     virtual_strips = []
 
-    leds_total_strip_0 = 249 - 6  # cut this away
-    leds_total_strip_1 = 248
+    leds_track_strip_0 = 243
+    leds_track_strip_1 = 248  # TODO: Reduce by measuring!
 
-    leds_add_strip_0 = 30 - 6
-    leds_add_strip_1 = 30
+    # Add 64 pixels for the 8x8 Round Counter matrices at the end of each physical chain
+    leds_matrix_count = 64
 
-    leds_main_strip_0 = leds_total_strip_0 - leds_add_strip_0
-    leds_main_strip_1 = leds_total_strip_1 - leds_add_strip_1
+    leds_total_strip_0 = leds_track_strip_0 + leds_matrix_count  # 307 total
+    leds_total_strip_1 = leds_track_strip_1 + leds_matrix_count  # 312 total
+
+    leds_add_strip_0 = 24
+    leds_add_strip_1 = 30  # TODO: Reduce by measuring!
+
+    leds_main_strip_0 = leds_track_strip_0 - leds_add_strip_0
+    leds_main_strip_1 = leds_track_strip_1 - leds_add_strip_1
 
     # Initialize physical strips ONLY on the first run
     if RPI_WS281X_AVAILABLE and PixelStrip is not None:
@@ -311,7 +317,7 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             freq_hz=800_000,
             dma=10,
             invert=False,
-            brightness=255,  # safety with slightly dimmed brightness
+            brightness=255,
             channel=1,  # needed for gpio 19
         )
         strip0.begin()
@@ -326,29 +332,24 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
         VirtualLedStrip(
             lane=lane_0, real_strip_id=0, min_index=0, max_index=leds_main_strip_0 - 1
         ),
-        # Intersection 1 middle lane segment
         VirtualLedStrip(
             lane=lane_1,
             real_strip_id=0,
-            min_index=leds_main_strip_0,
-            max_index=leds_total_strip_0 - 1,
+            min_index=leds_main_strip_0,  # starts after the main track strip
+            max_index=leds_track_strip_0 - 1,  # strictly stops before the round counter
         ),
-        # Intersection 2 middle lane segment
         VirtualLedStrip(
             lane=lane_1,
             real_strip_id=1,
-            min_index=leds_main_strip_1,
-            max_index=leds_total_strip_1 - 1,
+            min_index=leds_main_strip_1,  # starts after the main track strip
+            max_index=leds_track_strip_1 - 1,  # strictly stops before the round counter
         ),
         VirtualLedStrip(
             lane=lane_2, real_strip_id=1, min_index=0, max_index=leds_main_strip_1 - 1
         ),
     ]
 
-    display = LedDisplay(
-        real_strips, virtual_strips
-    )  # Provide physical and virtual strips here when available
-
+    display = LedDisplay(real_strips, virtual_strips)
     display_config = DisplayConfig()
     display_manager = DisplayManager(display, display_config)
 
@@ -373,24 +374,19 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     )
 
     # Instantiate the round counters.
-    # We assign GPIO 10 (SPI) and GPIO 21 (PCM) as separate output pins to
-    # prevent conflicting with the PWM-driven track lines on GPIO 18/19.
     # Colors are matched to the primary colors of each player's vehicle.
-    # Handles WS2812 color arrangements cleanly
     round_counters = {
         player_1: RoundCounter(
-            pin=10,
+            strip=real_strips.get(0),
+            start_index=leds_track_strip_0,  # Starts right after track LEDs
             zigzag=True,
             color=player_1.vehicle.primary_color,
-            brightness=50,
-            color_order="GRB",
         ),
         player_2: RoundCounter(
-            pin=21,
+            strip=real_strips.get(1),
+            start_index=leds_track_strip_1,  # Starts right after track LEDs
             zigzag=True,
             color=player_2.vehicle.primary_color,
-            brightness=50,
-            color_order="GRB",
         ),
     }
 

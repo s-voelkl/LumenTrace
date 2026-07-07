@@ -51,100 +51,45 @@ FONT_3X5 = {
 class RoundCounter:
     """Manages an 8x8 WS2812B/NeoPixel LED matrix panel to display round numbers.
 
-    The display fits digits 00 to 99 simultaneously by placing two 3x5 digits
-    at columns 0-2 and 4-6, centered vertically.
+    Shares an existing physical PixelStrip instance, utilizing index offsets.
     """
 
     def __init__(
         self,
-        pin: int,
-        brightness: int = 64,
+        strip,  # Pass the pre-existing initialized PixelStrip object
+        start_index: int,  # The starting LED index of the 8x8 matrix on this strip
         zigzag: bool = True,
         color: Tuple[int, int, int] = (255, 255, 255),
-        color_order: str = "GRB",
     ):
-        """Initializes the round counter.
-
-        Args:
-            pin (int): GPIO pin (BCM) driving the DIN of the matrix panel.
-            brightness (int): Global brightness (0 to 255).
-            zigzag (bool): Set to True if the physical matrix panel uses
-                serpentine/zigzag layout; False for row-by-row progressive layout.
-            color (Tuple[int, int, int]): The RGB color utilized to draw the digits.
-            color_order (str): The color sequence expected by the matrix ("GRB" or "RGB").
-        """
+        """Initializes the round counter on a shared strip."""
         logger.log(
             __file__
-            + f" -> __init__: Initializing RoundCounter on pin {pin} with brightness {brightness}, zigzag={zigzag}, color={color}, color_order={color_order}"
+            + f" -> __init__: Initializing RoundCounter starting at index {start_index}, zigzag={zigzag}, color={color}"
         )
-        self.pin = pin
-        self.brightness = brightness
+        self.strip = strip
+        self.start_index = start_index
         self.zigzag = zigzag
         self.color = color
         self.current_value = -1  # Sentinel value to enforce rendering on first refresh
 
-        self.strip = None
-        if RPI_WS281X_AVAILABLE:
-            # Map standard channels based on chosen GPIO pins on the Pi 4.
-            # PWM0 channels are GPIO 12/18. PWM1 channels are GPIO 13/19.
-            channel = 0
-            if pin in (13, 19, 21):
-                # GPIO 21 shares PWM1/PCM resources.
-                channel = 1
-
-            # Select correct color formatting based on hardware specifications
-            strip_type_map = {
-                "RGB": ws.WS2811_STRIP_RGB,
-                "GRB": ws.WS2811_STRIP_GRB,
-            }
-            strip_type = strip_type_map.get(color_order.upper(), ws.WS2811_STRIP_GRB)
-
-            try:
-                self.strip = PixelStrip(
-                    num=64,
-                    pin=pin,
-                    freq_hz=800_000,
-                    dma=10,
-                    invert=False,
-                    brightness=brightness,
-                    channel=channel,
-                    strip_type=strip_type,
-                )
-                self.strip.begin()
-                self.clear()
-            except Exception as e:
-                logger.log(f"Unable to initialize PixelStrip on pin {pin}: {e}")
-                self.strip = None
+        # Clear local portion of the strip if the physical hardware is available
+        if self.strip:
+            self.clear()
 
     def _get_pixel_index(self, row: int, col: int) -> int:
-        """Translates 2D matrix row and column indices to 1D LED strip indices.
-
-        Args:
-            row (int): Vertical position index (0 to 7).
-            col (int): Horizontal position index (0 to 7).
-
-        Returns:
-            int: The mapped position inside the 64-pixel buffer.
-        """
-        logger.log(
-            __file__
-            + f" -> _get_pixel_index: Mapping row {row}, col {col} to pixel index."
-        )
+        """Translates 2D matrix coordinates to the shared 1D physical strip index."""
         if self.zigzag:
             if row % 2 == 0:
-                return row * 8 + col
+                local_idx = row * 8 + col
             else:
-                return row * 8 + (7 - col)
+                local_idx = row * 8 + (7 - col)
         else:
-            return row * 8 + col
+            local_idx = row * 8 + col
+
+        return self.start_index + local_idx
 
     def display_round(self, value: int) -> None:
-        """Renders the given round number (0 to 99) onto the 8x8 grid.
-
-        Args:
-            value (int): Number representing the round.
-        """
-        logger.log(__file__ + f" -> display_round: Displaying round {value}")
+        """Renders the given round number (0 to 99) onto the 8x8 grid."""
         val_clamped = max(0, min(99, value))
 
         if val_clamped == self.current_value:
@@ -152,66 +97,84 @@ class RoundCounter:
 
         self.current_value = val_clamped
 
-        # Format integer to zero-padded 2-character string (e.g., 5 -> "05")
         val_str = f"{val_clamped:02d}"
         digit_tens = val_str[0]
         digit_units = val_str[1]
 
-        # Start with an empty, dark frame buffer
+        # Start with an empty, dark local buffer
         buffer = [(0, 0, 0)] * 64
 
-        # Draw the Tens digit (columns 0-2, vertically offset by 1 row to center)
+        # Draw the Tens digit
         tens_matrix = FONT_3X5.get(digit_tens, FONT_3X5["0"])
         for r_idx, row_data in enumerate(tens_matrix):
             row = r_idx + 1
             for col, active in enumerate(row_data):
                 if active:
-                    pixel_idx = self._get_pixel_index(row, col)
-                    buffer[pixel_idx] = self.color
+                    local_idx = (
+                        row * 8 + col
+                        if not self.zigzag or row % 2 == 0
+                        else row * 8 + (7 - col)
+                    )
+                    buffer[local_idx] = self.color
 
-        # Draw the Units digit (columns 4-6, vertically offset by 1 row to center)
+        # Draw the Units digit
         units_matrix = FONT_3X5.get(digit_units, FONT_3X5["0"])
         for r_idx, row_data in enumerate(units_matrix):
             row = r_idx + 1
             for col_idx, active in enumerate(row_data):
                 col = col_idx + 4
                 if active:
-                    pixel_idx = self._get_pixel_index(row, col)
-                    buffer[pixel_idx] = self.color
+                    local_idx = (
+                        row * 8 + col
+                        if not self.zigzag or row % 2 == 0
+                        else row * 8 + (7 - col)
+                    )
+                    buffer[local_idx] = self.color
 
-        # Write the buffer array to the NeoPixel hardware
+        # Write the buffer array to the shared physical strip
         if self.strip:
             for idx, rgb in enumerate(buffer):
-                # Create standard GRB/RGB hex representation via native rpi_ws281x utility
                 color_val = Color(rgb[0], rgb[1], rgb[2])
-                self.strip.setPixelColor(idx, color_val)
+                # Shift by start_index when sending to physical strip
+                self.strip.setPixelColor(self.start_index + idx, color_val)
             self.strip.show()
 
     def clear(self) -> None:
-        """Resets all display pixels to the off state."""
-        logger.log(__file__ + " -> clear: Clearing the round counter display.")
+        """Resets the matrix segment's pixels to the off state."""
         self.current_value = -1
         if self.strip:
             for idx in range(64):
-                self.strip.setPixelColor(idx, 0)
+                self.strip.setPixelColor(self.start_index + idx, 0)
             self.strip.show()
 
 
 if __name__ == "__main__":
-    # --- Minimal Example ---
-    # Minimal setup using only the required BCM pin number.
-    # counter = RoundCounter(pin=10)
-    # counter.display_round(1)
+    # --- Example Usage ---
+    # In a real scenario, you usually have a PixelStrip already initialized.
+    # For this demonstration, we create a mock or real strip depending on the platform.
 
-    # --- Selected Features Example ---
-    # Here we show custom colors, brightness, and color order.
-    # The pin should match your physical connection on the Raspberry Pi.
+    # Configuration for a standalone matrix test
+    # If RPI_WS281X_AVAILABLE is True, it will try to use the real hardware.
+    # If False, it uses the Mock classes defined above.
+    LED_COUNT = 64
+    LED_PIN = 18
+
+    strip = PixelStrip(
+        num=LED_COUNT,
+        pin=LED_PIN,
+        freq_hz=800_000,
+        dma=10,
+        invert=False,
+        brightness=80,  # Slightly dimmed for safety
+        channel=0,  # needed for gpio 18
+    )
+    strip.begin()
+
     counter = RoundCounter(
-        pin=10,
+        strip=strip,
+        start_index=0,
         zigzag=True,  # Matrix uses serpentine/zigzag layout
         color=(0, 255, 100),  # Cyan-ish green
-        brightness=40,  # 0-255 range
-        color_order="GRB",  # Green-Red-Blue (Standard for most WS2812Bs)
     )
 
     try:
