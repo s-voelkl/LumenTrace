@@ -11,16 +11,22 @@ All colors are expressed as (R, G, B) tuples with values in the range
 """
 
 GREEN = (0, 255, 0)           
-BLUE = (0, 0, 255)            
+BLUE = (0, 0, 255)
+LIGHT_BLUE = (28, 89, 255)
+TURQUOISE = (26, 188, 156)
+LIME = (0, 207, 41)
+BLUE_ORANGE = (231, 76, 107)
 
-RED = (255, 0, 0)             
-ORANGE = (255, 165, 0)        
+RED = (255, 0, 0)        
+ORANGE = (242, 169, 11)    
 YELLOW = (255, 255, 0)        
 
+RED_PURPLISH = (255, 0, 30)
+MAGENTA = (227, 0, 189)
 DARK_PURPLE = (75, 0, 130)
-PURPLE = (128, 0, 128)        
+PURPLE = (128, 0, 128)   
 PINK = (255, 105, 180)        
-LIGHT_PINK = (255, 182, 193)  
+LIGHT_PINK = (249, 147, 252)
 
 BLACK = (0, 0, 0)             
 DARK_GRAY = (64, 64, 64)      

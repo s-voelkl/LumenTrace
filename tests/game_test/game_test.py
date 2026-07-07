@@ -327,7 +327,9 @@ def test_player_falls_on_driving_profile_violation():
 
     assert not player.vehicle.active
     assert player.vehicle.respawn_ticks == settings.respawn_ticks
-    assert player.vehicle.lane is None
+    assert player.vehicle.lane == lanes[0]
+    assert player.vehicle.speed == 0.0
+    assert player.vehicle.acceleration == 0.0
 
 
 def test_player_falls_on_acceleration_profile_violation():
@@ -354,7 +356,9 @@ def test_player_falls_on_acceleration_profile_violation():
 
     assert not player.vehicle.active
     assert player.vehicle.respawn_ticks == settings.respawn_ticks
-    assert player.vehicle.lane is None
+    assert player.vehicle.lane == lanes[0]
+    assert player.vehicle.speed == 0.0
+    assert player.vehicle.acceleration == 0.0
 
 
 def test_no_fall_when_speed_and_acceleration_stay_in_bounds_across_two_modules():
@@ -425,7 +429,9 @@ def test_player_falls_when_moving_into_lane_gap():
     run_game_tick_for_test(game)
 
     assert not player.vehicle.active
-    assert player.vehicle.lane is None
+    assert player.vehicle.lane == lanes[1]
+    assert player.vehicle.speed == 0.0
+    assert player.vehicle.acceleration == 0.0
 
 
 def test_player_falls_when_crossing_middle_lane_gap_between_modules():
@@ -452,7 +458,9 @@ def test_player_falls_when_crossing_middle_lane_gap_between_modules():
     run_game_tick_for_test(game)
 
     assert not player.vehicle.active
-    assert player.vehicle.lane is None
+    assert player.vehicle.lane == lanes[1]
+    assert player.vehicle.speed == 0.0
+    assert player.vehicle.acceleration == 0.0
 
 
 def test_collision_makes_front_vehicle_fall():
@@ -610,11 +618,11 @@ def test_respawn_stays_inactive_when_single_lane_is_occupied_on_first_module():
 
     assert not waiting.vehicle.active
     assert waiting.vehicle.respawn_ticks == 0
-    assert waiting.vehicle.lane is None
+    assert waiting.vehicle.lane == lane
 
 
-def test_respawn_retries_until_first_module_lane_becomes_free():
-    """Respawn must keep retrying each tick when spawn lane is still occupied."""
+def test_respawn_falls_back_to_least_occupied_module_when_preferred_is_blocked():
+    """If preferred module is full, respawn should move to the least occupied module."""
     lanes = [Lane()]
     modules = make_track_modules(lanes, [[50.0], [50.0]], lane_change_allowed=False)
 
@@ -625,20 +633,87 @@ def test_respawn_retries_until_first_module_lane_becomes_free():
         controller=blocker_controller, vehicle=Vehicle(lane=lanes[0], position=10.0)
     )
     waiting_vehicle = Vehicle(lane=lanes[0], position=0.0)
+    waiting_vehicle.set_respawn_module_index(0)
     waiting_vehicle.trigger_respawn(1)
     waiting = Player(controller=waiting_controller, vehicle=waiting_vehicle)
 
     game = make_game(lanes, [blocker, waiting], modules)
 
     run_game_tick_for_test(game)
-    assert not waiting.vehicle.active
-    assert waiting.vehicle.respawn_ticks == 0
 
-    blocker.vehicle.set_position(60.0)
-    run_game_tick_for_test(game)
     assert waiting.vehicle.active
-    assert waiting.vehicle.position == 0.0
+    assert waiting.vehicle.respawn_ticks == 0
+    assert waiting.vehicle.position == 50.0
     assert waiting.vehicle.lane == lanes[0]
+
+
+def test_respawn_from_loop_module_uses_previous_module_start():
+    """Falling in a lane-change-enabled module should respawn one module earlier."""
+    lane = Lane()
+    modules = [
+        TrackModule(
+            track_type=TrackType.STRAIGHT,
+            part_length=50.0,
+            lines=[
+                Line(
+                    DrivingProfile(lane_change_allowed=False),
+                    lane,
+                    50.0,
+                )
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.STRAIGHT,
+            part_length=50.0,
+            lines=[
+                Line(
+                    DrivingProfile(lane_change_allowed=False),
+                    lane,
+                    50.0,
+                )
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.LOOPING,
+            part_length=50.0,
+            lines=[
+                Line(
+                    DrivingProfile(lane_change_allowed=True),
+                    lane,
+                    50.0,
+                )
+            ],
+        ),
+        TrackModule(
+            track_type=TrackType.STRAIGHT,
+            part_length=50.0,
+            lines=[
+                Line(
+                    DrivingProfile(lane_change_allowed=False),
+                    lane,
+                    50.0,
+                )
+            ],
+        ),
+    ]
+
+    controller = PlayerController()
+    player_vehicle = Vehicle(lane=lane, position=120.0, speed=0.0)
+    player = Player(controller=controller, vehicle=player_vehicle)
+    game = make_game([lane], [player], modules, settings=Settings(respawn_ticks=1))
+
+    # Trigger fall while in module index 2 (the looping module).
+    fall_fn = cast(Callable[[Player, str], None], getattr(game, "_Game__fall_player"))
+    fall_fn(player, "test")
+
+    run_game_tick_for_test(game)
+
+    assert player.vehicle.active
+    # Module index 1 starts at global lane position 50.
+    assert player.vehicle.position == pytest.approx(50.0)
+    assert player.vehicle.lane == lane
+    assert player.vehicle.speed == 0.0
+    assert player.vehicle.acceleration == 0.0
 
 
 def test_forward_press_mapping_to_acceleration():

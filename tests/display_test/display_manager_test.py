@@ -76,11 +76,14 @@ def test_display_manager_hierarchy():
     assert display.virtual_arrays[lane1.lane_id][3:6] == [GREEN, GREEN, GREEN]
     assert display.virtual_arrays[lane1.lane_id][0] == GRAY  # start of track
 
-    # 2. Inactive Vehicle
+    # 2. Inactive Vehicle (40% primary + 60% gray)
     vehicle.set_respawn_ticks(10)
     manager.update(game)
-    # respawn_ticks=10, change=10 -> 10 % 10 == 0 -> first half -> WHITE
-    assert display.virtual_arrays[lane1.lane_id][3:6] == [WHITE, WHITE, WHITE]
+    assert display.virtual_arrays[lane1.lane_id][3:6] == [
+        (76, 178, 76),
+        (76, 178, 76),
+        (76, 178, 76),
+    ]
 
     # 3. Round advance
     vehicle.set_active(True)
@@ -168,7 +171,7 @@ def test_display_manager_active_color_interpolation():
     assert color == (127, 127, 0)  # 50% between (0, 255, 0) and (255, 0, 0)
 
 
-def test_display_manager_inactive_blinking():
+def test_display_manager_inactive_vehicle_uses_fixed_gray_blend():
     lane1 = Lane()
     dp = DrivingProfile(max_speed=100.0, min_speed=-100.0)
     line1 = Line(dp, lane1, 100.0)
@@ -176,7 +179,7 @@ def test_display_manager_inactive_blinking():
 
     vehicle = Vehicle(lane=lane1, position=50.0, speed=0.0)
     player = MockPlayer(vehicle)
-    config = DisplayConfig(respawn_tick_color_change=10)  # blink every 10 ticks
+    config = DisplayConfig(respawn_tick_color_change=10)
     game = MockGame([player], [lane1], [tm1])
 
     vs = VirtualLedStrip(lane1, 0, 0, 9)
@@ -185,12 +188,18 @@ def test_display_manager_inactive_blinking():
 
     vehicle.set_active(False)
 
-    # first half of the configured interval -> WHITE
     vehicle.set_respawn_ticks(3)
     manager.update(game)
-    assert display.virtual_arrays[lane1.lane_id][3:6] == [WHITE, WHITE, WHITE]
+    assert display.virtual_arrays[lane1.lane_id][3:6] == [
+        (76, 178, 76),
+        (76, 178, 76),
+        (76, 178, 76),
+    ]
 
-    # second half of the configured interval -> GRAY
     vehicle.set_respawn_ticks(15)
     manager.update(game)
-    assert display.virtual_arrays[lane1.lane_id][3:6] == [GRAY, GRAY, GRAY]
+    assert display.virtual_arrays[lane1.lane_id][3:6] == [
+        (76, 178, 76),
+        (76, 178, 76),
+        (76, 178, 76),
+    ]

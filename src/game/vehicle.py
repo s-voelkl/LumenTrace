@@ -75,6 +75,7 @@ class Vehicle:
         # Runtime state flags and timers.
         self.__respawn_ticks: int = 0
         self.__active: bool = True
+        self.__respawn_module_index: int | None = None
         self.__lane_change_target: Lane | None = None
         self.__lane_change_start_position: float = 0.0
         
@@ -98,14 +99,14 @@ class Vehicle:
             respawn_ticks (int): The number of ticks until the vehicle can respawn again.
         '''
         self.__respawn_ticks = max(respawn_ticks, 0)
+        # Keep lane and position to preserve the visual location while waiting.
+        self.__speed = 0
+        self.__acceleration = 0
+        self.__lane_change_target = None
+        self.__lane_change_start_position = 0.0
+
         if self.__respawn_ticks > 0:
             self.__active = False
-            self.__speed = 0
-            self.__position = 0
-            self.__acceleration = 0
-            self.__lane = None
-            self.__lane_change_target = None
-            self.__lane_change_start_position = 0.0
         else:
             self.__active = True
             
@@ -207,6 +208,9 @@ class Vehicle:
         '''Sets whether the vehicle participates in active race updates.'''
         self.__active = active
 
+    def set_respawn_module_index(self, module_index: int | None):
+        self.__respawn_module_index = module_index
+
     def set_respawn_ticks(self, respawn_ticks: int):
         '''Sets respawn tick countdown value with non-negative clamp.'''
         self.__respawn_ticks = max(respawn_ticks, 0)
@@ -242,6 +246,10 @@ class Vehicle:
     @property
     def active(self) -> bool:
         return self.__active
+
+    @property
+    def respawn_module_index(self) -> int | None:
+        return self.__respawn_module_index
     
     @property
     def lane_change_start_position(self) -> float:

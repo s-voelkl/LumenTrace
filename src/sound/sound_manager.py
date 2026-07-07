@@ -171,8 +171,8 @@ class SoundManager:
             time (CData): A CFFI struct containing timing information (ignored).
             status (CallbackFlags): Status flags indicating underflow/overflow.
         """
-        if status:
-            logger.log(f"Audio stream status warning: {status}")
+        # if status:
+        #     logger.log(f"Audio stream status warning: {status}")
 
         # Initialize the output buffer with silence
         out = np.zeros((frames, _DEFAULT_CHANNELS), dtype="float32")
@@ -402,15 +402,29 @@ class SoundManager:
 
         try:
             if self._stream is None:
+                # Log available audio devices for debugging
+                # logger.log("Available audio devices:")
+                # try:
+                #     devices = sd.query_devices()
+                #     for i, device in enumerate(devices):
+                #         logger.log(f"  Device {i}: {device['name']} (out: {device['max_output_channels']} channels)")
+                #     default_device = sd.default.device
+                #     logger.log(f"Default output device: {default_device}")
+                # except Exception as device_error:
+                #     logger.log(f"Warning: Could not query audio devices: {device_error}")
+
+                # Attempt to create output stream on the default device
                 self._stream = sd.OutputStream(
                     samplerate=self._sample_rate,
                     channels=_DEFAULT_CHANNELS,
                     callback=self._audio_callback,
                 )
                 self._stream.start()
+                logger.log("Audio stream started successfully.")
         except Exception as e:
             logger.log(f"Error starting audio stream: {e}")
-            raise e
+            logger.log("Audio will be disabled. Game will continue without sound.")
+            self._stream = None
 
     def stop_all(self) -> None:
         """Stops the audio stream and clears all playing sounds."""
