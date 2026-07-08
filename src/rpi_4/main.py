@@ -63,7 +63,7 @@ def main():
 
         if first_run:
             logger.log("Clearing all LEDs on startup and playing startup sound...")
-            clear_all_leds(led_display, game.lanes)
+            clear_all_leds(led_display)
             time.sleep(0.25)  # cleaner display clearing
 
             # startup sound and initial LED colors
@@ -115,8 +115,9 @@ def main():
             del game
 
 
-def clear_all_leds(display: LedDisplay, lanes: list[Lane]) -> None:
+def clear_all_leds(display: LedDisplay) -> None:
     """Clear all LEDs to black before applying new colors on startup."""
+    
     display.clear()
     display.render()
 
@@ -225,13 +226,13 @@ def run_start_sequence(
     """
     # sound for startup
     sound_manager.play(GameSound.STARTUP, volume=30)
-    clear_all_leds(display, game.lanes)
+    clear_all_leds(display)
 
     # colors on first track module
     for i in range(3, 0, -1):
         fill_first_track_module(display, game, DARK_PURPLE)
         time.sleep(step_seconds * 0.25)
-        clear_all_leds(display, game.lanes)
+        clear_all_leds(display)
         time.sleep(step_seconds * 0.75)
 
     # GO! Clear the animation so the game loop fully owns the display.
