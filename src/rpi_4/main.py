@@ -286,16 +286,16 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     virtual_strips = []
 
     leds_track_strip_0 = 243
-    leds_track_strip_1 = 248  # TODO: Reduce by measuring!
+    leds_track_strip_1 = 236
 
     # Add 64 pixels for the 8x8 Round Counter matrices at the end of each physical chain
-    leds_matrix_count = 64
+    leds_matrix_count = 0 # 64
 
     leds_total_strip_0 = leds_track_strip_0 + leds_matrix_count  # 307 total
     leds_total_strip_1 = leds_track_strip_1 + leds_matrix_count  # 312 total
 
     leds_add_strip_0 = 24
-    leds_add_strip_1 = 30  # TODO: Reduce by measuring!
+    leds_add_strip_1 = 18
 
     leds_main_strip_0 = leds_track_strip_0 - leds_add_strip_0
     leds_main_strip_1 = leds_track_strip_1 - leds_add_strip_1
