@@ -82,10 +82,9 @@ def main():
 
         # Game startup:
         # The game waits for an initial signal of all player controllers pressing
-        # their button (``PlayerController.special_1``) for at least one second.
+        # their button (``PlayerController.special_1``).
         # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
         # effect plays in parallel, before the game loop is started.
-        # uncomment for immediate startup
         # wait_for_start_signal(game)
 
         # stop waiting music
@@ -134,14 +133,13 @@ def set_all_leds(
 
 def wait_for_start_signal(
     game: Game,
-    hold_seconds: float = 2,
-    poll_interval_s: float = 0.5,
+    hold_seconds: float = 0.0,
+    poll_interval_s: float = 0.25,
 ) -> None:
-    """Block until all players hold their start button for ``hold_seconds``.
+    """Block until all players press their start button.
 
-    The function continuously polls the signal receiver and tracks how long all
-    players have simultaneously held their ``special_1`` button. As soon as the
-    button has been held continuously for ``hold_seconds`` the function returns.
+    The function continuously polls the signal receiver and checks if all
+    players have simultaneously pressed their ``special_1`` button.
 
     Args:
         game (Game): Game instance providing the players and the signal poller.
@@ -152,7 +150,7 @@ def wait_for_start_signal(
         None
     """
     players = game.players
-    held_since: float | None = None
+    logger.log(f"Waiting for start signal from both players...")
 
     while True:
         game.fetch_data()
@@ -161,20 +159,9 @@ def wait_for_start_signal(
             player.controller.special_1 for player in players
         )
 
-        now = time.perf_counter()
-        logger.log(
-            f"Waiting for start signal: all_pressed={all_pressed}, time={now - held_since if held_since else 0}s"
-        )
-        # for player in players:
-        #     logger.log(f"Player {player} special_1={player.controller.special_1}")
 
         if all_pressed:
-            if held_since is None:
-                held_since = now
-            elif now - held_since >= hold_seconds:
-                return
-        else:
-            held_since = None
+            return
 
         time.sleep(poll_interval_s)
 
