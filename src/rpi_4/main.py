@@ -284,26 +284,25 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     # Configuring display and display manager
     real_strips = {}
     virtual_strips = []
-
-    leds_track_strip_0 = 243
-    leds_track_strip_1 = 236
-
-    # Add 64 pixels for the 8x8 Round Counter matrices at the beginning of each physical chain
-    leds_matrix_count = 0 # 64
-
-    leds_total_strip_0 = leds_track_strip_0 + leds_matrix_count
-    leds_total_strip_1 = leds_track_strip_1 + leds_matrix_count
-
-    leds_add_strip_0 = 24
-    leds_add_strip_1 = 18
-
-    leds_main_strip_0 = leds_track_strip_0 - leds_add_strip_0
-    leds_main_strip_1 = leds_track_strip_1 - leds_add_strip_1
+    
+    # beginning: 64 matrix leds
+    leds_matrix_count = 64
+    
+    # middle: main track leds    
+    leds_track_main_0 = 219
+    leds_track_main_1 = 218
+    
+    # end: intersection track leds
+    leds_track_intersection_0 = 24
+    leds_track_intersection_1 = 18
+    
+    leds_strip_0 = leds_track_main_0 + leds_track_intersection_0
+    leds_strip_1 = leds_track_main_1 + leds_track_intersection_1
 
     # Initialize physical strips ONLY on the first run
     if RPI_WS281X_AVAILABLE and PixelStrip is not None:
         strip0 = PixelStrip(
-            num=leds_total_strip_0,
+            num=leds_strip_0 + leds_matrix_count,
             pin=18,
             freq_hz=800_000,
             dma=10,
@@ -312,7 +311,7 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             channel=0,  # needed for gpio 18
         )
         strip1 = PixelStrip(
-            num=leds_total_strip_1,
+            num=leds_strip_1 + leds_matrix_count,
             pin=19,
             freq_hz=800_000,
             dma=10,
@@ -329,29 +328,29 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
         }
 
     virtual_strips = [
-        VirtualLedStrip(
+        VirtualLedStrip( # main track 0
             lane=lane_0,
             real_strip_id=0,
             min_index=leds_matrix_count,
-            max_index=leds_matrix_count + leds_main_strip_0 - 1,
+            max_index=leds_matrix_count + leds_track_main_0 - 1,
         ),
-        VirtualLedStrip(
+        VirtualLedStrip( # intersection 0
             lane=lane_1,
             real_strip_id=0,
-            min_index=leds_matrix_count + leds_main_strip_0,  # starts after the main track strip
-            max_index=leds_matrix_count + leds_track_strip_0 - 1,  # strictly stops at end of track
+            min_index=leds_matrix_count + leds_track_main_0, 
+            max_index=leds_matrix_count + leds_track_main_0 + leds_track_intersection_0 - 1,
         ),
-        VirtualLedStrip(
+        VirtualLedStrip( # intersection 1
             lane=lane_1,
             real_strip_id=1,
-            min_index=leds_matrix_count + leds_main_strip_1,  # starts after the main track strip
-            max_index=leds_matrix_count + leds_track_strip_1 - 1,  # strictly stops at end of track
+            min_index=leds_matrix_count + leds_track_main_1,
+            max_index=leds_matrix_count + leds_track_main_1 + leds_track_intersection_1 - 1,
         ),
-        VirtualLedStrip(
+        VirtualLedStrip( # main track 1
             lane=lane_2,
             real_strip_id=1,
             min_index=leds_matrix_count,
-            max_index=leds_matrix_count + leds_main_strip_1 - 1,
+            max_index=leds_matrix_count + leds_track_main_1 - 1,
         ),
     ]
 
