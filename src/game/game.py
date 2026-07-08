@@ -1,9 +1,10 @@
 import threading
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Dict
 
 from src.controller.signal_receiver_interface import SignalReceiverInterface
+from src.round_counter.round_counter import RoundCounter
 from .lane import Lane
 from .player import Player
 from .settings import Settings
@@ -39,6 +40,7 @@ class Game:
         lanes: list[Lane],
         display_manager,  # explicitly not imported to avoid circular dependency
         sound_manager=None,
+        round_counters: Dict[Player, RoundCounter]={},  # explicitly not imported to avoid circular dependency
     ):
 
         self.__players = players if players else []
@@ -52,6 +54,7 @@ class Game:
         self.__event_history: list[dict[str, Any]] = []
         self.__event_history_limit = 200
         self.__tick_count = 0
+        self.__round_counters = round_counters if round_counters else {}
 
         # Per-player audio state. Motor sounds are continuous engine loops,
         # while the edge-tracking dictionaries make one-shot effects (lane
@@ -59,11 +62,6 @@ class Game:
         self.__motor_sounds: dict[Player, Any] = {}
         self.__previous_special_1: dict[Player, float] = {}
         self.__warning_active: dict[Player, bool] = {}
-        # if self.__sound_manager is not None and MotorSound is not None:
-        #     for player in self.__players:
-        #         self.__motor_sounds[player] = MotorSound(
-        #             self.__sound_manager, max_volume=20, idle_volume=5
-        #         )
 
         self.__stop_event = threading.Event()
         self.__threads: list[threading.Thread] = []
@@ -253,8 +251,6 @@ class Game:
                 "players": [
                     {
                         "name": player.name,
-                        "wins": player.wins,
-                        "losses": player.losses,
                         "vehicle": {
                             "position": player.vehicle.position,
                             "lane": player.vehicle.lane.lane_id
@@ -323,14 +319,23 @@ class Game:
         self.__record_event(
             {
                 "event": "game_started",
+                "fetch_interval_s": fetch_interval_s,
+                "display_interval_s": display_interval_s,
+                "game_tick_interval_s": game_tick_interval_s,
             }
         )
 
         self.__game_tick_interval_s = game_tick_interval_s
+        
+        if self.__sound_manager is not None and MotorSound is not None:
+            for player in self.__players:
+                self.__motor_sounds[player] = MotorSound(
+                    self.__sound_manager, max_volume=15, idle_volume=5
+                )
 
         # Start the continuous per-player engine loops before the worker
         # threads begin updating their pitch and volume each tick.
-        # self.__start_motor_sounds()
+        self.__start_motor_sounds()
 
         # Each worker owns one responsibility so timing stays predictable and easy to review.
         self.__stop_event.clear()
@@ -353,7 +358,6 @@ class Game:
                 args=(self.__game_loop, game_tick_interval_s),
                 daemon=False,
             ),
-            # sound logic
         ]
 
         for thread in self.__threads:
@@ -371,6 +375,12 @@ class Game:
 
     def stop_game(self):
         self.__stop_event.set()
+
+        if self.__sound_manager is not None:
+            self.__sound_manager.stop_all()
+
+        # if self.__display_manager is not None:
+        #     self.__display_manager.clear_all()
 
     def __run_periodic_loop(
         self, action: Callable[[], None], interval_s: float
@@ -399,6 +409,37 @@ class Game:
             self.__event_history = self.__event_history[-self.__event_history_limit :]
         logger.log_json(event)
 
+    def __update_round_counter(self):
+        if not self.__round_counters:
+            return
+        
+        # Periodically iterate over all players and push updates to their assigned panel
+        for player in self.__players:
+            if player in self.__round_counters:
+                round_counter = self.__round_counters[player]
+                round_val = player.vehicle.round
+                try:
+                    round_counter.display_round(round_val)
+                    # logger.log(f"Updated round counter for player {player.name} to {round_val}")
+                except Exception as e:
+                    logger.log(
+                        f"Error updating round counter for player {player.name}: {e}"
+                    )
+            if player.vehicle.round >= self.__settings.rounds_to_win:
+                logger.log(f"Player {player.name} has won the game!")
+                self.stop_game()
+                break
+            
+    def clear_round_counters(self):
+        """Clear all round counters to reset the display."""
+        for player, round_counter in self.__round_counters.items():
+            try:
+                round_counter.clear()
+            except Exception as e:
+                logger.log(
+                    f"Error clearing round counter for player {player.name}: {e}"
+                )
+
     def tick_once(
         self,
         *,
@@ -425,12 +466,33 @@ class Game:
 
         self.__game_loop()
 
+        # check win condition
+        if self.__settings is not None and self.__settings.rounds_to_win is not None:
+            for player in self.__players:
+                if player.vehicle.round >= self.__settings.rounds_to_win:
+                    self.__record_event(
+                        {
+                            "event": "player_won",
+                            "player": player.name,
+                            "rounds": player.vehicle.round,
+                        }
+                    )
+
         if show_display:
             self.display()
 
     # display
     def display(self):
-        # self.log_fully()
+        """
+        Updates the round counters and renders the main display.
+        Running both on the same thread prevents concurrent access to the shared strips.
+        """
+        
+        self.__update_round_counter()
+        # Explicitly yield the GIL immediately after the blocking hardware write.
+        # This allows the physics and audio threads to run smoothly mid-frame.
+        time.sleep(0.001)
+        
         if self.__display_manager is not None:
             self.__display_manager.update(self)
 
@@ -813,8 +875,9 @@ class Game:
         )
 
     @staticmethod
-    def __is_near_profile_bounds(vehicle, profile: Any, threshold: float = 0.1, 
-            settings_max_speed: float = 100) -> bool:
+    def __is_near_profile_bounds(
+        vehicle, profile: Any, threshold: float = 0.1, settings_max_speed: float = 100
+    ) -> bool:
         """Return whether speed or acceleration is close to a profile limit.
 
         A value is considered "near a bound" when it falls within ``threshold``
@@ -862,7 +925,9 @@ class Game:
         if self.__sound_manager is None or GameSound is None:
             return
 
-        is_near = self.__is_near_profile_bounds(player.vehicle, profile, settings_max_speed=self.settings.max_speed)
+        is_near = self.__is_near_profile_bounds(
+            player.vehicle, profile, settings_max_speed=self.settings.max_speed
+        )
         was_near = self.__warning_active.get(player, False)
 
         if is_near and not was_near:
@@ -891,19 +956,21 @@ class Game:
         self, lane: Lane | None, position: float
     ) -> int | None:
         """Resolve preferred respawn module and apply one-step loop avoidance.
-        
-        If the module where the vehicle fell is a LOOPING module, step back one 
+
+        If the module where the vehicle fell is a LOOPING module, step back one
         module to avoid respawning in the same looping section.
         """
         if lane is None or not self.__track_modules:
             return None
 
-        module_index, _ = self.__get_track_module_index_and_local_position(lane, position)
+        module_index, _ = self.__get_track_module_index_and_local_position(
+            lane, position
+        )
         if module_index is None:
             return None
 
         module = self.__track_modules[module_index]
-        
+
         # Apply loop avoidance: if the current module is a looping module,
         # respawn one module earlier.
         if module.track_type == TrackType.LOOPING and len(self.__track_modules) > 1:
@@ -955,7 +1022,9 @@ class Game:
         if preferred_lane is None or preferred_lane not in lanes_with_line:
             return lanes_with_line
 
-        return [preferred_lane] + [lane for lane in lanes_with_line if lane != preferred_lane]
+        return [preferred_lane] + [
+            lane for lane in lanes_with_line if lane != preferred_lane
+        ]
 
     def __spawn_player_on_module_lane(
         self, player: Player, module_index: int, lane: Lane
@@ -1008,7 +1077,9 @@ class Game:
 
         preferred_module_index %= len(self.__track_modules)
 
-        for lane in self.__candidate_respawn_lanes(preferred_module_index, vehicle.lane):
+        for lane in self.__candidate_respawn_lanes(
+            preferred_module_index, vehicle.lane
+        ):
             if self.__spawn_player_on_module_lane(player, preferred_module_index, lane):
                 return True
 
@@ -1024,7 +1095,9 @@ class Game:
                 active_count = self.__count_active_vehicles_in_module(module_index)
                 fallback_candidates.append((active_count, module_index))
 
-        for _, module_index in sorted(fallback_candidates, key=lambda item: (item[0], item[1])):
+        for _, module_index in sorted(
+            fallback_candidates, key=lambda item: (item[0], item[1])
+        ):
             for lane in self.__candidate_respawn_lanes(module_index, vehicle.lane):
                 if self.__spawn_player_on_module_lane(player, module_index, lane):
                     return True
@@ -1113,3 +1186,7 @@ class Game:
     def recent_events(self) -> list[dict[str, Any]]:
         """Return in-memory structured event history for local simulations."""
         return list(self.__event_history)
+
+    @property
+    def round_counters(self) -> dict[Player, RoundCounter]:
+        return self.__round_counters
