@@ -35,16 +35,76 @@ except ImportError:
 
 # 3x5 font mapping for digits '0' through '9'.
 FONT_3X5 = {
-    "0": [[1, 1, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 1, 1]],
-    "1": [[0, 1, 0], [1, 1, 0], [0, 1, 0], [0, 1, 0], [1, 1, 1]],
-    "2": [[1, 1, 1], [0, 0, 1], [1, 1, 1], [1, 0, 0], [1, 1, 1]],
-    "3": [[1, 1, 1], [0, 0, 1], [1, 1, 1], [0, 0, 1], [1, 1, 1]],
-    "4": [[1, 0, 1], [1, 0, 1], [1, 1, 1], [0, 0, 1], [0, 0, 1]],
-    "5": [[1, 1, 1], [1, 0, 0], [1, 1, 1], [0, 0, 1], [1, 1, 1]],
-    "6": [[1, 1, 1], [1, 0, 0], [1, 1, 1], [1, 0, 1], [1, 1, 1]],
-    "7": [[1, 1, 1], [0, 0, 1], [0, 1, 0], [0, 1, 0], [0, 1, 0]],
-    "8": [[1, 1, 1], [1, 0, 1], [1, 1, 1], [1, 0, 1], [1, 1, 1]],
-    "9": [[1, 1, 1], [1, 0, 1], [1, 1, 1], [0, 0, 1], [1, 1, 1]],
+    "0": [
+        [1, 1, 1], 
+        [1, 0, 1], 
+        [1, 0, 1], 
+        [1, 0, 1], 
+        [1, 1, 1]
+    ],
+    "1": [
+        [0, 1, 0], 
+        [1, 1, 0], 
+        [0, 1, 0], 
+        [0, 1, 0], 
+        [1, 1, 1]
+    ],
+    "2": [
+        [1, 1, 1], 
+        [0, 0, 1], 
+        [1, 1, 1], 
+        [1, 0, 0], 
+        [1, 1, 1]
+    ],
+    "3": [
+        [1, 1, 1], 
+        [0, 0, 1], 
+        [1, 1, 1], 
+        [0, 0, 1], 
+        [1, 1, 1]
+    ],
+    "4": [
+        [1, 0, 1], 
+        [1, 0, 1], 
+        [1, 1, 1], 
+        [0, 0, 1], 
+        [0, 0, 1]
+    ],
+    "5": [
+        [1, 1, 1], 
+        [1, 0, 0], 
+        [1, 1, 1], 
+        [0, 0, 1], 
+        [1, 1, 1]
+    ],
+    "6": [
+        [1, 1, 1], 
+        [1, 0, 0], 
+        [1, 1, 1], 
+        [1, 0, 1], 
+        [1, 1, 1]
+    ],
+    "7": [
+        [1, 1, 1], 
+        [0, 0, 1], 
+        [0, 1, 0], 
+        [0, 1, 0], 
+        [0, 1, 0]
+    ],
+    "8": [
+        [1, 1, 1], 
+        [1, 0, 1], 
+        [1, 1, 1], 
+        [1, 0, 1], 
+        [1, 1, 1]
+    ],
+    "9": [
+        [1, 1, 1], 
+        [1, 0, 1], 
+        [1, 1, 1], 
+        [0, 0, 1], 
+        [1, 1, 1]
+    ],
 }
 
 
@@ -59,16 +119,18 @@ class RoundCounter:
         strip,  # Pass the pre-existing initialized PixelStrip object
         start_index: int,  # The starting LED index of the 8x8 matrix on this strip
         zigzag: bool = True,
+        mirror_horizontal: bool = False,
         color: Tuple[int, int, int] = (255, 255, 255),
     ):
         """Initializes the round counter on a shared strip."""
         logger.log(
             __file__
-            + f" -> __init__: Initializing RoundCounter starting at index {start_index}, zigzag={zigzag}, color={color}"
+            + f" -> __init__: Initializing RoundCounter starting at index {start_index}, zigzag={zigzag}, mirror={mirror_horizontal}, color={color}"
         )
         self.strip = strip
         self.start_index = start_index
         self.zigzag = zigzag
+        self.mirror_horizontal = mirror_horizontal
         self.color = color
         self.current_value = -1  # Sentinel value to enforce rendering on first refresh
 
@@ -78,6 +140,9 @@ class RoundCounter:
 
     def _get_pixel_index(self, row: int, col: int) -> int:
         """Translates 2D matrix coordinates to the shared 1D physical strip index."""
+        if self.mirror_horizontal:
+            col = 7 - col
+
         if self.zigzag:
             if row % 2 == 0:
                 local_idx = row * 8 + col
@@ -110,11 +175,7 @@ class RoundCounter:
             row = r_idx + 1
             for col, active in enumerate(row_data):
                 if active:
-                    local_idx = (
-                        row * 8 + col
-                        if not self.zigzag or row % 2 == 0
-                        else row * 8 + (7 - col)
-                    )
+                    local_idx = self._get_pixel_index(row, col) - self.start_index
                     buffer[local_idx] = self.color
 
         # Draw the Units digit
@@ -124,11 +185,7 @@ class RoundCounter:
             for col_idx, active in enumerate(row_data):
                 col = col_idx + 4
                 if active:
-                    local_idx = (
-                        row * 8 + col
-                        if not self.zigzag or row % 2 == 0
-                        else row * 8 + (7 - col)
-                    )
+                    local_idx = self._get_pixel_index(row, col) - self.start_index
                     buffer[local_idx] = self.color
 
         # Write the buffer array to the shared physical strip
@@ -157,7 +214,7 @@ if __name__ == "__main__":
     # If RPI_WS281X_AVAILABLE is True, it will try to use the real hardware.
     # If False, it uses the Mock classes defined above.
     LED_COUNT = 64
-    LED_PIN = 18
+    LED_PIN = 19
 
     strip = PixelStrip(
         num=LED_COUNT,
@@ -165,8 +222,8 @@ if __name__ == "__main__":
         freq_hz=800_000,
         dma=10,
         invert=False,
-        brightness=80,  # Slightly dimmed for safety
-        channel=0,  # needed for gpio 18
+        brightness=255,  # Slightly dimmed for safety
+        channel=1,  # needed for gpio 19
     )
     strip.begin()
 
@@ -174,17 +231,19 @@ if __name__ == "__main__":
         strip=strip,
         start_index=0,
         zigzag=True,  # Matrix uses serpentine/zigzag layout
+        mirror_horizontal=True,
         color=(0, 255, 100),  # Cyan-ish green
     )
 
     try:
         logger.log("RoundCounter demonstration: cycling digits...")
         # Step through a small range of numbers to verify both digits work.
-        for i in [0, 8, 15, 42, 99]:
-            logger.log(f"Rendering round: {i}")
+        for i in range(0, 100):
+            # logger.log(f"Rendering round: {i}")
             counter.display_round(i)
-            time.sleep(0.5)
+            time.sleep(0.05)
 
+        counter.display_round(99)
         logger.log("Clearing panel.")
         counter.clear()
 

@@ -380,12 +380,14 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             strip=real_strips.get(0),
             start_index=leds_track_strip_0,  # Starts right after track LEDs
             zigzag=True,
+            mirror_horizontal=True,
             color=player_1.vehicle.primary_color,
         ),
         player_2: RoundCounter(
             strip=real_strips.get(1),
             start_index=leds_track_strip_1,  # Starts right after track LEDs
             zigzag=True,
+            mirror_horizontal=True,
             color=player_2.vehicle.primary_color,
         ),
     }
