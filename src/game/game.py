@@ -315,7 +315,6 @@ class Game:
         fetch_interval_s: float = 0.01,
         display_interval_s: float = 0.02,
         game_tick_interval_s: float = 0.02,
-        round_counter_interval_s: float = 0.5,
     ):
         self.__record_event(
             {
@@ -323,7 +322,6 @@ class Game:
                 "fetch_interval_s": fetch_interval_s,
                 "display_interval_s": display_interval_s,
                 "game_tick_interval_s": game_tick_interval_s,
-                "round_counter_interval_s": round_counter_interval_s,
             }
         )
 
@@ -358,12 +356,6 @@ class Game:
                 target=self.__run_periodic_loop,
                 name="GameTickThread",
                 args=(self.__game_loop, game_tick_interval_s),
-                daemon=False,
-            ),
-            threading.Thread(
-                target=self.__run_periodic_loop,
-                name="GameRoundCounterUpdateThread",
-                args=(self.__update_round_counter, round_counter_interval_s),
                 daemon=False,
             ),
         ]
@@ -491,7 +483,16 @@ class Game:
 
     # display
     def display(self):
-        # self.log_fully()
+        """
+        Updates the round counters and renders the main display.
+        Running both on the same thread prevents concurrent access to the shared strips.
+        """
+        
+        self.__update_round_counter()
+        # Explicitly yield the GIL immediately after the blocking hardware write.
+        # This allows the physics and audio threads to run smoothly mid-frame.
+        time.sleep(0.001)
+        
         if self.__display_manager is not None:
             self.__display_manager.update(self)
 

@@ -100,7 +100,6 @@ def main():
                 fetch_interval_s=0.02,
                 display_interval_s=0.02,
                 game_tick_interval_s=0.02,
-                round_counter_interval_s=0.5,
             )
         except Exception as e:
             logger.log(f"Error during game loop: {e}")
@@ -374,6 +373,7 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             zigzag=True,
             mirror_horizontal=True,
             color=player_1.vehicle.primary_color,
+            auto_show=False,
         ),
         player_2: RoundCounter(
             strip=real_strips.get(1),
@@ -381,6 +381,7 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             zigzag=True,
             mirror_horizontal=True,
             color=player_2.vehicle.primary_color,
+            auto_show=False,
         ),
     }
 

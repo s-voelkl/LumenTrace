@@ -121,22 +121,64 @@ class RoundCounter:
         zigzag: bool = True,
         mirror_horizontal: bool = False,
         color: Tuple[int, int, int] = (255, 255, 255),
+        auto_show: bool = True,
     ):
         """Initializes the round counter on a shared strip."""
-        # logger.log(
-        #     __file__
-        #     + f" -> __init__: Initializing RoundCounter starting at index {start_index}, zigzag={zigzag}, mirror={mirror_horizontal}, color={color}"
-        # )
         self.strip = strip
         self.start_index = start_index
         self.zigzag = zigzag
         self.mirror_horizontal = mirror_horizontal
         self.color = color
+        self.auto_show = auto_show
         self.current_value = -1  # Sentinel value to enforce rendering on first refresh
+
+        # Pre-calculate internal buffers for all 100 possible round numbers (00-99)
+        self._buffers = []
+        self._precompute_buffers()
 
         # Clear local portion of the strip if the physical hardware is available
         if self.strip:
             self.clear()
+
+    def _precompute_buffers(self) -> None:
+        """Pre-calculates 64-pixel color buffers for every displayable round number."""
+        self._buffers = []
+        c_on = Color(*self.color)
+        for val in range(100):
+            # Start with a black/off buffer
+            buf = [0] * 64
+            val_str = f"{val:02d}"
+
+            # Tens digit (left side)
+            tens_matrix = FONT_3X5.get(val_str[0], FONT_3X5["0"])
+            for r_idx, row_data in enumerate(tens_matrix):
+                row = r_idx + 1
+                for col_idx, active in enumerate(row_data):
+                    if active:
+                        local_idx = self._get_pixel_index(row, col_idx) - self.start_index
+                        buf[local_idx] = c_on
+
+            # Units digit (right side)
+            units_matrix = FONT_3X5.get(val_str[1], FONT_3X5["0"])
+            for r_idx, row_data in enumerate(units_matrix):
+                row = r_idx + 1
+                for col_idx, active in enumerate(row_data):
+                    col = col_idx + 4
+                    if active:
+                        local_idx = self._get_pixel_index(row, col) - self.start_index
+                        buf[local_idx] = c_on
+            self._buffers.append(buf)
+
+    def set_color(self, color: Tuple[int, int, int]) -> None:
+        """Updates the display color and re-precomputes internal buffers."""
+        if color != self.color:
+            self.color = color
+            self._precompute_buffers()
+            # Force refresh if a value is currently set
+            if self.current_value != -1:
+                temp_val = self.current_value
+                self.current_value = -1
+                self.display_round(temp_val)
 
     def _get_pixel_index(self, row: int, col: int) -> int:
         """Translates 2D matrix coordinates to the shared 1D physical strip index."""
@@ -162,39 +204,14 @@ class RoundCounter:
 
         self.current_value = val_clamped
 
-        val_str = f"{val_clamped:02d}"
-        digit_tens = val_str[0]
-        digit_units = val_str[1]
-
-        # Start with an empty, dark local buffer
-        buffer = [(0, 0, 0)] * 64
-
-        # Draw the Tens digit
-        tens_matrix = FONT_3X5.get(digit_tens, FONT_3X5["0"])
-        for r_idx, row_data in enumerate(tens_matrix):
-            row = r_idx + 1
-            for col, active in enumerate(row_data):
-                if active:
-                    local_idx = self._get_pixel_index(row, col) - self.start_index
-                    buffer[local_idx] = self.color
-
-        # Draw the Units digit
-        units_matrix = FONT_3X5.get(digit_units, FONT_3X5["0"])
-        for r_idx, row_data in enumerate(units_matrix):
-            row = r_idx + 1
-            for col_idx, active in enumerate(row_data):
-                col = col_idx + 4
-                if active:
-                    local_idx = self._get_pixel_index(row, col) - self.start_index
-                    buffer[local_idx] = self.color
-
-        # Write the buffer array to the shared physical strip
+        # Fast path: use pre-calculated color buffer
         if self.strip:
-            for idx, rgb in enumerate(buffer):
-                color_val = Color(rgb[0], rgb[1], rgb[2])
-                # Shift by start_index when sending to physical strip
+            buf = self._buffers[val_clamped]
+            for idx, color_val in enumerate(buf):
                 self.strip.setPixelColor(self.start_index + idx, color_val)
-            self.strip.show()
+
+            if self.auto_show:
+                self.strip.show()
 
     def clear(self) -> None:
         """Resets the matrix segment's pixels to the off state."""
@@ -202,7 +219,9 @@ class RoundCounter:
         if self.strip:
             for idx in range(64):
                 self.strip.setPixelColor(self.start_index + idx, 0)
-            self.strip.show()
+
+            if self.auto_show:
+                self.strip.show()
 
 
 if __name__ == "__main__":

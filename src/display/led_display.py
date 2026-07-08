@@ -1,3 +1,5 @@
+import time
+
 try:
     from rpi_ws281x import PixelStrip, Color
 
@@ -292,3 +294,6 @@ class LedDisplay:
         # Request the physical strips to show the pushed colors.
         for strip in self.real_strips.values():
             strip.show()
+            # Explicitly yield the GIL immediately after each blocking hardware write.
+            # This allows the physics and audio threads to run smoothly mid-frame.
+            time.sleep(0.001)
