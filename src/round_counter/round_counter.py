@@ -123,10 +123,10 @@ class RoundCounter:
         color: Tuple[int, int, int] = (255, 255, 255),
     ):
         """Initializes the round counter on a shared strip."""
-        logger.log(
-            __file__
-            + f" -> __init__: Initializing RoundCounter starting at index {start_index}, zigzag={zigzag}, mirror={mirror_horizontal}, color={color}"
-        )
+        # logger.log(
+        #     __file__
+        #     + f" -> __init__: Initializing RoundCounter starting at index {start_index}, zigzag={zigzag}, mirror={mirror_horizontal}, color={color}"
+        # )
         self.strip = strip
         self.start_index = start_index
         self.zigzag = zigzag

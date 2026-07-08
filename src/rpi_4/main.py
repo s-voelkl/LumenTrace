@@ -288,11 +288,11 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     leds_track_strip_0 = 243
     leds_track_strip_1 = 236
 
-    # Add 64 pixels for the 8x8 Round Counter matrices at the end of each physical chain
+    # Add 64 pixels for the 8x8 Round Counter matrices at the beginning of each physical chain
     leds_matrix_count = 0 # 64
 
-    leds_total_strip_0 = leds_track_strip_0 + leds_matrix_count  # 307 total
-    leds_total_strip_1 = leds_track_strip_1 + leds_matrix_count  # 312 total
+    leds_total_strip_0 = leds_track_strip_0 + leds_matrix_count
+    leds_total_strip_1 = leds_track_strip_1 + leds_matrix_count
 
     leds_add_strip_0 = 24
     leds_add_strip_1 = 18
@@ -330,22 +330,28 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
 
     virtual_strips = [
         VirtualLedStrip(
-            lane=lane_0, real_strip_id=0, min_index=0, max_index=leds_main_strip_0 - 1
+            lane=lane_0,
+            real_strip_id=0,
+            min_index=leds_matrix_count,
+            max_index=leds_matrix_count + leds_main_strip_0 - 1,
         ),
         VirtualLedStrip(
             lane=lane_1,
             real_strip_id=0,
-            min_index=leds_main_strip_0,  # starts after the main track strip
-            max_index=leds_track_strip_0 - 1,  # strictly stops before the round counter
+            min_index=leds_matrix_count + leds_main_strip_0,  # starts after the main track strip
+            max_index=leds_matrix_count + leds_track_strip_0 - 1,  # strictly stops at end of track
         ),
         VirtualLedStrip(
             lane=lane_1,
             real_strip_id=1,
-            min_index=leds_main_strip_1,  # starts after the main track strip
-            max_index=leds_track_strip_1 - 1,  # strictly stops before the round counter
+            min_index=leds_matrix_count + leds_main_strip_1,  # starts after the main track strip
+            max_index=leds_matrix_count + leds_track_strip_1 - 1,  # strictly stops at end of track
         ),
         VirtualLedStrip(
-            lane=lane_2, real_strip_id=1, min_index=0, max_index=leds_main_strip_1 - 1
+            lane=lane_2,
+            real_strip_id=1,
+            min_index=leds_matrix_count,
+            max_index=leds_matrix_count + leds_main_strip_1 - 1,
         ),
     ]
 
@@ -378,14 +384,14 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
     round_counters = {
         player_1: RoundCounter(
             strip=real_strips.get(0),
-            start_index=leds_track_strip_0,  # Starts right after track LEDs
+            start_index=0,  # Matrix is placed at the very beginning
             zigzag=True,
             mirror_horizontal=True,
             color=player_1.vehicle.primary_color,
         ),
         player_2: RoundCounter(
             strip=real_strips.get(1),
-            start_index=leds_track_strip_1,  # Starts right after track LEDs
+            start_index=0,  # Matrix is placed at the very beginning
             zigzag=True,
             mirror_horizontal=True,
             color=player_2.vehicle.primary_color,

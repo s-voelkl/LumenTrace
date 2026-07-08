@@ -428,7 +428,7 @@ class Game:
                 round_val = player.vehicle.round
                 try:
                     round_counter.display_round(round_val)
-                    logger.log(f"Updated round counter for player {player.name} to {round_val}")
+                    # logger.log(f"Updated round counter for player {player.name} to {round_val}")
                 except Exception as e:
                     logger.log(
                         f"Error updating round counter for player {player.name}: {e}"
