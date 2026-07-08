@@ -1,38 +1,38 @@
-# Raspberry 4 Config
+# Raspberry Pi 4 Config
 
 ## OS
 
 - Raspberry Pi OS (64-bit): A port of Debian Trixie with Raspberry Pi Desktop (Recommended).
 - Micro-SD: 32 GB.
-- Hauptstadt: Berlin/Germany
-- Zeitzone: Europe/Berlin
-- Tastaturlayout: de
-- Wlan: Erst mal das bei SimonV "BND-Spionage 5"
-- SSh aktivieren: Ja, mit Passwort (lumentrace)
-- Raspberry Pi Connect: Ja, mit einem Raspberry Pi Account. Siehe Privatnachricht für Zugangsdaten.
+- Country/Capital: Germany/Berlin
+- Timezone: Europe/Berlin
+- Keyboard Layout: de
+- WLAN: Use "BND-Spionage 5" (SimonV)
+- Enable SSH: Yes, with password (`lumentrace`)
+- Raspberry Pi Connect: Yes, using a Raspberry Pi account. See private message for login credentials.
 
-## Verbindung (SSH)
+## Connection (SSH)
 
-- Hostname: lumentrace
-- Username: lumentrace
-- Passwort: lumentrace
-- ssh lumentrace@
+- Hostname: `lumentrace`
+- Username: `lumentrace`
+- Password: `lumentrace`
+- ssh lumentrace@lumentrace
 
-## Codeausführung
+## Code Execution
 
-- Ordner finden: ``cd /home/lumentrace/Documents/repos/LumenTrace``
-- Enviroment erstellen: ``python3 -m venv .venv``
-- Environment aktivieren: ``source .venv/bin/activate``
-- Pip packages installieren: ``pip install -r ./src/rpi_4/requirements.txt``
-- Pip package list checken: ``pip list``
-- Code ausführen: ``sudo .venv/bin/python -m src.rpi_4.main`` (Wichtig für Memory-Zugriff durch die rpi_ws281x library)
+- Navigate to folder: `cd /home/lumentrace/Documents/repos/LumenTrace`
+- Create virtual environment: `python3 -m venv .venv`
+- Activate virtual environment: `source .venv/bin/activate`
+- Install pip packages: `pip install -r ./src/rpi_4/requirements.txt`
+- Verify package list: `pip list`
+- Run application: `sudo .venv/bin/python -m src.rpi_4.main` (Crucial for physical memory access required by the `rpi_ws281x` library)
 
 ```shell
 source .venv/bin/activate
 sudo .venv/bin/python -m src.rpi_4.main
 ```
 
-## Hardware-Vorbereitung (SPI & PCM)
+## Hardware Preparation (SPI & PCM)
 
 The round counters use **GPIO 10 (SPI)** and **GPIO 21 (PCM)**. You must configure your Raspberry Pi host to enable these modules and prevent onboard audio drivers from blocking them.
 
@@ -63,9 +63,9 @@ Reboot the Raspberry Pi to apply changes.
 
 ---
 
-## Installationen
+## Installations
 
-### Sound mit USB Soundkarte
+### Sound with USB Sound Card
 
 Disabling onboard audio means your USB Sound Card will shift to default index **0** instead of **3**.
 
@@ -87,16 +87,16 @@ sudo speaker-test -c 2 -t sine -f 1000 -l 1 -D sysdefault:CARD=2
 For instructions on how to install and run the application with **Docker**, please see:
 [docs/rpi_4/rpi_4_docker.md](rpi_4_docker.md)
 
-## Hardware-Set
+## Hardware Set
 
-- Raspberry Pi 4 Model B 4GB RAM, mit 4 montierten Kühlkörpern, mit Verpackung
+- Raspberry Pi 4 Model B 4GB RAM, with 4 mounted heatsinks, original packaging included
 - Official USB-C Power Supply
-- Gehäuse aus zwei Teilen (schwarze Basis unten, transparente Abdeckung oben)
-- Raspberry PI HDMI D/Male zu HDMI A/Male 1m Kabel
-- Ladestecker Netzteil zu USB-C Kabel, 15,3W schwarz, mit Verpackung
-- Raspberry Pi Micro-SD-Karte 16GB mit SD-Adapter
-- Anleitungen 2x
+- Two-part enclosure (black base, transparent top cover)
+- Raspberry Pi HDMI D/Male to HDMI A/Male 1m cable
+- Power supply to USB-C cable, 15.3W black, original packaging included
+- Raspberry Pi Micro-SD card 16GB with SD adapter
+- Manuals (2x)
 
-Von Makerspace:
+From Makerspace:
 
-- SanDisk Extreme 32GB V30 U3 A1 mit Adapter --> steckt im RPI 4
+- SanDisk Extreme 32GB V30 U3 A1 with adapter --> inserted in RPI 4

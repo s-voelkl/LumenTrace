@@ -37,7 +37,7 @@ available at `src/dev/simulation.py`.
 - Renderer: `src/simulation/terminal_renderer.py`
 - Input script: `src/simulation/signal_receiver.py`
 
-![Simulation Terminal Screenshot](docs/Simulation_Example_1.png)
+![Simulation Terminal Screenshot](docs/dev/Simulation_Example_1.png)
 
 The simulation dashboard displays:
 
@@ -64,7 +64,7 @@ The architecture is designed to be modular and extensible, with clear separation
 - `Controller` package handles player input and translates it into game actions.
 - `Display` package manages the LED effects and visual feedback for the game.
 
-![Architecture Diagram](docs/architecture.png)
+![Architecture Diagram](docs/architecture/architecture.png)
 
 ## LED Color Management
 
