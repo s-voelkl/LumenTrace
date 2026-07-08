@@ -63,13 +63,15 @@ def main():
 
         if first_run:
             logger.log("Clearing all LEDs on startup and playing startup sound...")
-            clear_all_leds(led_display)
-            time.sleep(0.25)  # cleaner display clearing
 
             # startup sound and initial LED colors
+            game.clear_round_counters()
+            time.sleep(0.25)
+            clear_all_leds(led_display)
+            time.sleep(0.5)
             set_all_leds(led_display, game.lanes, DARK_PURPLE)
+            time.sleep(0.25)
             sound_manager.play(GameSound.GAME_INIT, volume=20)
-            time.sleep(1)
             first_run = False
 
         logger.log(
@@ -78,6 +80,7 @@ def main():
         )
 
         # start waiting music, end if the start signal is received
+        time.sleep(1)
         vibe_music: str = sound_manager.play(GameSound.VIBE_2, loop=True, volume=10)
 
         # Game startup:
