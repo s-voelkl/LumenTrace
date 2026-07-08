@@ -60,7 +60,6 @@ class Game:
         # while the edge-tracking dictionaries make one-shot effects (lane
         # change, warning) fire only on state transitions instead of every tick.
         self.__motor_sounds: dict[Player, Any] = {}
-        self.__previous_special_1: dict[Player, float] = {}
         self.__warning_active: dict[Player, bool] = {}
 
         self.__stop_event = threading.Event()
@@ -101,14 +100,6 @@ class Game:
                 self.__handle_inactive_player_tick(player)
                 continue
 
-            # Edge-detect the lane-change button so the coin sound triggers once
-            # per press rather than continuously while the button is held.
-            current_special_1 = player.controller.special_1
-            special_1_pressed = (
-                self.__previous_special_1.get(player, 0) == 0 and current_special_1 != 0
-            )
-            self.__previous_special_1[player] = current_special_1
-
             # map the input to acceleration and apply it
             vehicle_acceleration = self.map_forward_press_to_acceleration(
                 player.controller.forward_press
@@ -124,7 +115,7 @@ class Game:
                 acceleration_multiplier=self.__settings.acceleration_multiplier,
             )
 
-            self.__handle_lane_change(player, special_1_pressed)
+            self.__handle_lane_change(player, player.controller.special_1 > 0.5)
 
             track_module, _ = (
                 self.get_track_module_for_lane_position(
@@ -146,16 +137,6 @@ class Game:
                     player, "lane is ended: missing line for active lane"
                 )
                 continue
-
-            # logger.log("special_1_pressed: " + str(special_1_pressed) + " soundManager: " + str(self.__sound_manager is not None) + " gameSound: " + str(GameSound is not None))
-            if (
-                special_1_pressed
-                and self.__sound_manager is not None
-                and GameSound is not None
-                and current_line.driving_profile.lane_change_allowed
-            ):
-                # logger.log("Playing sound: COIN_2 for player " + player.name)
-                self.__play_positional_sound(player, GameSound.COIN_2, volume=40.0)
 
             profile_reason = self.__get_profile_violation_reason(
                 player, current_line.driving_profile
@@ -330,7 +311,7 @@ class Game:
         if self.__sound_manager is not None and MotorSound is not None:
             for player in self.__players:
                 self.__motor_sounds[player] = MotorSound(
-                    self.__sound_manager, max_volume=15, idle_volume=5
+                    self.__sound_manager, max_volume=9, idle_volume=4
                 )
 
         # Start the continuous per-player engine loops before the worker
@@ -589,7 +570,7 @@ class Game:
         if player.vehicle.active:
             vehicle = player.vehicle
             if self.__sound_manager is not None and GameSound is not None:
-                self.__play_positional_sound(player, GameSound.CAR_CRASH_2, volume=60.0)
+                self.__play_positional_sound(player, GameSound.CAR_CRASH_2, volume=30.0)
 
             respawn_module_index = self.__resolve_respawn_module_index(
                 vehicle.lane,
@@ -707,106 +688,67 @@ class Game:
         return mapped_signal
 
     def __handle_lane_change(self, player: Player, special_1_pressed: bool) -> None:
-        """Handle new immediate and automatic lane changes for the given player."""
+        """Handle execution of lane changes (starting and finishing) for the given player."""
         vehicle = player.vehicle
         lane = vehicle.lane
         if lane is None or len(self.__lanes) < 3:
             return
 
-        left_lane = self.__lanes[0]
-        middle_lane = self.__lanes[1]
-        right_lane = self.__lanes[2]
-
-        module_index, local_position = self.__get_track_module_index_and_local_position(
-            lane, vehicle.position
-        )
-        if module_index is None:
+        idx, local_pos = self.__get_track_module_index_and_local_position(lane, vehicle.position)
+        if idx is None:
             return
-
+        module_index: int = idx
         module = self.__track_modules[module_index]
         line = module.get_line_for_lane(lane)
-        if line is None or not line.driving_profile.lane_change_allowed:
+        if not (line and line.driving_profile.lane_change_allowed):
             return
 
-        distance_to_end = line.length - local_position
+        left_lane, middle_lane, right_lane = self.__lanes[0], self.__lanes[1], self.__lanes[2]
+        window = self.__settings.lane_change_window
+        dist_to_end = line.length - local_pos
+        dist_since_last = abs(local_pos - vehicle.lane_change_start_position)
+
+        target_lane = None
+        target_outer = None
+        event_type = None
 
         if lane in (left_lane, right_lane):
-            if (
-                special_1_pressed
-                and distance_to_end > self.__settings.lane_change_window
-            ):
-                target_outer_lane = right_lane if lane == left_lane else left_lane
-
-                target_position = module.convert_position_between_lanes(
-                    lane, middle_lane, local_position
-                )
-
-                global_position = self.__build_global_lane_position(
-                    middle_lane, module_index, target_position
-                )
-                vehicle.set_lane(middle_lane)
-                vehicle.set_position(global_position)
-                vehicle.set_lane_change(target_outer_lane, target_position)
-                self.__record_event(
-                    {
-                        "event": "lane_change_started",
-                        "player": player.name,
-                        "from_lane": lane.lane_id,
-                        "to_lane": middle_lane.lane_id,
-                    }
-                )
+            # Only start if button is pressed, we have enough space, and enough distance since last transition.
+            if special_1_pressed and dist_to_end > window and dist_since_last >= window:
+                target_lane = middle_lane
+                event_type = "lane_change_started"
+                target_outer = right_lane if lane == left_lane else left_lane
         elif lane == middle_lane:
-            if distance_to_end <= self.__settings.lane_change_window:
-                target_lane = vehicle.lane_change_target
-                if target_lane is None:
-                    # In case a car gets on the middle lane somehow without a target, default to right.
-                    target_lane = right_lane
+            # Finish if we are near the end (auto) or button is pressed after minimal distance (manual).
+            if dist_to_end <= window or (special_1_pressed and dist_since_last >= window):
+                target_lane = vehicle.lane_change_target or right_lane
+                event_type = "lane_change_finished"
 
-                target_position = module.convert_position_between_lanes(
-                    middle_lane, target_lane, local_position
-                )
-                global_position = self.__build_global_lane_position(
-                    target_lane, module_index, target_position
-                )
-                vehicle.set_lane(target_lane)
-                vehicle.set_position(global_position)
-                vehicle.clear_lane_change()
-                self.__record_event(
-                    {
-                        "event": "lane_change_finished",
-                        "player": player.name,
-                        "from_lane": middle_lane.lane_id,
-                        "to_lane": target_lane.lane_id,
-                    }
-                )
+        if target_lane:
+            target_pos = module.convert_position_between_lanes(lane, target_lane, local_pos)
+            global_pos = self.__build_global_lane_position(target_lane, module_index, target_pos)
+
+            old_lane_id = lane.lane_id
+            vehicle.set_lane(target_lane)
+            vehicle.set_position(global_pos)
+
+            if event_type == "lane_change_started":
+                vehicle.set_lane_change(target_outer, target_pos)
             else:
-                start_position = vehicle.lane_change_start_position
-                if (
-                    special_1_pressed
-                    and (local_position - start_position)
-                    >= self.__settings.lane_change_window
-                ):
-                    target_lane = vehicle.lane_change_target
-                    if target_lane is None:
-                        target_lane = right_lane
+                # Store the finish position to enforce minimal distance until the next start.
+                vehicle.set_lane_change(None, target_pos)
 
-                    target_position = module.convert_position_between_lanes(
-                        middle_lane, target_lane, local_position
-                    )
-                    global_position = self.__build_global_lane_position(
-                        target_lane, module_index, target_position
-                    )
-                    vehicle.set_lane(target_lane)
-                    vehicle.set_position(global_position)
-                    vehicle.clear_lane_change()
-                    self.__record_event(
-                        {
-                            "event": "lane_change_finished",
-                            "player": player.name,
-                            "from_lane": middle_lane.lane_id,
-                            "to_lane": target_lane.lane_id,
-                        }
-                    )
+            if self.__sound_manager is not None and GameSound is not None:
+                self.__play_positional_sound(player, GameSound.COIN_2, volume=40.0)
+
+            self.__record_event(
+                {
+                    "event": event_type,
+                    "player": player.name,
+                    "from_lane": old_lane_id,
+                    "to_lane": target_lane.lane_id,
+                }
+            )
 
     # motor sound initialization
     def __start_motor_sounds(self) -> None:
@@ -931,7 +873,7 @@ class Game:
         was_near = self.__warning_active.get(player, False)
 
         if is_near and not was_near:
-            self.__play_positional_sound(player, GameSound.WARNING_2, volume=15.0)
+            self.__play_positional_sound(player, GameSound.WARNING_2, volume=25.0)
 
         self.__warning_active[player] = is_near
 

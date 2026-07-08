@@ -78,7 +78,7 @@ def main():
         )
 
         # start waiting music, end if the start signal is received
-        # vibe_music: str = sound_manager.play(GameSound.VIBE_2, loop=True, volume=10)
+        vibe_music: str = sound_manager.play(GameSound.VIBE_2, loop=True, volume=10)
 
         # Game startup:
         # The game waits for an initial signal of all player controllers pressing
@@ -88,7 +88,7 @@ def main():
         # wait_for_start_signal(game)
 
         # stop waiting music
-        # sound_manager.stop_sound(vibe_music)
+        sound_manager.stop_sound(vibe_music)
 
         # uncomment for start sequence
         logger.log("Start signal received. Running start sequence.")
@@ -98,7 +98,7 @@ def main():
         try:
             game.start_game(
                 fetch_interval_s=0.02,
-                display_interval_s=0.02,
+                display_interval_s=0.03,
                 game_tick_interval_s=0.02,
             )
         except Exception as e:
@@ -132,7 +132,6 @@ def set_all_leds(
 
 def wait_for_start_signal(
     game: Game,
-    hold_seconds: float = 0.0,
     poll_interval_s: float = 0.25,
 ) -> None:
     """Block until all players press their start button.
@@ -390,10 +389,10 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
         max_speed=max_speed,
         respawn_ticks=75,
         friction_percent=0.05,
-        acceleration_multiplier=0.07,
-        lane_change_window=5,
+        acceleration_multiplier=0.06,
+        lane_change_window=8,
         vehicle_crash_distance=3.0,
-        rounds_to_win=5,
+        rounds_to_win=1,
     )
 
     track_modules: list[TrackModule] = [
