@@ -1,5 +1,5 @@
 @startuml
-!theme plain
+'!theme plain
 
 node "Player 1 Controller" as P1_Ctrl {
   port "Throttle (Analog)" as P1_A
@@ -29,7 +29,7 @@ node "Raspberry Pi 4 (Core Host)" as RPi4 {
   port "UART TX" as rTX
   port "GPIO 18 (PWM0)" as rGPIO18
   port "GPIO 19 (PWM1)" as rGPIO19
-  port "Audio Out (3.5mm/USB)" as rAudio
+  port "Audio Out (USB)" as rAudio
 }
 
 pTX --> rRX : Serial Data \n(typically 115200 baud)
@@ -38,19 +38,22 @@ pRX <-- rTX
 node "Output Devices" {
   node "Round Counter 0 (8x8 LED Matrix)" as Matrix0
   node "Track 0 LED Strip (WS2812B)" as Track0
+  node "Intersection 0 LED Strip (WS2812B)" as Intersection0
   
   node "Round Counter 1 (8x8 LED Matrix)" as Matrix1
   node "Track 1 LED Strip (WS2812B)" as Track1
+  node "Intersection 1 LED Strip (WS2812B)" as Intersection1
   
   node "Stereo Speakers" as Speakers
 }
 
 rGPIO18 --> Matrix0 : Data In
-Matrix0 --> Track0 : Data Out -> Data In (Chained)
+Matrix0 --> Track0 : DOUT -> DIN
+Track0 --> Intersection0
 
 rGPIO19 --> Matrix1 : Data In
-Matrix1 --> Track1 : Data Out -> Data In (Chained)
+Matrix1 --> Track1 : DOUT -> DIN
+Track1 --> Intersection1
 
-rAudio --> Speakers : Analog Stereo Audio Signal
-
+rAudio --> Speakers : Stereo Audio
 @enduml

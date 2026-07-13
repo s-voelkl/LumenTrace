@@ -1,12 +1,19 @@
 @startuml
-!theme plain
-skinparam componentStyle uml2
+'!theme plain
+'skinparam componentStyle uml2
 
-package "Input" {
-  [SignalReceiver]
+package "Controller (Transmit)" {
+  [SignalTransmitter]
+  [PhysicalController]
 }
 
-package "Game Engine (src.game)" {
+package "Controller (Receive)" {
+  [ISignalReceiver]
+  [SignalReceiver]
+  [PlayerController]
+}
+
+package "Game Engine" {
   [Game] as GameMain
   [Settings]
   [Player]
@@ -19,32 +26,68 @@ package "Game Engine (src.game)" {
   GameMain *-- [Settings]
   GameMain *-- [Player]
   GameMain *-- [TrackModule]
-  GameMain *-- [Lane]
   [Player] *-- [Vehicle]
   [TrackModule] *-- [Line]
   [Line] *-- [DrivingProfile]
   [Line] o-- [Lane]
 }
 
-package "Display Engine (src.display)" {
+package "Display" {
   [DisplayManager]
   [LedDisplay]
+  [ColorConstants]
+  [Config]
 }
 
-package "Sound Engine (src.sound)" {
+package "Sound" {
   [ThreadedSoundManager]
+  [SoundManager]
+  [MotorSound]
 }
 
-package "Logging & Simulation" {
+package "Logger" {
   [MultiLogger]
+  [PyLogger]
+  [MqttLogger]
+}
+
+package "Simulation" {
+  [Orchestrator]
+  [SignalReceiver] as SimulationSignalReceiver
   [TerminalRenderer]
 }
 
-[SignalReceiver] --> GameMain : Polls Controllers (forward, special)
-GameMain --> [DisplayManager] : Updates Vehicle/Track states
-[DisplayManager] --> [LedDisplay] : Modifies Virtual Buffers
-GameMain --> [ThreadedSoundManager] : Submits Audio Commands
-GameMain --> [MultiLogger] : Sends Telemetry Data
-GameMain --> [TerminalRenderer] : Local TUI Representation
+package "Entry Point" {
+  [Main]
+}
 
+[Main] --> GameMain : Initializes
+[Main] --> [DisplayManager] : Displays
+[Main] --> [ThreadedSoundManager] : Plays sounds
+[Main] --> [MultiLogger] : Logs
+
+[PhysicalController] --> [SignalTransmitter] : ADC / digital inputs
+[SignalTransmitter] --> [SignalReceiver] : UART Signal
+[ISignalReceiver] <|.. [SignalReceiver]
+
+[PlayerController] --> [Vehicle] : Updates state
+
+[DisplayManager] --> [LedDisplay] : Virtual Buffers (RGB)
+[DisplayManager] *-- [Config] : Configurations
+[DisplayManager] *-- [ColorConstants] : Colors
+
+
+[ThreadedSoundManager] *-- [SoundManager]
+[SoundManager] *-- [MotorSound]
+
+[MultiLogger] *-- [PyLogger]
+[MultiLogger] *-- [MqttLogger]
+
+[Orchestrator] --> [TerminalRenderer] : Renders State
+[Orchestrator] *-- SimulationSignalReceiver : Uses
+
+' Layout positioning
+MotorSound -[hidden]down-> Orchestrator
+DrivingProfile -[hidden]down-> PhysicalController
+DrivingProfile-[hidden]down-> PlayerController
 @enduml
