@@ -64,12 +64,15 @@ def main():
         if first_run:
             logger.log("Clearing all LEDs on startup and playing startup sound...")
 
-            # startup sound and initial LED colors
-            game.clear_round_counters()
-            time.sleep(0.25)
-            clear_all_leds(led_display)
-            time.sleep(0.5)
-            set_all_leds(led_display, game.lanes, DARK_PURPLE)
+            # Multiple setting of the leds at initial startup. 
+            # This fixes an startup error where the leds blink in random colors.
+            for _ in range(3):
+                game.clear_round_counters()
+                clear_all_leds(led_display)
+                time.sleep(0.1)
+                set_all_leds(led_display, game.lanes, DARK_PURPLE)
+                
+            # startup sound
             time.sleep(0.25)
             sound_manager.play(GameSound.GAME_INIT, volume=20)
             first_run = False

@@ -21,27 +21,13 @@ docker compose version
 
 ## Usage
 
-### Build and Start
-
-Use the following commands to build the image and start the container in detached mode:
-
-```bash
-sudo docker compose -f docker-compose.yaml build
-sudo docker compose -f docker-compose.yaml up -d
-```
-
-### Stop and Clean Up
-
-To stop the running container:
+Use the following commands to stop, remove, build, and start the Docker container. The `-d` flag runs the container in detached mode.
 
 ```bash
 sudo docker compose -f docker-compose.yaml stop
-```
-
-To stop and remove containers, networks, and images:
-
-```bash
 sudo docker compose -f docker-compose.yaml down
+sudo docker compose -f docker-compose.yaml build
+sudo docker compose -f docker-compose.yaml up -d
 ```
 
 ## Autostart on Boot
