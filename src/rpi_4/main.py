@@ -69,7 +69,7 @@ def main():
             for _ in range(3):
                 game.clear_round_counters()
                 clear_all_leds(led_display)
-                time.sleep(0.1)
+                # time.sleep(0.1)
                 set_all_leds(led_display, game.lanes, DARK_PURPLE)
                 
             # startup sound
@@ -378,7 +378,7 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             start_index=0,  # Matrix is placed at the very beginning
             zigzag=True,
             mirror_horizontal=True,
-            color=player_1.vehicle.primary_color,
+            color=DARK_BLUE,
             auto_show=False,
         ),
         player_2: RoundCounter(
@@ -386,7 +386,7 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             start_index=0,  # Matrix is placed at the very beginning
             zigzag=True,
             mirror_horizontal=True,
-            color=player_2.vehicle.primary_color,
+            color=SLIGHT_PURPLE,
             auto_show=False,
         ),
     }
@@ -506,14 +506,14 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             lines=[
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed, min_speed=max_speed * 0.4
+                        max_speed=max_speed, min_speed=max_speed * 0.35
                     ),
                     lane=lane_0,
                     line_length=110.0,
                 ),
                 Line(
                     driving_profile=DrivingProfile(
-                        max_speed=max_speed, min_speed=max_speed * 0.4
+                        max_speed=max_speed, min_speed=max_speed * 0.35
                     ),
                     lane=lane_2,
                     line_length=110.0,

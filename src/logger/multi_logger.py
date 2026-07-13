@@ -11,7 +11,7 @@ class MultiLogger:
     """Forward log calls to the stdlib logger and MQTT logger."""
 
     # flag for deactivating the logger for better performance in time-critical code paths
-    __logger_active = True
+    __logger_active = False
 
     def __init__(
         self, credentials_path: str | None = None, logger_name: str = "pylogger"

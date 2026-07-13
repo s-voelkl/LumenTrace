@@ -50,7 +50,7 @@ class DisplayManager:
     COLOR_RENDER_TRACK_BASE = DARK_PURPLE
     COLOR_RENDER_TRACK_MODULE_START = DARK_PURPLE
     COLOR_RENDER_START_OF_TRACK = GRAY
-    COLOR_RENDER_ROUND_ADVANCE_PRIMARY = YELLOW
+    COLOR_RENDER_ROUND_ADVANCE_PRIMARY = PURPLE
     COLOR_RENDER_ROUND_ADVANCE_SECONDARY = WHITE
     COLOR_RENDER_INACTIVE_MODIFIER = GRAY
     COLOR_RENDER_FRONT_LIGHT = LIGHT_GRAY
@@ -344,7 +344,7 @@ class DisplayManager:
         for lane in lanes:
             if first_module.get_line_for_lane(lane) is not None:
                 self.display.set_lane_pixel_by_relative_position(
-                    lane, 0.0, self.COLOR_RENDER_START_OF_TRACK
+                    lane, 0.0, self.COLOR_RENDER_START_OF_TRACK, 0.5
                 )
 
     def _render_round_advance(self, game: Game):

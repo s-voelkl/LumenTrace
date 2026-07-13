@@ -311,7 +311,7 @@ class Game:
         if self.__sound_manager is not None and MotorSound is not None:
             for player in self.__players:
                 self.__motor_sounds[player] = MotorSound(
-                    self.__sound_manager, max_volume=9, idle_volume=4
+                    self.__sound_manager, max_volume=10, idle_volume=2
                 )
 
         # Start the continuous per-player engine loops before the worker
@@ -739,7 +739,7 @@ class Game:
                 vehicle.set_lane_change(None, target_pos)
 
             if self.__sound_manager is not None and GameSound is not None:
-                self.__play_positional_sound(player, GameSound.COIN_2, volume=40.0)
+                self.__play_positional_sound(player, GameSound.COIN_2, volume=30.0)
 
             self.__record_event(
                 {
@@ -873,7 +873,7 @@ class Game:
         was_near = self.__warning_active.get(player, False)
 
         if is_near and not was_near:
-            self.__play_positional_sound(player, GameSound.WARNING_2, volume=25.0)
+            self.__play_positional_sound(player, GameSound.WARNING_2, volume=22.0)
 
         self.__warning_active[player] = is_near
 
