@@ -12,9 +12,9 @@ For detailed setup, installation, and troubleshooting instructions, please refer
 
 ## Used Technologies
 
-- Microcontrollers: Raspberry Pi Pico and Raspberry Pi 3 with an micro-SD card for data storage.
-- Programming Languages: Arduino C++ for the microcontroller firmware, Python for OOP design, data processing, testing, simulation and visualization.
-- Communication Protocols: High-Speed serial communication between Pico and Pi with UART, LED control via WS2812.
+- Microcontrollers: Raspberry Pi Pico (Input Controller) and Raspberry Pi 4 (Core Host) with a micro-SD card for data storage.
+- Programming Languages: MicroPython for the microcontroller firmware, Python for OOP design, data processing, led display, sound, testing, simulation and visualization.
+- Communication Protocols: High-Speed serial communication between Pico and Pi 4 with UART, LED control via WS2812.
 - Data Storage: Micro-SD card for storing and running the program on the Pi.
 
 ## Features
@@ -54,17 +54,30 @@ Track layout used by the simulation:
 
 ## Hardware
 
+The system is built on a distributed hardware architecture combining a Raspberry Pi 4 (Core Host) and a Raspberry Pi Pico (Input MCU).
+
+- **Raspberry Pi 4 (Core Host):** Runs the main Python application (`src.rpi_4.main`), managing the game logic, physics simulation, LED display buffers, sound mixing, and logging.
+- **Raspberry Pi Pico (Input MCU):** Runs MicroPython firmware (`src.rpi_pico.main`) polling inputs from physical controllers (analog throttles via ADCs and digital buttons).
+- **Communication:** The Pico transmits the controller states as a serialized format to the RPi 4 over UART at high speed, removing the polling overhead from the main host.
+- **LED Matrices & Strips:** RPi 4 drives WS2812B LEDs using DMA (PWM on GPIO 18/19), where the LED matrices for lap counting are physically chained before the track strips to minimize occupied hardware channels.
+- **Audio:** Real-time engine and event audio is routed out of the Pi to stereo speakers.
+
+![Hardware Setup Diagram](docs/diagrams/src/hardware-setup/hardware-setup.png)
+
 ## Architecture
 
 The architecture is designed to be modular and extensible, with clear separation of concerns between different components:
+
+![System Architecture](docs/diagrams/src/system-architecture/system-architecture.png)
 
 - `Game` package handles the core game logic, including vehicle physics, track management, and players.
 - `Simulation` package provides tools for testing and visualizing the game mechanics in Python.
 - `Logger` package manages logging and debugging output for log files and MQTT.
 - `Controller` package handles player input and translates it into game actions.
 - `Display` package manages the LED effects and visual feedback for the game.
+- `Sound` package provides a real-time, threaded audio mixer.
 
-![Architecture Diagram](docs/architecture/architecture.png)
+![Game Engine Architecture](docs/diagrams/src/game-engine/game-engine.png)
 
 ## LED Color Management
 

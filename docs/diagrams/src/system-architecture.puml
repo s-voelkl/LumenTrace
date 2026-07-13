@@ -1,0 +1,36 @@
+@startuml
+!theme plain
+skinparam componentStyle uml2
+
+package "Hardware Inputs" {
+  [Player Controllers] as controllers
+  [Raspberry Pi Pico] as pico
+  controllers --> pico : Analog/Digital Signals
+}
+
+package "Raspberry Pi 4 (Host)" {
+  [Input Receiver] as receiver
+  [Game Logic] as game
+  [Sound Manager] as sound
+  [Display Manager] as display
+  [Simulation & Logging] as logger
+
+  pico --> receiver : UART Serial Communication
+  receiver --> game : Processed Player Inputs
+  game --> sound : Trigger Audio Events
+  game --> display : Update Entity States
+  game --> logger : Telemetry & Events
+}
+
+package "Hardware Outputs" {
+  [Audio Speakers] as speakers
+  [Track LED Strips (WS2812B)] as leds
+  [Matrix Round Counters] as matrices
+
+  sound --> speakers : Stereo Audio Stream
+  display --> leds : GPIO 18/19 (PWM)
+  display --> matrices : Virtual Pixel Offsets
+  leds -[hidden]-> matrices : Physically Chained
+}
+
+@enduml

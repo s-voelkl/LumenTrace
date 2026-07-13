@@ -1,0 +1,50 @@
+@startuml
+!theme plain
+skinparam componentStyle uml2
+
+package "Input" {
+  [SignalReceiver]
+}
+
+package "Game Engine (src.game)" {
+  [Game] as GameMain
+  [Settings]
+  [Player]
+  [Vehicle]
+  [TrackModule]
+  [Line]
+  [Lane]
+  [DrivingProfile]
+
+  GameMain *-- [Settings]
+  GameMain *-- [Player]
+  GameMain *-- [TrackModule]
+  GameMain *-- [Lane]
+  [Player] *-- [Vehicle]
+  [TrackModule] *-- [Line]
+  [Line] *-- [DrivingProfile]
+  [Line] o-- [Lane]
+}
+
+package "Display Engine (src.display)" {
+  [DisplayManager]
+  [LedDisplay]
+}
+
+package "Sound Engine (src.sound)" {
+  [ThreadedSoundManager]
+}
+
+package "Logging & Simulation" {
+  [MultiLogger]
+  [TerminalRenderer]
+}
+
+[SignalReceiver] --> GameMain : Polls Controllers (forward, special)
+GameMain --> [DisplayManager] : Updates Vehicle/Track states
+[DisplayManager] --> [LedDisplay] : Modifies Virtual Buffers
+GameMain --> [ThreadedSoundManager] : Submits Audio Commands
+GameMain --> [MultiLogger] : Sends Telemetry Data
+GameMain --> [TerminalRenderer] : Local TUI Representation
+
+@enduml
