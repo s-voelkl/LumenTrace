@@ -56,4 +56,11 @@ Matrix1 --> Track1 : DOUT -> DIN
 Track1 --> Intersection1
 
 rAudio --> Speakers : Stereo Audio
+
+' --- Layout Ordering Constraints ---
+P1_Ctrl -[hidden]right-> P2_Ctrl
+P1_Ctrl -[hidden]down-> pD2
+P2_Ctrl -[hidden]down-> pRX
+'pTX -[hidden]down-> rRX
+'rRX -[hidden]down-> Matrix0
 @enduml
