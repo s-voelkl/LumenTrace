@@ -2,13 +2,9 @@
 
 A high-performance MCU-based LED racing simulator. Bringing the classic slot car experience to the world of addressable LEDs with real-time physics and advanced light effects.
 
-## Docker
-
-Docker is used to provide a consistent, isolated environment for running the LumenTrace application.
-It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
-
-For detailed setup, installation, and troubleshooting instructions, please refer to:
-[docs/rpi_4/rpi_4_docker.md](docs/rpi_4/rpi_4_docker.md)
+<div align="center">
+  <img src="docs/assets/SideView1.jpg" alt="LumenTrace Game" width=1000/>
+</div>
 
 ## Used Technologies
 
@@ -16,6 +12,24 @@ For detailed setup, installation, and troubleshooting instructions, please refer
 - Programming Languages: MicroPython for the microcontroller firmware, Python for OOP design, data processing, led display, sound, testing, simulation and visualization.
 - Communication Protocols: High-Speed serial communication between Pico and Pi 4 with UART, LED control via WS2812.
 - Data Storage: Micro-SD card for storing and running the program on the Pi.
+
+<div align="center">
+  <img src="docs/diagrams/out/system-architecture/system-architecture.png" alt="System Architecture Diagram" width=600/>
+</div>
+
+## License
+
+This project source code is licensed under the [MIT License](LICENSE). The documentation and assets are licensed under the [Creative Commons Attribution 4.0 International License](docs/LICENSE).
+
+## Maintainers
+
+The contributors and maintainers of this project are:
+
+- Simon Völkl (<s.voelkl2@oth-aw.de>)
+- Erik Dombrowsky (<e.dombrowsky@oth-aw.de>)
+- Simon Frey (<s.frey@oth-aw.de>)
+
+The project is part of the [Physical Computing Course](https://www.oth-aw.de/forschung/forschungseinrichtungen/labore/fakultaet-elektrotechnik-medien-und-informatik/labor-medieninformatik/physical-computing/) at the [OTH Amberg-Weiden](https://www.oth-aw.de/). The project is supervised by [Prof. Dipl.-Des. Martin Frey](https://www.oth-aw.de/hochschule/ueber-uns/personen/frey-martin/) and [Prof. Dr.-Ing. Ulrich Schäfer](https://www.oth-aw.de/schaefer-ulrich/ueber/).
 
 ## Features
 
@@ -28,29 +42,13 @@ For detailed setup, installation, and troubleshooting instructions, please refer
 - Track modules with individual driving profiles to simulate different track conditions.
 - Settings for customizing the racing experience.
 
-## Local Simulation (Terminal)
+## Docker
 
-For fast manual validation of game logic, a text-based simulation runner is
-available at `src/dev/simulation.py`.
+Docker is used to provide a consistent, isolated environment for running the LumenTrace application.
+It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
 
-- Entrypoint: `python -m src.dev.simulation`
-- Renderer: `src/simulation/terminal_renderer.py`
-- Input script: `src/simulation/signal_receiver.py`
-
-![Simulation Terminal Screenshot](docs/dev/Simulation_Example_1.png)
-
-The simulation dashboard displays:
-
-- Global settings (`max_speed`, friction, lane-change timing, respawn timing, etc.)
-- Full player and vehicle telemetry (lane, position, speed, acceleration, lap, respawn state)
-- Full track module list including per-lane driving profiles
-- Current player module context (`module_index:track_type@local_position`)
-- ASCII lane visualization with module boundaries and live player markers
-
-Track layout used by the simulation:
-
-- Standard modules: 2 lanes, lane change disabled
-- Intersection module: 3 temporary lanes, lane change enabled
+> [!INFO] Usage
+> For detailed setup, installation, and troubleshooting instructions, please refer to: [docs/rpi_4/rpi_4_docker.md](docs/rpi_4/rpi_4_docker.md)
 
 ## Hardware
 
@@ -62,13 +60,13 @@ The system is built on a distributed hardware architecture combining a Raspberry
 - **LED Matrices & Strips:** RPi 4 drives WS2812B LEDs using DMA (PWM on GPIO 18/19), where the LED matrices for lap counting are physically chained before the track strips to minimize occupied hardware channels.
 - **Audio:** Real-time engine and event audio is routed out of the Pi to stereo speakers.
 
-![Hardware Setup Diagram](docs/diagrams/src/hardware-setup/hardware-setup.png)
+<div align="center">
+  <img src="docs/diagrams/out/hardware-setup/hardware-setup.png" alt="Hardware Setup Diagram" width="1200"/>
+</div>
 
 ## Architecture
 
 The architecture is designed to be modular and extensible, with clear separation of concerns between different components:
-
-![System Architecture](docs/diagrams/src/system-architecture/system-architecture.png)
 
 - `Game` package handles the core game logic, including vehicle physics, track management, and players.
 - `Simulation` package provides tools for testing and visualizing the game mechanics in Python.
@@ -77,7 +75,10 @@ The architecture is designed to be modular and extensible, with clear separation
 - `Display` package manages the LED effects and visual feedback for the game.
 - `Sound` package provides a real-time, threaded audio mixer.
 
-![Game Engine Architecture](docs/diagrams/src/game-engine/game-engine.png)
+<div align="center">
+  <img src="docs/diagrams/out/game-engine/game-engine.png" alt="Game Engine Architecture" width="1000"/>
+</div>
+<!-- ![Game Engine Architecture](docs/diagrams/out/game-engine/game-engine.png) -->
 
 ## LED Color Management
 
@@ -100,13 +101,13 @@ Display hierarchy (applied from low priority -> high priority):
 8. **Vehicle front lights**: Overlay front lighting (light gray) for vehicles that are currently accelerating.
 9. **Vehicle rear lights**: Overlay rear brake lighting (red) for vehicles that are currently decelerating.
 
-How the strips are controlled
+How the strips are controlled:
 
 - Physical output uses the `rpi_ws281x` library (`PixelStrip`, `Color`). Two GPIO channels are supported by default: `18` and `19` ([see Library on GitHub](https://github.com/richardghirst/rpi_ws281x))
 - The code uses `VirtualLedStrip` instances to map parts of a physical strip to logical lanes. This allows a single long strip to be split into multiple virtual lanes (useful for intersections or modules that need extra pixels).
 - At each game tick `Game.display()` calls `DisplayManager.update(game)`. The display manager updates the virtual buffers by writing RGB tuples. Finally `LedDisplay.render()` translates virtual buffers to the physical `PixelStrip` objects and calls `show()`.
 
-Tuning and configuration
+Tuning and configuration:
 
 - Colors are defined in `src/display/color_constants.py` so they can be changed globally.
 - Timing and blinking behavior is configurable via `DisplayConfig` (e.g. `respawn_tick_color_change`, `round_advance_ticks`, `round_advance_tick_color_change`).
@@ -126,19 +127,22 @@ Initially, the round counters were configured on separate physical control lines
 - **Player 2 matrix** on GPIO 21 (PCM)
 - **Track lines** on GPIO 18 and 19 (PWM)
 
-This setup failed due to several hardware and library-level constraints:
-
-- **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping failures (`mmap() failed`).
-- **Peripheral Clashes**: The underlying `rpi_ws281x` C driver cannot mix PWM, SPI, and PCM peripherals concurrently in the same process space.
-- **Channel Caps**: The driver structure is hardware-capped at 2 active physical channels.
+>[!ERROR] Failed Attempt
+> This setup failed due to several hardware and library-level constraints:
+>
+> - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping > failures (`mmap() failed`).
+> - **Peripheral Clashes**: The underlying `rpi_ws281x` C driver cannot mix PWM, SPI, and PCM peripherals concurrently in the same process space.
+> - **Channel Caps**: The driver structure is hardware-capped at 2 active physical channels.
 
 ### Resolved Design (Chaining)
 
 The solution leverages the existing `VirtualLedStrip` concept by chaining the matrices to the end of the track strips:
 
-1. **Physical Chaining**: The `Data In` (DI) of each matrix is wired to the `Data Out` (DO) of its corresponding track strip.
-2. **Single-Driver Coordination**: The `num` parameter of the physical strips is increased to encompass the matrix pixels, keeping the physical control line count at 2 (GPIO 18 & 19).
-3. **Index Offsetting**: The `RoundCounter` is refactored to write directly to the track's existing `PixelStrip` starting at the correct pixel offset, bypassing hardware re-initialization.
+> [!TIP] Solution
+>
+> 1. **Physical Chaining**: The `Data In` (DI) of each matrix is wired to the `Data Out` (DO) of its corresponding track strip.
+> 2. **Single-Driver Coordination**: The `num` parameter of the physical strips is increased to encompass the matrix pixels, keeping the physical control line > count at 2 (GPIO 18 & 19).
+> 3. **Index Offsetting**: The `RoundCounter` is refactored to write directly to the track's existing `PixelStrip` starting at the correct pixel offset, > bypassing hardware re-initialization.
 
 ## Sound Engineering
 
@@ -192,7 +196,10 @@ On top of the engine, the game plays positional one-shot effects that respond to
 
 ### Sound Effects Sources
 
-- base-engine-1.wav
+>[!INFO] Sound Attribution
+> All sound effects used in LumenTrace are sourced from free, royalty-free libraries and are credited below. Please refer to the original sources for licensing details.
+
+- base-engine-1.wav: Created by ourselves.
 - startup-sound.mp3: <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
 - car-crash-1.mp3: <a href="https://pixabay.com/de/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=376874">DRAGON-STUDIO</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=376874">Pixabay</a>
 - car-crash-2.mp3: <a href="https://pixabay.com/users/dragon-studio-38165424/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=450447">DRAGON-STUDIO</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=450447">Pixabay</a>
@@ -207,9 +214,11 @@ On top of the engine, the game plays positional one-shot effects that respond to
 - vibe-1-retro.mp3: <a href="https://pixabay.com/users/tg14_studios-55924971/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=541395">TG14_Studios</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=541395">Pixabay</a>
 - vibe-2-retro.mp3: <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=59892">freesound_community</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=59892">Pixabay</a>
 - vibe-3-retro.mp3: <a href="https://pixabay.com/users/freesound_community-46691455/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=41048">freesound_community</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=41048">Pixabay</a>
-- punch-1.mp3: from <a href="https://pixabay.com/sound-effects/retro-hurt-sound-03-474780/">Pixabay</a>
+- punch-1.mp3: From <a href="https://pixabay.com/sound-effects/retro-hurt-sound-03-474780/">Pixabay</a>
 
 ## Game Mechanics
+
+The game mechanics are implemented in `src/game` and are designed to provide a realistic and engaging racing experience like in the original slot car games.
 
 ### Acceleration and Friction
 
@@ -219,8 +228,7 @@ On top of the engine, the game plays positional one-shot effects that respond to
 
 ### Speed Update and Limits
 
-- Speed is updated every tick as:
-  - `speed += acceleration * acceleration_multiplier`
+- Speed is updated every tick as: `speed += acceleration * acceleration_multiplier`
 - Speed is clamped to `[-max_speed, +max_speed]`.
 - This allows realistic throttle behavior while preventing unstable values at high update rates.
 - A goal is to specify the friction and acceleration multipliers such that the vehicle can't possibly exceed the `max_speed` at all.
@@ -271,6 +279,41 @@ On top of the engine, the game plays positional one-shot effects that respond to
   - If no lane is available across all candidate modules, the vehicle remains inactive and tries again in the next tick.
 - Respawn does not increment `vehicle.round`.
 
+## Local Simulation (Terminal)
+
+>[!INFO] Simulation Runner
+> For fast manual validation of game logic, a text-based simulation runner is available at `src/dev/simulation.py`.
+> Execution is possible with: `python -m src.dev.main`
+
+The simulation dashboard displays:
+
+- Global settings (`max_speed`, friction, lane-change timing, respawn timing, etc.)
+- Full player and vehicle telemetry (lane, position, speed, acceleration, lap, respawn state)
+- Full track module list including per-lane driving profiles
+- Current player module context (`module_index:track_type@local_position`)
+- ASCII lane visualization with module boundaries and live player markers
+
+<div align="center">
+  <img src="docs/dev/Simulation_Example_1.png" alt="Simulation Example" width=1000/>
+</div>
+
 ## Design
 
+The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components. In general, the physical design is based on the following components:
+
+- A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with blue, purple and white colors for a visually appealing background.
+- [Carrera GO!](https://carrera-toys.com/en) track modules for the physical track layout.
+- 2 LED Stripes (WS2812B) for the track lighting and visual effects, mainly in light purple and gray.
+- 2 Vehicles in strong blue and purple colors.
+- 2 LED Matrizes for round counting in the colors of the vehicles.
+- 3D-printed objects as visual enhancements and better integration of the sound  boxes.
+
+The resulting design is a **retro-futuristic** blue-purple racing environment with a focus on immersive lighting and sound effects.
+
+<div align="center">
+  <img src="docs/assets/TopView1.jpg" alt="LumenTrace Top View" width=700/>
+</div>
+
 ### 3D-Printed Objects
+
+All 3D-printed objects were designed in Blender, Fusion 360, TinkerCAD, retrieved from Online Sources, or generated by AI. The files are available in the `3d-models` folder.

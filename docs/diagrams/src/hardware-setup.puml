@@ -1,5 +1,6 @@
 @startuml
-'!theme plain
+!theme plain
+'skinparam linetype ortho
 
 node "Player 1 Controller" as P1_Ctrl {
   port "Throttle (Analog)" as P1_A
@@ -19,23 +20,17 @@ node "Raspberry Pi Pico (Input MCU)" as Pico {
   port "UART0 RX (Pin 1)" as pRX
 }
 
-P1_A --> pADC1
-P1_D --> pD1
-P2_A --> pADC2
-P2_D --> pD2
-
 node "Raspberry Pi 4 (Core Host)" as RPi4 {
-  port "UART RX" as rRX
-  port "UART TX" as rTX
+  port "Audio Out (USB)" as rAudio
   port "GPIO 18 (PWM0)" as rGPIO18
   port "GPIO 19 (PWM1)" as rGPIO19
-  port "Audio Out (USB)" as rAudio
+  port "UART RX" as rRX
+  port "UART TX" as rTX
 }
 
-pTX --> rRX : Serial Data \n(typically 115200 baud)
-pRX <-- rTX
-
 node "Output Devices" {
+  node "Stereo Speakers" as Speakers
+
   node "Round Counter 0 (8x8 LED Matrix)" as Matrix0
   node "Track 0 LED Strip (WS2812B)" as Track0
   node "Intersection 0 LED Strip (WS2812B)" as Intersection0
@@ -43,24 +38,39 @@ node "Output Devices" {
   node "Round Counter 1 (8x8 LED Matrix)" as Matrix1
   node "Track 1 LED Strip (WS2812B)" as Track1
   node "Intersection 1 LED Strip (WS2812B)" as Intersection1
-  
-  node "Stereo Speakers" as Speakers
 }
 
-rGPIO18 --> Matrix0 : Data In
-Matrix0 --> Track0 : DOUT -> DIN
-Track0 --> Intersection0
+' --- Connections ---
+pTX --> rRX : Serial Data
+'pRX <-[norank]- rTX : Unused
 
-rGPIO19 --> Matrix1 : Data In
-Matrix1 --> Track1 : DOUT -> DIN
-Track1 --> Intersection1
+P1_A --> pADC1 : Speed Resistor
+P1_D --> pD1 : Special Button
+P2_A --> pADC2 : Speed Resistor
+P2_D --> pD2 : Special Button 
 
 rAudio --> Speakers : Stereo Audio
+rGPIO18 --> Matrix0 : Data In
+rGPIO19 --> Matrix1 : Data In
+
+Matrix0 --> Track0 : DOUT -> DIN
+Track0 --> Intersection0 : Signal
+
+Matrix1 --> Track1 : DOUT -> DIN
+Track1 --> Intersection1 : Signal
 
 ' --- Layout Ordering Constraints ---
-P1_Ctrl -[hidden]right-> P2_Ctrl
-P1_Ctrl -[hidden]down-> pD2
-P2_Ctrl -[hidden]down-> pRX
-'pTX -[hidden]down-> rRX
-'rRX -[hidden]down-> Matrix0
+'PlayerControllers
+P1_D -[hidden]left-> P2_A
+
+'Pico
+P1_D -[hidden]down-> Pico
+P2_A -[hidden]down-> Pico
+
+'Pi 4
+'Pico -[hidden]down-> RPi4
+pTX -[hidden]down-> rRX
+
+' Output
+RPi4 -[hidden]down-> "Output Devices"
 @enduml
