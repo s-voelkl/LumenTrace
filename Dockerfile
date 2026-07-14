@@ -1,11 +1,5 @@
-# From: https://docs.docker.com/guides/python/containerize/
 # syntax=docker/dockerfile:1
 
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
-
-# This Dockerfile uses Python Docker Official Image
 ARG PYTHON_VERSION=3.14
 FROM python:${PYTHON_VERSION}-slim
 
@@ -23,19 +17,17 @@ WORKDIR /app
 # Also install audio libraries for sound output on Raspberry Pi.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        gcc \
-        make \
-        build-essential \
-        libportaudio2 \
-        libasound2 \
-        pulseaudio-utils \
-        alsa-utils \
+    gcc \
+    make \
+    build-essential \
+    libportaudio2 \
+    libasound2 \
+    pulseaudio-utils \
+    alsa-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
-# Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
-# Leverage a bind mount to requirements.txt to avoid having to copy them into
-# into this layer.
+# Leverage a cache mount to speed up subsequent builds.
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=src/rpi_4/requirements.txt,target=requirements.txt \
     python -m pip install -r requirements.txt
@@ -43,5 +35,5 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Copy the source code into the container.
 COPY . .
 
-# Run the application (runs as root because of GPIO sudo requirement).
+# Run the application (runs as root because of GPIO hardware access requirements).
 CMD ["python", "-m", "src.rpi_4.main"]
