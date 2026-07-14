@@ -61,7 +61,7 @@ Track1 --> Intersection1 : Signal
 
 ' --- Layout Ordering Constraints ---
 'PlayerControllers
-P1_D -[hidden]left-> P2_A
+P1_D -[hidden]right-> P2_A
 
 'Pico
 P1_D -[hidden]down-> Pico
