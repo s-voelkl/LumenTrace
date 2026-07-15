@@ -6,6 +6,9 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 >
 > The source code for this project is available on GitHub: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
 
+> [!NOTE]
+> The source code for this project is available on GitHub: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
+
 <div align="center">
   <img src="docs/assets/SideView1.jpg" alt="LumenTrace Game" width=1000/>
 </div>
