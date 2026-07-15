@@ -2,7 +2,7 @@
 
 A high-performance MCU-based LED racing simulator. Bringing the classic slot car experience to the world of addressable LEDs with real-time physics and advanced light effects.
 
-> [!INFO]
+> [!IMPORTANT] GitHub Repository
 >
 > The source code for this project is available on GitHub: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
 
@@ -48,14 +48,12 @@ The project is part of the [Physical Computing Course](https://www.oth-aw.de/for
 
 ## Usage
 
-> [!INFO] Usage
->
+> [!NOTE] Usage Instructions
 > For general requirements and usage instructions, please refer to the [Raspberry Pi 4](docs/rpi_4/rpi_4_config.md) and [Raspberry Pi Pico](docs/rpi_pico/rpi_pico_config.md) configuration guides.
 
 **Docker** is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
 
-> [!INFO] Docker Setup
->
+> [!NOTE] Docker Setup
 > See the [Docker setup](docs/rpi_4/rpi_4_docker.md) for instructions on how to build and run the Docker container for LumenTrace.
 
 ## Hardware
@@ -135,7 +133,7 @@ Initially, the round counters were configured on separate physical control lines
 - **Player 2 matrix** on GPIO 21 (PCM)
 - **Track lines** on GPIO 18 and 19 (PWM)
 
-> [!ERROR]
+> [!ERROR] Failed Attempt
 > This setup failed due to several hardware and library-level constraints:
 >
 > - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping > failures (`mmap() failed`).
@@ -146,8 +144,7 @@ Initially, the round counters were configured on separate physical control lines
 
 The solution leverages the existing `VirtualLedStrip` concept by chaining the matrices to the end of the track strips:
 
-> [!TIP]
-> Solution:
+> [!TIP] Found Solution
 >
 > 1. **Physical Chaining**: The `Data In` (DI) of each matrix is wired to the `Data Out` (DO) of its corresponding track strip.
 > 2. **Single-Driver Coordination**: The `num` parameter of the physical strips is increased to encompass the matrix pixels, keeping the physical control line > count at 2 (GPIO 18 & 19).
@@ -205,7 +202,7 @@ On top of the engine, the game plays positional one-shot effects that respond to
 
 ### Sound Effects Sources
 
->[!INFO] Sound Attribution
+>[!NOTE] Sound Attribution
 > All sound effects used in LumenTrace are sourced from free, royalty-free libraries and are credited below. Please refer to the original sources for licensing details.
 
 - base-engine-1.wav: Created by ourselves.
@@ -290,7 +287,7 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
 
 ## Local Simulation (Terminal)
 
->[!INFO] Simulation Runner
+>[!NOTE] Simulation Runner
 > For fast manual validation of game logic, a text-based simulation runner is available at `src/dev/simulation.py`.
 > Execution is possible with: `python -m src.dev.main`
 
@@ -310,7 +307,7 @@ The simulation dashboard displays:
 
 The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components. In general, the physical design is based on the following components:
 
-- A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with blue, purple and white colors for a visually appealing background.
+- A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with *blue*, *purple* and *white* colors for a visually appealing background.
 - [Carrera GO!](https://carrera-toys.com/en) track modules for the physical track layout.
 - 2 LED Stripes (WS2812B) for the track lighting and visual effects, mainly in light purple and gray.
 - 2 Vehicles in strong blue and purple colors.
