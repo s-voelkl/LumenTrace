@@ -91,14 +91,14 @@ def main():
         # their button (``PlayerController.special_1``).
         # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
         # effect plays in parallel, before the game loop is started.
-        # wait_for_start_signal(game)
+        wait_for_start_signal(game)
 
         # stop waiting music
         sound_manager.stop_sound(vibe_music)
 
         # uncomment for start sequence
         logger.log("Start signal received. Running start sequence.")
-        # run_start_sequence(led_display, game, sound_manager)
+        run_start_sequence(led_display, game, sound_manager)
 
         logger.log("Start sequence complete. Starting game loop.")
         try:
