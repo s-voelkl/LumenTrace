@@ -2,12 +2,9 @@
 
 A high-performance MCU-based LED racing simulator. Bringing the classic slot car experience to the world of addressable LEDs with real-time physics and advanced light effects.
 
-> [!IMPORTANT] GitHub Repository
+> [!IMPORTANT]
 >
-> The source code for this project is available on GitHub: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
-
-> [!NOTE]
-> The source code for this project is available on GitHub: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
+> The **source code** for this project is available on **GitHub**: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
 
 <div align="center">
   <img src="docs/assets/SideView1.jpg" alt="LumenTrace Game" width=1000/>
@@ -51,13 +48,13 @@ The project is part of the [Physical Computing Course](https://www.oth-aw.de/for
 
 ## Usage
 
-> [!NOTE] Usage Instructions
-> For general requirements and usage instructions, please refer to the [Raspberry Pi 4](docs/rpi_4/rpi_4_config.md) and [Raspberry Pi Pico](docs/rpi_pico/rpi_pico_config.md) configuration guides.
+> [!NOTE]
+> **Usage instructions:** For general requirements and usage instructions, please refer to the [Raspberry Pi 4](docs/rpi_4/rpi_4_config.md) and [Raspberry Pi Pico](docs/rpi_pico/rpi_pico_config.md) configuration guides.
 
 **Docker** is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
 
-> [!NOTE] Docker Setup
-> See the [Docker setup](docs/rpi_4/rpi_4_docker.md) for instructions on how to build and run the Docker container for LumenTrace.
+> [!NOTE]
+> **Docker setup:** See the [Docker setup](docs/rpi_4/rpi_4_docker.md) for instructions on how to build and run the Docker container for LumenTrace.
 
 ## Hardware
 
@@ -136,8 +133,8 @@ Initially, the round counters were configured on separate physical control lines
 - **Player 2 matrix** on GPIO 21 (PCM)
 - **Track lines** on GPIO 18 and 19 (PWM)
 
-> [!CAUTION] Failed Attempt
-> This setup failed due to several hardware and library-level constraints:
+> [!CAUTION]
+> **Failed Attempt:** This setup failed due to several hardware and library-level constraints:
 >
 > - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping > failures (`mmap() failed`).
 > - **Peripheral Clashes**: The underlying `rpi_ws281x` C driver cannot mix PWM, SPI, and PCM peripherals concurrently in the same process space.
@@ -147,7 +144,8 @@ Initially, the round counters were configured on separate physical control lines
 
 The solution leverages the existing `VirtualLedStrip` concept by chaining the matrices to the end of the track strips:
 
-> [!TIP] Found Solution
+> [!TIP]
+> **Found Solution:**
 >
 > 1. **Physical Chaining**: The `Data In` (DI) of each matrix is wired to the `Data Out` (DO) of its corresponding track strip.
 > 2. **Single-Driver Coordination**: The `num` parameter of the physical strips is increased to encompass the matrix pixels, keeping the physical control line > count at 2 (GPIO 18 & 19).
@@ -205,8 +203,8 @@ On top of the engine, the game plays positional one-shot effects that respond to
 
 ### Sound Effects Sources
 
->[!NOTE] Sound Attribution
-> All sound effects used in LumenTrace are sourced from free, royalty-free libraries and are credited below. Please refer to the original sources for licensing details.
+> [!NOTE]
+> **Sound Attribution:** All sound effects used in LumenTrace are sourced from free, royalty-free libraries and are credited below. Please refer to the original sources for licensing details.
 
 - base-engine-1.wav: Created by ourselves.
 - startup-sound.mp3: <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
@@ -290,8 +288,8 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
 
 ## Local Simulation (Terminal)
 
->[!NOTE] Simulation Runner
-> For fast manual validation of game logic, a text-based simulation runner is available at `src/dev/simulation.py`.
+> [!NOTE]
+> **Simulation Runner:** For fast manual validation of game logic, a text-based simulation runner is available at `src/dev/simulation.py`.
 > Execution is possible with: `python -m src.dev.main`
 
 The simulation dashboard displays:
