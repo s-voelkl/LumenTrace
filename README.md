@@ -2,7 +2,8 @@
 
 A high-performance MCU-based LED racing simulator. Bringing the classic slot car experience to the world of addressable LEDs with real-time physics and advanced light effects.
 
-> [!INFO] GitHub Repository
+> [!INFO]
+>
 > The source code for this project is available on GitHub: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
 
 <div align="center">
@@ -51,6 +52,7 @@ Docker is used to provide a consistent, isolated environment for running the Lum
 It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
 
 > [!INFO] Usage
+>
 > For detailed setup, installation, and troubleshooting instructions, please refer to: [docs/rpi_4/rpi_4_docker.md](docs/rpi_4/rpi_4_docker.md)
 
 ## Hardware
@@ -130,7 +132,7 @@ Initially, the round counters were configured on separate physical control lines
 - **Player 2 matrix** on GPIO 21 (PCM)
 - **Track lines** on GPIO 18 and 19 (PWM)
 
->[!ERROR] Failed Attempt
+> [!ERROR]
 > This setup failed due to several hardware and library-level constraints:
 >
 > - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping > failures (`mmap() failed`).
@@ -141,7 +143,8 @@ Initially, the round counters were configured on separate physical control lines
 
 The solution leverages the existing `VirtualLedStrip` concept by chaining the matrices to the end of the track strips:
 
-> [!TIP] Solution
+> [!TIP]
+> Solution:
 >
 > 1. **Physical Chaining**: The `Data In` (DI) of each matrix is wired to the `Data Out` (DO) of its corresponding track strip.
 > 2. **Single-Driver Coordination**: The `num` parameter of the physical strips is increased to encompass the matrix pixels, keeping the physical control line > count at 2 (GPIO 18 & 19).
