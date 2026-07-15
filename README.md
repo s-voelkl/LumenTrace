@@ -133,7 +133,7 @@ Initially, the round counters were configured on separate physical control lines
 - **Player 2 matrix** on GPIO 21 (PCM)
 - **Track lines** on GPIO 18 and 19 (PWM)
 
-> [!ERROR] Failed Attempt
+> [!CAUTION] Failed Attempt
 > This setup failed due to several hardware and library-level constraints:
 >
 > - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping > failures (`mmap() failed`).
