@@ -46,14 +46,17 @@ The project is part of the [Physical Computing Course](https://www.oth-aw.de/for
 - Track modules with individual driving profiles to simulate different track conditions.
 - Settings for customizing the racing experience.
 
-## Docker
-
-Docker is used to provide a consistent, isolated environment for running the LumenTrace application.
-It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
+## Usage
 
 > [!INFO] Usage
 >
-> For detailed setup, installation, and troubleshooting instructions, please refer to: [docs/rpi_4/rpi_4_docker.md](docs/rpi_4/rpi_4_docker.md)
+> For general requirements and usage instructions, please refer to the [Raspberry Pi 4](docs/rpi_4/rpi_4_config.md) and [Raspberry Pi Pico](docs/rpi_pico/rpi_pico_config.md) configuration guides.
+
+**Docker** is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
+
+> [!INFO] Docker Setup
+>
+> See the [Docker setup](docs/rpi_4/rpi_4_docker.md) for instructions on how to build and run the Docker container for LumenTrace.
 
 ## Hardware
 
