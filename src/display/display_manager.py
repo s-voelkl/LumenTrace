@@ -110,8 +110,10 @@ class DisplayManager:
         self._render_inactive_vehicles(game)
         self._render_active_vehicles(game)
         
-        if game.settings.directional_vehicle_lights:
+        if game.settings.vehicle_light_front:
             self._render_vehicle_front_lights(game)
+            
+        if game.settings.vehicle_light_rear:
             self._render_vehicle_rear_lights(game)
 
         self.display.render()

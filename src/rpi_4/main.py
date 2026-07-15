@@ -400,6 +400,8 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
         lane_change_window=8,
         vehicle_crash_distance=3.0,
         rounds_to_win=5,
+        vehicle_light_front=False,
+        vehicle_light_rear=True,
     )
 
     track_modules: list[TrackModule] = [
