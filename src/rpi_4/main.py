@@ -91,14 +91,14 @@ def main():
         # their button (``PlayerController.special_1``).
         # Then the start sequence ticks down 3, 2, 1, GO! while the matching sound
         # effect plays in parallel, before the game loop is started.
-        wait_for_start_signal(game)
+        # wait_for_start_signal(game)
 
         # stop waiting music
         sound_manager.stop_sound(vibe_music)
 
         # uncomment for start sequence
         logger.log("Start signal received. Running start sequence.")
-        run_start_sequence(led_display, game, sound_manager)
+        # run_start_sequence(led_display, game, sound_manager)
 
         logger.log("Start sequence complete. Starting game loop.")
         try:
@@ -399,7 +399,7 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
         acceleration_multiplier=0.06,
         lane_change_window=8,
         vehicle_crash_distance=3.0,
-        rounds_to_win=20,
+        rounds_to_win=5,
     )
 
     track_modules: list[TrackModule] = [
@@ -420,20 +420,58 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
                 ),
             ],
         ),
+        # for easing out, the curve left is put around two slighter curve-lefts.
+        # ease in
         TrackModule(
             track_type=TrackType.CURVE_LEFT,
             part_length=27.3,
             sound_stereo_ratio_left=0.4,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.85),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.92),
                     lane=lane_0,
-                    line_length=22.5,
+                    line_length=5
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.90),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.97),
                     lane=lane_2,
-                    line_length=32.0,
+                    line_length=7.1,
+                ),
+            ],
+        ),
+        # main curve
+        TrackModule(
+            track_type=TrackType.CURVE_LEFT,
+            part_length=27.3,
+            sound_stereo_ratio_left=0.4,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.87),
+                    lane=lane_0,
+                    line_length=22.5 - 5 - 5, # eased in and out
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.92),
+                    lane=lane_2,
+                    line_length=32.0 - 7.1 - 7.1, # eased in and out
+                ),
+            ],
+        ),
+        # ease out
+        TrackModule(
+            track_type=TrackType.CURVE_LEFT,
+            part_length=27.3,
+            sound_stereo_ratio_left=0.4,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.92),
+                    lane=lane_0,
+                    line_length=5,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.97),
+                    lane=lane_2,
+                    line_length=7.1,
                 ),
             ],
         ),
@@ -465,23 +503,62 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
                 ),
             ],
         ),
+        # ease this curve in and out for better playability.
+        # ease in
         TrackModule(
             track_type=TrackType.CURVE_RIGHT,
             part_length=80.5,
             sound_stereo_ratio_left=0.1,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.80),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.95),
                     lane=lane_0,
-                    line_length=94.5,
+                    line_length=14.21,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.70),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.88),
                     lane=lane_2,
-                    line_length=66.5,
+                    line_length=10,
                 ),
             ],
         ),
+        # main curve
+        TrackModule(
+            track_type=TrackType.CURVE_RIGHT,
+            part_length=80.5,
+            sound_stereo_ratio_left=0.1,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.85),
+                    lane=lane_0,
+                    line_length=94.5 - 14.21 - 14.21,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.78),
+                    lane=lane_2,
+                    line_length=66.5 - 10 - 10,
+                ),
+            ],
+        ),
+        # ease out
+        TrackModule(
+            track_type=TrackType.CURVE_RIGHT,
+            part_length=80.5,
+            sound_stereo_ratio_left=0.1,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.95),
+                    lane=lane_0,
+                    line_length=14.21,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.88),
+                    lane=lane_2,
+                    line_length=10,
+                ),
+            ],
+        ),
+        # better game feeling by extending this and shortening the looping a bit down.
         TrackModule(
             track_type=TrackType.STRAIGHT,
             part_length=45.7,
@@ -490,12 +567,12 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_0,
-                    line_length=45.7,
+                    line_length=45.7 + 10,
                 ),
                 Line(
                     driving_profile=DrivingProfile(max_speed=max_speed),
                     lane=lane_2,
-                    line_length=45.7,
+                    line_length=45.7 + 10,
                 ),
             ],
         ),
@@ -509,14 +586,36 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
                         max_speed=max_speed, min_speed=max_speed * 0.35
                     ),
                     lane=lane_0,
-                    line_length=110.0,
+                    line_length=110.0 - 25 - 10,
                 ),
                 Line(
                     driving_profile=DrivingProfile(
                         max_speed=max_speed, min_speed=max_speed * 0.35
                     ),
                     lane=lane_2,
-                    line_length=110.0,
+                    line_length=110.0 - 25 - 10,
+                ),
+            ],
+        ),
+        # pseudo-module to ease out the looping further after the looping
+        TrackModule(
+            track_type=TrackType.STRAIGHT,
+            part_length=110.0,
+            sound_stereo_ratio_left=0.6,
+            lines=[
+                Line(
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed
+                    ),
+                    lane=lane_0,
+                    line_length=25.0,
+                ),
+                Line(
+                    driving_profile=DrivingProfile(
+                        max_speed=max_speed
+                    ),
+                    lane=lane_2,
+                    line_length=25.0,
                 ),
             ],
         ),
@@ -554,12 +653,12 @@ def build_game(sound_manager: ThreadedSoundManager) -> tuple[Game, LedDisplay]:
             sound_stereo_ratio_left=0.9,
             lines=[
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.90),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.92),
                     lane=lane_0,
                     line_length=41.1,
                 ),
                 Line(
-                    driving_profile=DrivingProfile(max_speed=max_speed * 0.93),
+                    driving_profile=DrivingProfile(max_speed=max_speed * 0.95),
                     lane=lane_2,
                     line_length=57.6,
                 ),
