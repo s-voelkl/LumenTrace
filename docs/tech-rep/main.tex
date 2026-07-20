@@ -1,249 +1,226 @@
-\documentclass[conference,a4paper,flushend]{cs-techrep} % (based on IEEEtran.cls)
+\documentclass[10pt,journal,final,a4paper]{IEEEtran}
 
-% The class iaria.cls loads biblatex/biber with correct IARIA settings
-% as well as a set of common packages (times, inputenc[utf8], fontenc[T1],
-% graphicx, xcolor, url, orcidlink, hyperref, extdash[shortcuts])
-
-% Packages (self-added, not included in cs-techrep.cls):
-\usepackage[shortlabels]{enumitem} % Verbesserte Einstellungsmöglichkeiten von Listen. Nicht bei Beamer anwendbar
-% \setlist{itemsep=1ex, topsep=1em}
-% \usepackage{graphicx} % Required for inserting images
-\usepackage{csquotes} % Korrekte Anführungszeichen setzen. Sprachspezifisch möglich. mit \setquotestyle{style} und \enquote{}.
-% \usepackage[american]{babel} % Ändert die Darstellung des Datums in amerikanische Darstellung.
-\usepackage{hyperref}
-\usepackage[capitalise,nameinlink,noabbrev]{cleveref} % Referenzen besser machen. z.B. mit \cref{}. needs hyperref defined before it.
-% \usepackage[backend=biber, style=ieee, alldates=iso]{biblatex} % Zitieren
-% \usepackage{array} % Tabellen mit \begin{tabular}
-\usepackage{multirow} % Mehrere Zeilen in eine zusammenfassen. für Spalten einfach \multicolumn benutzen
-\usepackage{booktabs} % Hübschere Tabellen mit \top/mid/cmid/bottomrule
-\usepackage{minted} % Neuere Bibliothek für Code-Blöcke, mit \begin{listing oder minted}
-\usepackage{amsmath} % American Mathematical Society für mathematische Formeln, z.B. mit \begin{equation}
+% --- 1. Mathematik & Symbole ---
+\usepackage{amsmath} 
 \usepackage{amssymb}
 \usepackage{amsfonts}
+
+% --- 2. Code-Blöcke (Zuerst laden wegen fvextra/lineno-Interaktionen) ---
+\usepackage{minted} 
 \usepackage{listings}
+
+% --- 3. Text & Sprache (csquotes MUSS nach minted/fvextra geladen werden) ---
+\usepackage{csquotes} 
+
+% --- 4. Tabellen & Grafiken ---
+\usepackage{color,array}
+\usepackage{graphicx}
+\usepackage{multirow} 
+\usepackage{booktabs} 
 \usepackage{float}
-\usepackage{enumitem}
 \usepackage{siunitx}
-\usepackage{array}
 \usepackage{tabularx}
 
-\addbibresource{references.bib}
-% \addbibresource{xampl.bib} % (xampl file provided by the BibTEX base files)
-% ======================================================================
-% EDIT THESE:
-\cstechrepAuthorListTex{Simon Völkl, Erik Dombrowsky, Simon Frey\,\orcidlink{0000-0002-1175-2668}}
-\cstechrepAuthorListBib{Simon Völkl and Erik Dombrowsky and Simon Frey}
-% Capitalization: https://capitalizemytitle.com/style/Chicago/
-\cstechrepTitleTex{LumenTrace: A high-performance MCU-based LED racing simulator} % TODO: title revision?
- % IF you need manual linebreaks in the title, then clone the title without linebreaks for BibTeX:
-\cstechrepTitleBib{{\cstechrepTitleTex}}
-\cstechrepDepartment{Department of Electrical Engineering, Media, and Computer Science}
-\cstechrepInstitution{Ostbayerische Technische Hochschule Amberg\-/Weiden}
-\cstechrepAddress{Amberg, Germany}
-\cstechrepSeries{Technical Reports}
-\cstechrepYear{2026}
-\cstechrepMonth{7}
-\cstechrepNumber{CL-\cstechrepYear{}-42}
-\cstechrepLang{english}  % en-US
-% ======================================================================
-% DO NOT DELETE AND DO NOT MODIFY THIS:
-\filecontentsForceExpansion|[] % force command expansion inside a filecontents* environment
-\begin{filecontents*}[overwrite]{selfref.bib}
-    @TECHREPORT{selfref,
-        author = {|cstechrepAuthorListBib},
-        title  = {\cstechrepTitleBib},
-        institution = {\cstechrepInstitution, \cstechrepDepartment},
-        series = {\cstechrepSeries},
-        number = {\cstechrepNumber},
-        year   = {|cstechrepYear},
-        month  = {|cstechrepMonth},
-        langid  = {|cstechrepLang},
-    }
-\end{filecontents*}
+% --- 5. IEEEtran Layout-Helfer (algorithmic gelöscht, da nicht vorhanden/benötigt) ---
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{verbatim}
+\usepackage{balance}
+
+% --- 6. Links & Referenzen (Immer ganz ans Ende der Präambel) ---
+\usepackage[colorlinks,urlcolor=blue,linkcolor=blue,citecolor=blue]{hyperref}
+\usepackage{orcidlink} % benötigt hyperref, daher danach laden
+\usepackage[capitalise,nameinlink,noabbrev]{cleveref} % MUSS als letztes geladen werden
+
+% --- IEEEtran spezifische Definitionen ---
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\setcounter{page}{1}
 
 \begin{document}
-\selectlanguage{\cstechrepLang}
-\maketitle
-\begin{abstract}
-    % TODO: abstract
-    Background: tbd
-    Methods: tbd
 
-    Conclusion: tbd
+\title{LumenTrace} 
+
+\author{Simon Völkl\,\orcidlink{0009-0005-5334-9673}, 
+        Erik Dombrowsky, 
+        and Simon Frey%
+\thanks{The authors are with the Department of Electrical Engineering, Media, and Computer Science, Ostbayerische Technische Hochschule Amberg-Weiden, 92224 Amberg, Germany (e-mail: s.voelkl2@oth-aw.de; e.dombrowsky@oth-aw.de; s.frey@oth-aw.de).}%
+}
+
+\markboth{TECHNICAL REPORT, 07 2026}
+{Völkl \MakeLowercase{\textit{et al.}}: LumenTrace}
+
+\maketitle
+
+\begin{abstract}
+    \textbf{Background:} 
+    \textbf{Objective:} 
+    \textbf{Methods:}
+    \textbf{Results:}
+    \textbf{Conclusion:} 
 \end{abstract}
+
+% HINWEIS: Die Umgebung "IEEEImpStatement" wurde entfernt, da IEEEtran diese nicht unterstützt.
+% Falls du den Text behalten willst, packe ihn einfach als normalen Text oder in die Introduction.
+
 \begin{IEEEkeywords}
-    MCU, LED, neonpixel, WS2812, racing simulator, Raspberry Pi % TODO: keywords
+    Enter key words or phrases in alphabetical order, separated by commas.
 \end{IEEEkeywords}
 
-% STRUCTURE OF THE TECHNICAL REPORT:
-% 1. Introduction
-% Motivation: Wieso klassische Slot-Cars durch LEDs ersetzen? (Immersion, Flexibilität, Hardwareverschleiß).
-% Unique Selling Point / Contributions: Was macht LumenTrace besonders? (High-Speed Serial Comms, Echtes Physics-Model auf LED-Basis).
-% Outline: Kurzer Überblick über den Rest des Reports.
+% =========================================================================
+% TECHNICAL REPORT STRUKTUR: LUMENTRACE (IEEEtran Layout)
+% =========================================================================
 
-% 2. Related Work
-% Welche ähnlichen Ansätze gibt es bereits? (z.B. Open-Source LED Strips Games, kommerzielle digitale Slotcar-Systeme wie Scalextric/Carrera Digital).
-
-% 3. System Architecture & Requirements
-% (Hierhin wandern die Requirements, aber deutlich technischer formuliert!)
-% Funktionale und nicht-funktionale Systemanforderungen (z.B. Echtzeit-Fähigkeit, 60fps Rendering).
-% High-Level Architektur (ähnlich deinem architecture.drawio und der Grafik im README): Trennung von Game Logic (RPI), Controller-Eingaben und und LED-Rendering (Pico).
-
-% 4. Hardware Implementation
-% Microcontroller-Setup: Raspberry Pi (4) als Host, Raspberry Pi Pico als MCU für Hardware-IO.
-% Kommunikation: UART Protocol (Latenzen, Baud-Raten, Datenpakete).
-% Signaltechnik & Controller-Aufbau.
-
-% 5. Software Implementation & Game Mechanics (basierend auf README)
-% Core Loop: Game-Tick-Implementierung, Speed Update & Limits.
-% Physics & Lane Handling: Reibung, Beschleunigung, Lane-Hops und Kollisionserkennung.
-% Dev/Simulation Environment: Der Terminal-Emulator in Python (simulation.py), warum er essenziell für die Logik-Validierung war, bevor geflasht wurde.
-
-% 6. Evaluation (Performance & Results)
-% Performance-Auswertung: Wie schnell läuft der Game Loop? (z.B. Python Performance auf dem RPI4).
-% Latenz: Delay zwischen Knopfdruck am Controller über den Pico zum RPI und zurück zur LED-Aktualisierung.
-% Herausforderungen: Reibungsverluste bei schnellen Updates oder Tearing/Timing-Probleme bei WS2812-Ansteuerung.
-
-% 7. Conclusion & Future Work
-% Zusammenfassung des Erreichten.
-% Was steht noch auf der Todo-Liste? (z.B. mehr Track-Module, WiFi/MQTT Leaderboards).
-
-\section{Introduction}\label{sec:introduction}
-
-\subsection{Motivation}\label{sec:motivation}
-% Wieso klassische Slot-Cars durch LEDs ersetzen? (Immersion, Flexibilität, Hardwareverschleiß).
-tbd
-
-\subsection{Unique Selling Point \& Contributions}\label{sec:unique_selling_point}
-% Was macht LumenTrace besonders? (High-Speed Serial Comms, Echtes Physics-Model auf LED-Basis).
-tbd
-
-\subsection{Outline}\label{sec:outline}
-% Kurzer Überblick über den Rest des Reports.
-tbd
-
-\section{Related Work}\label{sec:related_work}
-% Welche ähnlichen Ansätze gibt es bereits? (z.B. Open-Source LED Strips Games, kommerzielle digitale Slotcar-Systeme wie Scalextric/Carrera Digital).
-tbd
-
-\section{System Architecture \& Requirements}\label{sec:system_architecture}
-
-\subsection{Functional and Non-Functional Requirements}\label{sec:requirements}
-% Funktionale und nicht-funktionale Systemanforderungen (z.B. Echtzeit-Fähigkeit, 60fps Rendering).
-tbd
-
-\subsection{High-Level Architecture}\label{sec:architecture}
-% Trennung von Game Logic (RPI), Controller-Eingaben und und LED-Rendering (Pico).
-tbd
-
-\section{Hardware Implementation}\label{sec:hardware_implementation}
-
-\subsection{Microcontroller Setup}\label{sec:mcu_setup}
-% Raspberry Pi (4) als Host, Raspberry Pi Pico als MCU für Hardware-IO.
-tbd
-
-\subsection{Communication}\label{sec:communication}
-% UART Protocol (Latenzen, Baud-Raten, Datenpakete).
-tbd
-
-\subsection{Signal Processing \& Controller}\label{sec:signal_processing}
-% Signaltechnik & Controller-Aufbau.
-tbd
-
-\section{Software Implementation \& Game Mechanics}\label{sec:software_implementation}
-
-\subsection{Core Loop}\label{sec:core_loop}
-% Game-Tick-Implementierung, Speed Update & Limits.
-tbd
-
-\subsection{Physics \& Lane Handling}\label{sec:physics}
-% Reibung, Beschleunigung, Lane-Hops und Kollisionserkennung.
-tbd
-
-\subsection{Dev/Simulation Environment}\label{sec:simulation}
-% Der Terminal-Emulator in Python (simulation.py), warum er essenziell für die Logik-Validierung war, bevor geflasht wurde.
-tbd
-
-\section{Evaluation}\label{sec:evaluation}
-
-\subsection{Performance}\label{sec:performance}
-% Wie schnell läuft der Game Loop? (z.B. Python Performance auf dem RPI4).
-tbd
-
-\subsection{Latency}\label{sec:latency}
-% Delay zwischen Knopfdruck am Controller über den Pico zum RPI und zurück zur LED-Aktualisierung.
-tbd
-
-\subsection{Challenges}\label{sec:challenges}
-% Reibungsverluste bei schnellen Updates oder Tearing/Timing-Probleme bei WS2812-Ansteuerung.
-tbd
-
-\section{Conclusion and Future Work}\label{sec:conclusion}
-% Zusammenfassung des Erreichten.
-% Was steht noch auf der Todo-Liste? (z.B. mehr Track-Module, WiFi/MQTT Leaderboards).
-tbd
-
-% ======================================================================
-% TEMPLATES FÜR LATEX ELEMENTE
-% ======================================================================
-% --- Description Template ---
-% \begin{description}
-%     \item[Item 1] Description 1
-%     \item[Item 2] Description 2
-% \end{description}
+% -------------------------------------------------------------------------
+% \section{Introduction}
+% -------------------------------------------------------------------------
+\IEEEPARstart{T}{his} technical report documents the design, implementation, 
+and evaluation of LumenTrace, a high-performance MCU-based LED racing simulator. \cite{lumentrace:github}.
 %
-% --- Itemize/List Template ---
-% \begin{itemize}
-%     \item Item 1
-%     \item Item 2
-% \end{itemize}
+% \subsection{Context and Goals}
+% % - Einordnung in den "Physical Computing Course" an der OTH Amberg-Weiden.
+% % - Betreuung durch Prof. Dipl.-Des. Martin Frey und Prof. Dr.-Ing. Ulrich Schäfer.
+% % - Ziel: Ablösung des klassischen analogen Slot-Car-Rennens (Carrera GO!) durch 
+% %   eine digitale Echtzeit-Physiksimulation mit immersiven Licht- und Effektsystemen.
 %
-% --- Listing/Code Template ---
-% \begin{lstlisting}[language=json, float, caption={example listing}, label={lst:listing}]
-% {}
-% \end{lstlisting}
-%
-% --- Figure Template ---
-% \begin{figure*}[!htb]
-%   \centering
-%   \includegraphics[width=\linewidth]{img}
-%   \caption{caption}
-%   \label{fig:figure}
-% \end{figure*}
-%
-% --- Table Template 1 (Standard with Tabularx) ---
-% \begin{table}[!h]
-%     \centering
-%     \caption{Table Caption}
-%     \label{tab:table_label1}
-%     \begin{tabularx}{0.9\linewidth}{>{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}X}
-%         \toprule
-%         \textbf{Category} & \textbf{Content} \\
-%         \midrule
-%         yada & yada \\
-%         \bottomrule
-%     \end{tabularx}
-% \end{table}
-%
-% --- Table Template 2 (Full Width Costs Table) ---
-% \begin{table*}[!htb]
-%     \centering
-%     \caption{Costs}
-%     \label{tab:costs}
-%     \begin{tabularx}{0.8\textwidth}{>{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}r >{\raggedright\arraybackslash}r}
-%         \toprule
-%         \textbf{Component} & \textbf{Usage/Quantity} & \textbf{A} & \textbf{B} \\
-%         \midrule
-%         Yada & yada & 1 & 2 \\
-%         \midrule
-%         \textbf{Total} & & \textbf{\(\sim\)\$0.00} & \textbf{\(\sim\)\$0.00} \\ 
-%         \bottomrule
-%     \end{tabularx}
-% \end{table*}
+% \subsection{Document Outline}
+% % - Kurzer Überblick über den Aufbau des Berichts (Architektur, Mechanik, Hardware-Bottlenecks, Multimedia, Validierung).
 
-% ======== References =========
-\sloppy
-\printbibliography[notcategory=selfref]
-% \printbibliography
+
+% -------------------------------------------------------------------------
+% \section{System Architecture and Hardware Design}
+% -------------------------------------------------------------------------
+% % - Überblick über die verteilte Hardware-Architektur (Distributed Architecture).
+% % - Warum die Aufteilung? (Lasttrennung, Echtzeit-Garantie).
+%
+% \subsection{Core Host Unit (Raspberry Pi 4)}
+% % - Aufgaben: Hauptanwendung (src.rpi_4.main), Spiellogik, Physik-Ticks, LED-Buffer, 
+% %   Threaded Audio-Mixer, System-Protokollierung.
+% % - Infrastruktur: Docker-Umgebung zur Isolation und Absicherung von Hardware-Zugriffen (GPIO, UART, Audio).
+%
+% \subsection{Input MCU (Raspberry Pi Pico)}
+% % - Aufgaben: MicroPython-Firmware (src.rpi_pico.main), permanentes, latenzfreies Auslesen 
+% %   der analogen Controller (ADCs für Throttle) und digitalen Taster (Lane Change / Start).
+%
+% \subsection{Communication Interface}
+% % - High-Speed-UART-Verbindung zwischen Pico und Pi 4.
+% % - Serialisiertes Datenformat zur Entlastung des Pi 4 Hosts vom Polling-Overhead.
+
+
+% -------------------------------------------------------------------------
+% \section{Software Architecture and Concurrency}
+% -------------------------------------------------------------------------
+% % - OOP-Design der Python-Codebasis.
+%
+% \subsection{Modular Package Design}
+% % - Kurzbeschreibung der Paketstruktur zur Separation of Concerns:
+% %   `Game`, `Simulation`, `Logger`, `Controller`, `Display`, `Sound`.
+%
+% \subsection{Thread Isolation and GIL Mitigations}
+% % - Das Problem des Global Interpreter Locks (GIL) bei rechenintensiven Multithreading-Anwendungen.
+% % - Lösung: Strikte Trennung des zeitkritischen Physik-Schleifen-Threads (`GameTickThread`) 
+% %   von Peripherie-Treiber-Aufrufen und dem Audio-System.
+
+
+% -------------------------------------------------------------------------
+% \section{Real-Time Physics and Game Mechanics}
+% -------------------------------------------------------------------------
+% % - Mathematische Modellierung des Rennverhaltens.
+%
+% \subsection{Acceleration, Friction, and Speed Updates}
+% % - Input-Mapping: Skalierung der ADC-Werte [42000, 65536] via linearer Interpolation auf [0, 100].
+% % - Kontinuierliche prozentuale Dämpfung durch Reibung (Friction).
+% % - Geschwindigkeits-Update pro Tick und Clamping auf Max-Speed-Grenzwerte.
+%
+% \subsection{Proportional Lane-Change Trajectories}
+% % - Logik des Spurwechsels über die temporäre Mittellinie auf Kreuzungsmodulen (`lane_change_allowed`).
+% % - Erhaltung des relativen Positionsfortschritts beim Spurwechsel via Verhältnisrechnung:
+% %   progress = source_position / source_line_length
+% %   target_position = progress * target_line_length
+% % - Automatisches Zurückleiten am Modurende via `lane_change_window`.
+%
+% \subsection{Collision Detection and Multi-Stage Respawn Algorithm}
+% % - Kollisionsprüfung über Distanzmatrizen auf derselben Spur (`__vehicle_crash_distance`).
+% % - Algorithmus bei Abflug/Sturz: Inaktivität für `respawn_ticks`.
+% % - Multi-Stage-Verfahren beim Wiederaufsetzen: Schleifenvermeidung (Looping-Modul-Check), 
+% %   Freiprüfung der Zielspuren, stufenweiser Fallback auf vorherige Streckenmodule.
+
+
+% -------------------------------------------------------------------------
+% \section{Hardware Integration and Resource Bottlenecks}
+% -------------------------------------------------------------------------
+% % - Dokumentation von kritischen Systemengpässen während der Entwicklung.
+%
+% \subsection{Initial DMA and Peripheral Conflicts}
+% % - Analyse des Fehlversuchs: 4 separate PixelStrips für Spieler-Matrizen (GPIO 10, 21) und Schienen (GPIO 18, 19).
+% % - Ursache: DMA-Register-Kollisionen (`mmap() failed`) und Treiber-Limitierung des rpi_ws281x C-Treibers auf max. 2 Kanäle.
+%
+% \subsection{Chained Single-Driver Architecture (The Solution)}
+% % - Die Lösung: Physische Verkettung (Data Out der Schienenstreifen an Data In der 8x8-Matrizen).
+% % - Reduzierung der physischen Steuerleitungen auf 2 Kanäle (GPIO 18 & 19).
+% % - Softwareseitiges Mapping durch Adress-Offsetting via `VirtualLedStrip` ohne Hardware-Reinitialisierung.
+
+
+% -------------------------------------------------------------------------
+% \section{Multimedia Subsystems: LED Control and Audio Engineering}
+% -------------------------------------------------------------------------
+%
+% \subsection{Priority-Based LED Rendering Hierarchy}
+% % - Schichtenmodell des DisplayManagers (Low Priority -> High Priority):
+% %   1. Gleis-Basisbeleuchtung (gedimmt)
+% %   2. Kreuzungsmarkierung (Pink)
+% %   3. Start/Ziellinie
+% %   4. Runden-Blinkeffekte (Yellow/White)
+% %   5. Respawn-Blinken
+% %   6. Aktives Fahrzeug-Sprite (Farbinterpolation nach Geschwindigkeit)
+% %   7. Scheinwerfer (Beschleunigung) / Bremslichter (Verzögerung).
+%
+% \subsection{Vectorized Live Stereo Audio Mixer}
+% % - Low-Level Sound-Manager (`src/sound/sound_manager.py`).
+% % - NumPy-Vektorisierung zur Performance-Optimierung (Vermeidung von Schleifen und np.cumsum, 
+% %   Block-Updates über schnelle Skalar-Operationen).
+% % - Dynamische Echtzeit-Effekte: Pitch-Shifting (Drehzahl) und Stereo-Panning basierend auf Schienen-Positions-Verhältnissen.
+%
+% \subsection{Asynchronous Command Queue for Audio}
+% % - Thread-sichere Entkopplung über `ThreadedSoundManager`.
+% % - Caller-Threads blockieren nicht; Kommandos werden als feuerbereite FIFO-Tuples (mit UUIDs) an einen 
+% %   Hintergrund-`SoundWorkerThread` übergeben.
+
+
+% -------------------------------------------------------------------------
+% \section{Physical Design and Simulation Environment}
+% -------------------------------------------------------------------------
+%
+% \subsection{Track Design and Aesthetics}
+% % - Mechanischer Aufbau: Schwarze Holzplatte (150cm x 80cm), besprüht mit Neon-Farbeffekten.
+% % - Modifizierte Carrera GO! Schienenmodule. Retro-futuristische Blau-Violett-Ästhetik.
+%
+% \subsection{3D-Printed Components}
+% % - Eigens in Blender/Fusion 360 modellierte Gehäuse zur Integration der Sound-Boxen und optischen Aufwertungen.
+%
+% \subsection{Hardwareless Simulation Dashboard and Unit Testing}
+% % - Der ASCII-basierte Live-Simulator (`src/dev/simulation.py`) zur Telemetrie-Überwachung 
+% %   ohne angeschlossene Hardware-Peripherie. Validierung über automatisierte Unittests.
+
+
+% -------------------------------------------------------------------------
+% \section{Conclusion and Future Work}
+% -------------------------------------------------------------------------
+% % - Fazit: Erfolgreiche Umsetzung eines hochperformanten, latenzfreien Simulators. Robustes Hardware-Chaining.
+% % - Ausblick: Integration autonomer KI-Gegner (Ghost Cars), App-Anbindung, drahtlose Controller-Anbindung via ESP32.
+
+% --- Literaturverzeichnis (References) ---
+
+% Der Befehl \balance sorgt dafür, dass die zwei Spalten auf der letzten 
+% Seite sauber auf gleicher Höhe abschließen. Un-kommentieren, sobald der Text fertig ist!
+% \balance 
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
 
 \end{document}
