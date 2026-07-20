@@ -37,6 +37,12 @@ The contributors and maintainers of this project are:
 
 The project is part of the [Physical Computing Course](https://www.oth-aw.de/forschung/forschungseinrichtungen/labore/fakultaet-elektrotechnik-medien-und-informatik/labor-medieninformatik/physical-computing/) at the [OTH Amberg-Weiden](https://www.oth-aw.de/). The project is supervised by [Prof. Dipl.-Des. Martin Frey](https://www.oth-aw.de/hochschule/ueber-uns/personen/frey-martin/) and [Prof. Dr.-Ing. Ulrich Schäfer](https://www.oth-aw.de/schaefer-ulrich/ueber/).
 
+## Initial Project Requirements
+
+The following represents the original project requirements that evolved and adapted dynamically throughout development:
+
+> Mechanics-free slot car track with: Control system, 3D printing, 3-4 RGB LED strips, sound, based on Raspberry Pi Pico 2W with PIO
+
 ## Features
 
 - Real-time physics simulation for accurate virtual slot car movement, including collision detection, acceleration/deceleration, falling down, recovery, and more.
