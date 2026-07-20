@@ -1,6 +1,6 @@
 # Docker and Systemd Integration Architecture
 
-LumenTrace uses Docker for containerized deployment and systemd for service management on the Raspberry Pi 4, ensuring consistent runtime environments and automated lifecycle control.
+LumenTrace uses Docker [merkel:2014docker] for containerized deployment and systemd for service management on the Raspberry Pi 4 [magpi:2024raspberry], ensuring consistent runtime environments and automated lifecycle control.
 
 ## Docker Architecture
 

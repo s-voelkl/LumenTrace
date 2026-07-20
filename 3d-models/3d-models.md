@@ -2,7 +2,7 @@
 
 ## Overview
 
-The 3D model collection supports LumenTrace's physical infrastructure, combining functional mechanical components with decorative environmental assets. Models are designed for 3D printing in a cohesive sci-fi aesthetic, integrating seamlessly with the racing simulation environment and audio system.
+The 3D model collection supports LumenTrace's physical infrastructure [voelkl:2026lumentrace], combining functional mechanical components with decorative environmental assets. Models are designed for 3D printing in a cohesive sci-fi aesthetic, integrating seamlessly with the racing simulation environment and audio system.
 Not all of the proposed models were used in the final build, as some were replaced with alternative solutions during development or were not able to be produced due to time, resource and real-world constraints.
 
 ## Model Categories

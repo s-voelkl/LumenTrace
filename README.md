@@ -4,17 +4,19 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 
 > [!IMPORTANT]
 >
-> The **source code** for this project is available on **GitHub**: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
+> The **source code** for this project is available on **GitHub**: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace) [voelkl:2026lumentrace]
 
 <div align="center">
   <img src="docs/assets/SideView1.jpg" alt="LumenTrace Game" width=1000/>
 </div>
 
+References are provided in the format `[author:yearidentifier]` and are listed in the [Bibliography](docs/tech-rep/references.bib).
+
 ## Used Technologies
 
-- Microcontrollers: Raspberry Pi Pico (Input Controller) and Raspberry Pi 4 (Core Host) with a micro-SD card for data storage.
-- Programming Languages: MicroPython for the microcontroller firmware, Python for OOP design, data processing, led display, sound, testing, simulation and visualization.
-- Communication Protocols: High-Speed serial communication between Pico and Pi 4 with UART, LED control via WS2812.
+- Microcontrollers: Raspberry Pi Pico (Input Controller) and Raspberry Pi 4 (Core Host) [magpi:2024raspberry] with a micro-SD card for data storage.
+- Programming Languages: MicroPython [george:2026micropython] for the microcontroller firmware, Python for OOP design, data processing, led display, sound, testing, simulation and visualization.
+- Communication Protocols: High-Speed serial communication between Pico and Pi 4 with UART [pena:2020uart,liechti:2020pyserial], LED control via WS2812 [garff:2023rpi].
 - Data Storage: Micro-SD card for storing and running the program on the Pi.
 
 <div align="center">
@@ -51,7 +53,7 @@ The project is part of the [Physical Computing Course](https://www.oth-aw.de/for
 > [!NOTE]
 > **Usage instructions:** For general requirements and usage instructions, please refer to the [Raspberry Pi 4](docs/rpi_4/rpi_4_config.md) and [Raspberry Pi Pico](docs/rpi_pico/rpi_pico_config.md) configuration guides.
 
-**Docker** is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART. By using docker, the application starts up automatically on boot and can be easily adjusted in a system-independent manner.
+**Docker** [merkel:2014docker] is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO [croston:2022raspberry], audio, and UART. By using docker, the application starts up automatically on boot and can be easily adjusted in a system-independent manner.
 
 > [!NOTE]
 > **Docker setup:** See the [Docker setup](docs/rpi_4/rpi_4_docker.md) for instructions on how to build and run the Docker container for LumenTrace.
@@ -61,8 +63,8 @@ The project is part of the [Physical Computing Course](https://www.oth-aw.de/for
 The system is built on a distributed hardware architecture combining a Raspberry Pi 4 (Core Host) and a Raspberry Pi Pico (Input MCU).
 
 - **Raspberry Pi 4 (Core Host):** Runs the main Python application (`src.rpi_4.main`), managing the game logic, physics simulation, LED display buffers, sound mixing, and logging.
-- **Raspberry Pi Pico (Input MCU):** Runs MicroPython firmware (`src.rpi_pico.main`) polling inputs from physical controllers (analog throttles via ADCs and digital buttons).
-- **Communication:** The Pico transmits the controller states as a serialized format to the RPi 4 over UART at high speed, removing the polling overhead from the main host.
+- **Raspberry Pi Pico (Input MCU):** Runs MicroPython [george:2026micropython] firmware (`src.rpi_pico.main`) polling inputs from physical controllers (analog throttles via ADCs and digital buttons).
+- **Communication:** The Pico transmits the controller states as a serialized format (JSON [json:2026introducing]) to the RPi 4 over UART [pena:2020uart] at high speed, removing the polling overhead from the main host.
 - **LED Matrices & Strips:** RPi 4 drives WS2812B LEDs using DMA (PWM on GPIO 18/19), where the LED matrices for lap counting are physically chained before the track strips to minimize occupied hardware channels.
 - **Audio:** Real-time engine and event audio is routed out of the Pi to stereo speakers.
 
@@ -76,7 +78,7 @@ The architecture is designed to be modular and extensible, with clear separation
 
 - `Game` package handles the core game logic, including vehicle physics, track management, and players.
 - `Simulation` package provides tools for testing and visualizing the game mechanics in Python.
-- `Logger` package manages logging and debugging output for log files and MQTT.
+- `Logger` package manages logging and debugging output for log files and MQTT [mqtt:2026mqtt] [light:2026paho]. Our approach to MQTT logging was inspired by the projects [voelkl:2026sensiq] and [voelkl:2026bitebound].
 - `Controller` package handles player input and translates it into game actions.
 - `Display` package manages the LED effects and visual feedback for the game.
 - `Sound` package provides a real-time, threaded audio mixer.
@@ -103,13 +105,13 @@ Display hierarchy (applied from low priority -> high priority):
 4. **Start of the track**: The first pixel of every lane is marked as a start/end line (gray).
 5. **Round advance**: When a vehicle completes a lap the start pixel blinks between yellow and white for a configured number of ticks.
 6. **Inactive vehicles (respawn)**: Vehicles that are inactive or respawning blink between their primary color and gray (40% primary + 60% gray).
-7. **Active vehicle**: Final override — vehicle sprite is drawn centered on the vehicle position. Color depends on the driving profile and vehicle speed. Speeds near zero use the vehicle's primary color; values beyond thresholds interpolate toward accelerate/decelerate warning colors.
+7. **Active vehicle**: Final override — vehicle sprite is drawn centered on the vehicle position. Color depends on the driving profile and vehicle speed [meschtscherjakov:2015chaselight]. Speeds near zero use the vehicle's primary color; values beyond thresholds interpolate toward accelerate/decelerate warning colors.
 8. **Vehicle front lights**: Overlay front lighting (light gray) for vehicles that are currently accelerating.
 9. **Vehicle rear lights**: Overlay rear brake lighting (red) for vehicles that are currently decelerating.
 
 How the strips are controlled:
 
-- Physical output uses the `rpi_ws281x` library (`PixelStrip`, `Color`). Two GPIO channels are supported by default: `18` and `19` ([see Library on GitHub](https://github.com/richardghirst/rpi_ws281x))
+- Physical output uses the `rpi_ws281x` library (`PixelStrip`, `Color`) [garff:2023rpi]. Two GPIO channels are supported by default: `18` and `19` ([see Library on GitHub](https://github.com/richardghirst/rpi_ws281x))
 
 > [!NOTE]
 > **LED Mounting and Physical Chaining:** To map LEDs accurately to the physical track, the main strips were rigidly fastened using zip ties. Because both of the Pi 4's PWM channels were utilized for the primary lanes, the temporary central overtaking lane was physically daisy-chained to the end of a primary lane with connecting wires hidden beneath the track.
@@ -157,7 +159,7 @@ The solution leverages the existing `VirtualLedStrip` concept by chaining the ma
 
 ## Sound Engineering
 
-LumenTrace features a real-time audio engine that turns the race into an immersive, spatial experience. All sound is mixed live on the Raspberry Pi and played back in stereo, so what you hear reflects what is happening on the track at every moment.
+LumenTrace features a real-time audio engine that turns the race into an immersive, spatial experience [gardenfors:2003designing]. All sound is mixed live on the Raspberry Pi and played back in stereo [geier:2024sounddevice] [bechtold:2026soundfile], so what you hear reflects what is happening on the track at every moment [gan:2019self].
 
 ### Real-time audio mixer
 
@@ -167,7 +169,7 @@ A low-level sound manager (`src/sound/sound_manager.py`) mixes any number of sou
 - **Pitch** – dynamic speed/pitch shifting, used to make the engine rev up and down.
 - **Stereo panning** – independent left/right balance so sounds can be placed on the left or right side of the track.
 
-To maximize execution speed and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using a **block-level updates architecture** powered by NumPy vectorization:
+To maximize execution speed and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using a **block-level updates architecture** powered by NumPy vectorization [harris:2020array]:
 
 - **Single Frame Indexing:** Rather than generating index arrays inside loops, a single frame index array (`np.arange`) is created once per callback block.
 - **No Cumulative Ramping:** Dynamic playback positions are calculated using linear offsets (`arange_frames * pitch`) instead of sequential cumulative sums (`np.cumsum`), bypassing costly sample-by-sample pitch ramping.
@@ -183,10 +185,10 @@ Because real-time audio relies on extremely strict timing guarantees, executing 
 > [!CAUTION]
 > **Audio Engineering Challenges:** Initially, transmitting audio via the Pi 4's AUX jack produced significant background noise, which was resolved by switching to a USB audio interface. However, integrating the audio playback into the main game loop still caused heavy sound stuttering after ~2 seconds.
 
-To eliminate these bottlenecks, LumenTrace isolates the audio interface using a **Thread-Safe Asynchronous Command Queue** pattern (`src/sound/threaded_sound_manager.py`):
+To eliminate these bottlenecks, LumenTrace isolates the audio interface using a **Thread-Safe Asynchronous Command Queue** pattern (`src/sound/threaded_sound_manager.py`) and multiprocessing principles [eggen:2019thread]:
 
 - **Non-blocking Wrapper (`ThreadedSoundManager`):** Acts as a transparent proxy wrapping the low-level `SoundManager`. Calling threads (such as `GameTickThread` or input fetchers) never block or wait on the underlying mixer locks.
-- **FIFO Command Queue:** Methods like `play()`, `update_sound()`, `stop_sound()`, and `stop_all()` immediately enqueue commands as lightweight, fire-and-forget tuples, generating trackable UUIDs instantly on the caller thread.
+- **FIFO Command Queue:** Methods like `play()`, `update_sound()`, `stop_sound()`, and `stop_all()` immediately enqueue commands into a non-blocking queue [tsigas:2001simple] as lightweight, fire-and-forget tuples, generating trackable UUIDs instantly on the caller thread.
 - **Dedicated Sound Worker Thread:** A background worker thread (`SoundWorkerThread`) continuously consumes the command queue and applies state changes to the actual `SoundManager`. This guarantees that high-frequency engine parameter updates do not block or stutter the physics loop.
 - **Persistent Streams across Restarts:** The asynchronous `stop_all` implementation selectively clears active playback instances under lock instead of tearing down the audio stream. This keeps the output stream alive and responsive across multiple game restarts and lobby resets without requiring a full audio stream re-initialization.
 
@@ -214,7 +216,7 @@ On top of the engine, the game plays positional one-shot effects that respond to
 ### Sound Effects Sources
 
 > [!NOTE]
-> **Sound Attribution:** All sound effects used in LumenTrace are sourced from free, royalty-free libraries and are credited below. Please refer to the original sources for licensing details.
+> **Sound Attribution:** All sound effects used in LumenTrace are sourced from free, royalty-free libraries [pixabay:2026pixabay] and are credited below. Please refer to the original sources for licensing details.
 
 - base-engine-1.wav: Created by ourselves.
 - startup-sound.mp3: <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
@@ -235,15 +237,17 @@ On top of the engine, the game plays positional one-shot effects that respond to
 
 ## Game Mechanics
 
-The game mechanics are implemented in `src/game` and are designed to provide a realistic and engaging racing experience like in the original slot car games.
+The game mechanics are implemented in `src/game` and are designed to provide a realistic and engaging racing experience like in the original slot car games [skaar:2025slot].
 
 ### Acceleration and Friction
 
-- Controller input `forward_press` is mapped to vehicle acceleration each game tick. The mapping is configured as inputs [42000, 65536] to outputs [0, 100] with linear interpolation.
-- Friction is applied continuously and reduces current speed by a configurable percentage.
+- Controller input `forward_press` is mapped to vehicle acceleration each game tick. The mapping is configured as inputs [42000, 65536] to outputs [0, 100] with linear interpolation [zheng:2018feature].
+- Friction is applied continuously and reduces current speed by a configurable percentage [kane:2022tire].
 - Positive and negative movement are supported. If acceleration would invert speed direction in one step, speed is clamped to `0` first to keep transitions stable.
 
 Acceleration mapping formula: $acceleration(forwardPress) = \frac{forwardPress - 42000}{65536 - 42000} * 100$
+
+Sensor measurement transmission must be trustful [voelkl:2026sensiq] for the system handling the incoming data. Although, roughly every 20th controller transmission is lost or unreadable, the game engine is designed to handle this gracefully. Having an update rate of 50Hz, a single lost tick is not critical, the game engine just continues using the last known controller state.
 
 ### Speed Update and Limits
 
@@ -321,7 +325,7 @@ Acceleration mapping formula: $acceleration(forwardPress) = \frac{forwardPress -
 
 ## Design
 
-The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components. In general, the physical design is based on the following components:
+The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components [voelkl:2026bitebound]. In general, the physical design is based on the following components:
 
 - A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with *blue*, *purple* and *white* colors for a visually appealing background. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape for transportability. The loop module was additionally reinforced with fishing line to reduce vibrations and prevent fractures.
 - [Carrera GO!](https://carrera-toys.com/en) track modules for the physical track layout.

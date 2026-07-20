@@ -61,7 +61,7 @@ Audio system validation:
 
 ## Running the Tests
 
-Execute tests using pytest:
+Execute tests using pytest [krekel:2026pytest]:
 
 ```bash
 pytest tests/
