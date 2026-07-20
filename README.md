@@ -51,7 +51,7 @@ The project is part of the [Physical Computing Course](https://www.oth-aw.de/for
 > [!NOTE]
 > **Usage instructions:** For general requirements and usage instructions, please refer to the [Raspberry Pi 4](docs/rpi_4/rpi_4_config.md) and [Raspberry Pi Pico](docs/rpi_pico/rpi_pico_config.md) configuration guides.
 
-**Docker** is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
+**Docker** is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART. By using docker, the application starts up automatically on boot and can be easily adjusted in a system-independent manner.
 
 > [!NOTE]
 > **Docker setup:** See the [Docker setup](docs/rpi_4/rpi_4_docker.md) for instructions on how to build and run the Docker container for LumenTrace.
@@ -110,7 +110,11 @@ Display hierarchy (applied from low priority -> high priority):
 How the strips are controlled:
 
 - Physical output uses the `rpi_ws281x` library (`PixelStrip`, `Color`). Two GPIO channels are supported by default: `18` and `19` ([see Library on GitHub](https://github.com/richardghirst/rpi_ws281x))
-- The code uses `VirtualLedStrip` instances to map parts of a physical strip to logical lanes. This allows a single long strip to be split into multiple virtual lanes (useful for intersections or modules that need extra pixels).
+
+> [!NOTE]
+> **LED Mounting and Physical Chaining:** To map LEDs accurately to the physical track, the main strips were rigidly fastened using zip ties. Because both of the Pi 4's PWM channels were utilized for the primary lanes, the temporary central overtaking lane was physically daisy-chained to the end of a primary lane with connecting wires hidden beneath the track.
+
+- The code uses `VirtualLedStrip` instances to map parts of a physical strip to logical lanes. This abstraction allows the display manager to control each segment (Lap Counter, Main Lane, and Overtaking Lane) independently, resolving the hardware channel constraints and hiding the physical daisy-chain from the game logic.
 - At each game tick `Game.display()` calls `DisplayManager.update(game)`. The display manager updates the virtual buffers by writing RGB tuples. Finally `LedDisplay.render()` translates virtual buffers to the physical `PixelStrip` objects and calls `show()`.
 
 Tuning and configuration:
@@ -123,7 +127,7 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 
 ## Round Counter Hardware Integration
 
-To track player progress, the game integrates 8x8 WS2812B LED matrices to display round numbers (00–99) using a 3x5 font mapping.
+To track player progress, the game integrates 8x8 WS2812B LED matrices to display round numbers (00–99) using a 3x5 font mapping. Initial considerations for small LCD screens were discarded as they lacked readability from a 1-meter distance.
 
 ### Initial Bottlenecks
 
@@ -176,12 +180,18 @@ All sounds are referenced through a named catalog (`GameSound`), so each effect 
 
 Because real-time audio relies on extremely strict timing guarantees, executing Python-based audio callback routines synchronously alongside high-frequency game ticks, screen rendering, and hardware fetching can lead to Global Interpreter Lock (GIL) starvation and severe lock contention.
 
+> [!CAUTION]
+> **Audio Engineering Challenges:** Initially, transmitting audio via the Pi 4's AUX jack produced significant background noise, which was resolved by switching to a USB audio interface. However, integrating the audio playback into the main game loop still caused heavy sound stuttering after ~2 seconds.
+
 To eliminate these bottlenecks, LumenTrace isolates the audio interface using a **Thread-Safe Asynchronous Command Queue** pattern (`src/sound/threaded_sound_manager.py`):
 
 - **Non-blocking Wrapper (`ThreadedSoundManager`):** Acts as a transparent proxy wrapping the low-level `SoundManager`. Calling threads (such as `GameTickThread` or input fetchers) never block or wait on the underlying mixer locks.
 - **FIFO Command Queue:** Methods like `play()`, `update_sound()`, `stop_sound()`, and `stop_all()` immediately enqueue commands as lightweight, fire-and-forget tuples, generating trackable UUIDs instantly on the caller thread.
 - **Dedicated Sound Worker Thread:** A background worker thread (`SoundWorkerThread`) continuously consumes the command queue and applies state changes to the actual `SoundManager`. This guarantees that high-frequency engine parameter updates do not block or stutter the physics loop.
 - **Persistent Streams across Restarts:** The asynchronous `stop_all` implementation selectively clears active playback instances under lock instead of tearing down the audio stream. This keeps the output stream alive and responsive across multiple game restarts and lobby resets without requiring a full audio stream re-initialization.
+
+> [!TIP]
+> **Stability Fix:** Alongside the dedicated audio thread, introducing 1ms sleep intervals within the display logic prevented audio thread starvation, ultimately stabilizing the sound output across concurrent workloads.
 
 ### Engine sounds
 
@@ -233,6 +243,8 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
 - Friction is applied continuously and reduces current speed by a configurable percentage.
 - Positive and negative movement are supported. If acceleration would invert speed direction in one step, speed is clamped to `0` first to keep transitions stable.
 
+Acceleration mapping formula: $acceleration(forwardPress) = \frac{forwardPress - 42000}{65536 - 42000} * 100$
+
 ### Speed Update and Limits
 
 - Speed is updated every tick as: `speed += acceleration * acceleration_multiplier`
@@ -248,6 +260,11 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
 - Reverse movement is also handled, including safe behavior for negative movement near lap boundaries.
 
 ### Lane Change
+
+> [!NOTE]
+> **Overtaking Mechanics Selection:** We evaluated multiple overtaking approaches: intersecting lanes (ruled out by vertical LED height), converging lanes (abrupt gameplay), and a unidirectional overtaking lane (lacked bidirectional switching). We ultimately chose a **temporary bidirectional center lane** because it offered the optimal balance between playability and realism.
+>
+> *Challenges solved:* The temporary lane eventually ends, potentially causing unavoidable out-of-bound crashes. We solved this by restricting lane changes beyond a specific point, forcing an automatic merge back to a main lane. We also implemented a cooldown distance (`lane_change_window`) to prevent rapid, successive lane changes and erratic switching.
 
 - Lane changes are triggered by pressing the `special_1` button.
 - A lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`. This is typically used for intersection modules.
@@ -270,11 +287,27 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
 - A vehicle falls immediately when its current speed or acceleration violates the driving profile of the active line:
   - `speed` must remain within `[min_speed, max_speed]`
   - `acceleration` must remain within `[min_acceleration, max_acceleration]`
+
+> [!NOTE]
+> **Track Profile Constraints / Subdivided Modules:** To make difficulty scale smoothly without applying constraints too abruptly upon module entry, specific modules were mathematically subdivided. **Curves** have an Entry (slight restriction), Apex (strongest restriction), and Exit (reduced restriction). **Loops** have an Incline Entry (gravity decelerates), Inverted Apex (high minimum speed required to avoid falling), and Decline Exit (gravity accelerates).
+
 - Collision detection is evaluated for vehicles on the same lane.
   - If two vehicles are within collision distance, the vehicle in front falls.
   - The collision happens, if the position distance between the `settings.__vehicle_crash_distance` is violated.
 
+> [!NOTE]
+> **Collision Gameplay Dynamics:** While a real-world collision would likely derail both vehicles, this heavily impacts gameplay negatively. Taking inspiration from other arcade video games, we implemented a system simulating a rear-quarter impact: The leading vehicle loses control and crashes, while the trailing vehicle maintains its trajectory unharmed.
+
 ### Respawn System
+
+> [!NOTE]
+> **Fair Respawn Logic & The Looping Problem:** Several respawn rules were evaluated:
+>
+> 1. *Respawn at Start Line:* Harsh penalty causing players to fall too far behind with no chance to interact.
+> 2. *Respawn at Exact Crash Location:* Too forgiving, and it introduced the "Looping Problem" (respawning at a standstill inside a loop causes an immediate consecutive crash, as vehicles cannot build the needed momentum).
+> 3. *Respawn at Start of Current Module:* Selected for balanced penalization.
+>
+> A dynamic fallback system handles blocked placements: If a respawn spot is occupied (which would cause an immediate collision upon respawn), the game sequentially checks alternative lanes, then falls back purely to previous modules to grant collision-free placement with enough track length to build momentum for upcoming loops.
 
 - Fallen vehicles become inactive and enter a respawn state (`settings.respawn_ticks`, `vehicle.respawn_ticks`, `vehicle.active`).
 - While `vehicle.active` is `False`, vehicles are ignored in the race.
@@ -290,12 +323,12 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
 
 The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components. In general, the physical design is based on the following components:
 
-- A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with *blue*, *purple* and *white* colors for a visually appealing background.
+- A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with *blue*, *purple* and *white* colors for a visually appealing background. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape for transportability. The loop module was additionally reinforced with fishing line to reduce vibrations and prevent fractures.
 - [Carrera GO!](https://carrera-toys.com/en) track modules for the physical track layout.
 - 2 LED Stripes (WS2812B) for the track lighting and visual effects, mainly in light purple and gray.
 - 2 Vehicles in strong blue and purple colors.
 - 2 LED Matrizes for round counting in the colors of the vehicles.
-- 3D-printed objects as visual enhancements and better integration of the sound  boxes.
+- 3D-printed objects as visual enhancements, custom towers to conceal the Raspberry Pi 4, Pico, and internal wiring, and custom audio enclosures to stealthily house the stereo speakers and subwoofer (printed in segments) without breaking the sci-fi aesthetic.
 
 The resulting design is a **retro-futuristic** blue-purple racing environment with a focus on immersive lighting and sound effects.
 
@@ -328,119 +361,3 @@ Additionally, unit tests were created to validate the logic of specific componen
 <div align="center">
   <img src="docs/dev/Simulation_Example_1.png" alt="Simulation Example" width=1000/>
 </div>
-
-## Development Challenges and Solutions
-
-### LED Strip Mounting
-
-The two primary LED strips required secure mounting on the upper surface of the track at regular intervals. To ensure accurate mapping of LEDs to the physical track, the strips needed to be rigidly attached, preventing any sway or warping. Furthermore, an overtaking lane was required in the center. Initially, 3D-printed mounts were considered, but due to practical constraints, zip ties were ultimately utilized to fasten the LED strips securely to the track.
-
-### Sound System Integration
-
-The sound system, consisting of two stereo speakers and a large subwoofer, required concealment to maintain the aesthetic integrity of the setup. We designed and 3D-printed custom enclosures that not only hid the sound system but also enhanced the overall visual appeal. The subwoofer enclosure had to be printed in smaller segments and subsequently assembled, as the component exceeded the build volume of our 3D printer.
-
-### Microcontroller and Wiring Concealment
-
-To conceal the Raspberry Pi 4, Raspberry Pi Pico, and the associated wiring, we designed and 3D-printed custom towers. These structures included precision-milled holes to route and reconnect the cables internally. On the underside of the track, cables were secured using zip ties to minimize hanging and maintain a clean appearance.
-
-### Track Assembly and Transport Security
-
-For transportability and enhanced structural integrity, all components were fastened to a solid wooden base (150x80cm) using screws, cyanoacrylate adhesive, and double-sided tape. The base board was primed and painted to visually complement the project's aesthetic. Additionally, the loop module was reinforced with fishing line to reduce vibrations and prevent potential fractures during transit.
-
-### Controller Input Processing
-
-The original Carrera GO! controllers only provided acceleration input. By pressing the top button, the electrical resistance decreased, varying the analog signal between 0 and 70%. Depressing the front button short-circuited the signal to 100%, enabling maximum acceleration in the default game. We adapted the controller logic utilizing the following mapping:
-
-$mapInput(signal) = (signal - \text{inputMin}) \cdot \frac{\text{outputMax} - \text{outputMin}}{\text{inputMax} - \text{inputMin}} + \text{outputMin}$
-
-Only the upper button's input was utilized for the analog acceleration value, while the front button was repurposed as a digital input for lane changing. The analog acceleration yields an integer between 0 and 65536, processed by the Raspberry Pi Pico's 12-bit ADC. Since pressing the button inherently causes a signal jump from 0 to 70%, we implemented a linear interpolation mapping between 70% and 100% to ensure smooth acceleration control, incorporating a small buffer (up to 42k) for lower values. As the Raspberry Pi 4 lacks a native ADC, analog values were acquired via the Raspberry Pi Pico.
-
-### Inter-Device Communication (Pico and Pi 4)
-
-The Controller signals acquired by the Raspberry Pi Pico must be forwarded to the Raspberry Pi 4 for processing within the game logic. This communication was established via a high-speed UART (Universal Asynchronous Receiver-Transmitter) connection. The Pico transmits data from its TX pin to the Pi 4's RX pin, with both devices sharing a common ground (GND). The baud rate was configured at 115200 to ensure rapid signal transmission. Data is serialized into JSON format for straightforward parsing. The Pico continuously polls the analog and digital inputs, encapsulates them in a JSON string, and transmits them to the Pi 4. The Pi 4 deserializes this payload and updates the game state accordingly. While a transmission error occurs approximately once every twenty cycles, its impact is negligible given the 50Hz game loop frequency.
-
-### Modular Track Architecture
-
-A key requirement was that the entire track should be easily measurable, and distinct driving profiles could be defined for each module and lane. Consequently, the track was divided into discrete modules mirroring the physical Carrera GO! components. Each module contains multiple lanes, each possessing a unique driving profile (e.g., restricted speeds for tight curves). While this modularity increased programming complexity, adopting an object-oriented approach utilizing classes and methods streamlined the implementation.
-
-### Overtaking Mechanics
-
-We explored several approaches for the overtaking mechanism:
-
-1. **Two intersecting lanes:** Infeasible due to the vertical height of the LED strips and the lack of physical crossovers.
-2. **Two converging lanes for immediate switching:** Rejected as the mechanic felt unnatural and overly abrupt from a gameplay perspective.
-3. **Unidirectional overtaking lane:** Rejected because bidirectional lane changes (left-to-right and right-to-left) were required.
-4. **Temporary bidirectional center lane:**
-
-   - *Challenge:* The temporary lane eventually ends, potentially causing unavoidable out-of-bound crashes. *Solution:* Restricted lane changes beyond a specific point, forcing an automatic merge back to a main lane.
-   - *Challenge:* Rapid, successive lane changes could lead to unavoidable collisions. *Solution:* Implemented a cooldown distance between lane changes to prevent immediate erratic switching.
-
-Approach 4 was ultimately selected, offering the optimal balance between playability and realism.
-
-### Virtual LED Strips
-
-The physical LED strips forming the center overtaking lane also required signal inputs from the Raspberry Pi 4. However, both of the Pi 4's PWM channels were already utilized by the primary lanes. We addressed this by physically daisy-chaining the center lane to the end of a primary lane and hiding the connecting wires beneath the track. The software challenge then became isolating this physically connected segment within the game logic. This was resolved by implementing "Virtual LED Strips." The `rpi_ws281x` `PixelStrip` objects were logically partitioned into multiple virtual segments (Lap Counter, Main Lane, Overtaking Lane). This abstraction allowed the DisplayManager to control each segment independently despite the physical daisy-chain.
-
-### Lap Counters
-
-A lap counter for each player was implemented using two LED matrices. Initial considerations for small LCD screens were discarded as they lacked readability from a 1-meter distance.
-The LED matrices required series connection. Initial attempts using SPI and PCM interfaces caused DMA channel conflicts with the main LED strips, resulting in system instability. The solution involved daisy-chaining the matrices directly onto the main LED strips, allowing them to be controlled through the same data line.
-
-### Vehicle Collision Dynamics
-
-The overtaking mechanic introduces the possibility of vehicle collisions.
-The decision of which vehicle should "crash" upon collision was analyzed. While a real-world collision would likely derail both vehicles, this negatively impacts gameplay. Taking inspiration from other video games, we implemented a system where the leading vehicle loses control and crashes (simulating a rear-quarter impact), while the trailing vehicle maintains its trajectory.
-
-### Track Profile Constraints
-
-To increase gameplay difficulty, specific track segments impose unique driving constraints:
-
-- Minimum and maximum speed limits.
-- Minimum and maximum acceleration limits (implemented but currently unused).
-- Lane change permissions (essential for overtaking modules).
-
-Curve modules enforce a maximum speed limit corresponding to the curve's radius. Each lane within a module receives an individual driving profile. For instance, the outer lane of a right curve permits a higher maximum speed than the inner lane due to its larger radius. These limits are defined in the module's configuration.
-
-Loop modules mandate a minimum speed requirement; failure to maintain it results in the vehicle falling off the track, simulating gravity.
-
-During testing, we observed that the speed constraints on curves and loops were applied too abruptly upon entering the module. Consequently, we subdivided these modules into three segments:
-
-**Curves:**
-
-- *Entry:* Slight speed restriction to prevent abrupt crashes while maintaining difficulty on the shallow start of the curve.
-- *Apex:* Strongest speed restriction where the curve is tightest, maximizing fall probability.
-- *Exit:* Reduced speed restriction as the curve opens up.
-
-**Loops:**
-
-- *Entry (Incline):* No minimum speed requirement as the ascent begins.
-- *Apex (Inverted):* High minimum speed requirement; vehicles can fall here.
-- *Exit (Decline):* No minimum speed requirement as gravity assists the descent.
-
-### Respawn Logic
-
-Following a crash, a fair respawn mechanic is necessary. Three options were evaluated:
-
-1. **Respawn at the start line:** *Pros:* Strong penalization. *Cons:* Reduces player interaction by making it exceedingly difficult to catch up.
-2. **Respawn at the exact crash location:** *Pros:* Immediate return to action. *Cons:* Insufficient penalization and introduces the "Looping Problem."
-3. **Respawn at the start of the current module:** *Pros:* Balanced penalization (must re-traverse the module). *Cons:* Also introduces the "Looping Problem."
-
-*The Looping Problem:* Loop modules enforce minimum speeds. Respawning a vehicle at a standstill within a loop guarantees an immediate second crash. The vehicle must be placed far enough back to build sufficient momentum. To resolve this while maintaining balance, Option 3 was selected, coupled with a dynamic fallback system.
-
-If the respawn location (module start) is occupied by another player, placing the vehicle there would cause an immediate collision. The system checks for available positions in the following order:
-
-1. Empty location on the current module, same lane.
-2. Empty location on the current module, different lane.
-3. Empty location on the first module, same lane. (Fallback to previous modules is avoided to prevent respawning inside a loop or directly before the finish line, which could grant an unearned lap completion).
-
-### Audio Engineering Challenges
-
-The audio system aims to enhance gameplay and immersion, requiring real-time responsiveness to player actions. The audio is spatialized across the stereo speakers based on the vehicles' physical positions on the track. Real-time mixing is utilized to play multiple sound effects concurrently.
-
-The soundscape comprises continuous high-frequency engine noise (idle and active) and discrete event sounds (startup, background music, countdown, crash, lane change, lap completion, warnings, game over).
-
-Initially, transmitting audio via the Pi 4's AUX jack produced significant background noise. Switching to a USB audio interface drastically improved signal quality.
-
-Further challenges arose during audio engineering: While isolated audio playback functioned flawlessly, integrating it into the game loop caused sounds to stutter heavily after approximately two seconds.
-
-Internal performance optimizations using NumPy for audio mixing yielded marginal improvements. We resolved this by implementing a threaded architecture to decouple audio playback from the main game logic. New sounds are pushed to a queue processed by a dedicated audio thread. This allows the game loop to maintain real-time execution while the audio thread handles mixing and output asynchronously. Additionally, introducing 1ms sleep intervals within the display logic prevented audio thread starvation, ultimately stabilizing the sound output.
