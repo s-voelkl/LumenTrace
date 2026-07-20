@@ -65,159 +65,177 @@
     \textbf{Conclusion:} 
 \end{abstract}
 
-% HINWEIS: Die Umgebung "IEEEImpStatement" wurde entfernt, da IEEEtran diese nicht unterstützt.
-% Falls du den Text behalten willst, packe ihn einfach als normalen Text oder in die Introduction.
+% NOTE: The "IEEEImpStatement" environment was removed because IEEEtran does not support it.
+% If you want to keep the text, just format it as normal text or include it in the Introduction.
 
 \begin{IEEEkeywords}
     Enter key words or phrases in alphabetical order, separated by commas.
 \end{IEEEkeywords}
 
+
+% \tableofcontents
+
 % =========================================================================
-% TECHNICAL REPORT STRUKTUR: LUMENTRACE (IEEEtran Layout)
+% TECHNICAL REPORT STRUCTURE: LUMENTRACE (IEEEtran Layout)
 % =========================================================================
 
-% -------------------------------------------------------------------------
-% \section{Introduction}
-% -------------------------------------------------------------------------
-\IEEEPARstart{T}{his} technical report documents the design, implementation, 
-and evaluation of LumenTrace, a high-performance MCU-based LED racing simulator. \cite{voelkl:2026lumentrace,kane:2022tire}.
-%
-% \subsection{Context and Goals}
-% % - Einordnung in den "Physical Computing Course" an der OTH Amberg-Weiden.
-% % - Betreuung durch Prof. Dipl.-Des. Martin Frey und Prof. Dr.-Ing. Ulrich Schäfer.
-% % - Ziel: Ablösung des klassischen analogen Slot-Car-Rennens (Carrera GO!) durch 
-% %   eine digitale Echtzeit-Physiksimulation mit immersiven Licht- und Effektsystemen.
-%
-% \subsection{Document Outline}
-% % - Kurzer Überblick über den Aufbau des Berichts (Architektur, Mechanik, Hardware-Bottlenecks, Multimedia, Validierung).
+\section{Introduction}
+\IEEEPARstart{T}{his} technical report... \cite{voelkl:2026lumentrace}
+% introduction. also states the most relevant abbreviations and acronyms used in the report.
 
 
-% -------------------------------------------------------------------------
-% \section{System Architecture and Hardware Design}
-% -------------------------------------------------------------------------
-% % - Überblick über die verteilte Hardware-Architektur (Distributed Architecture).
-% % - Warum die Aufteilung? (Lasttrennung, Echtzeit-Garantie).
-%
-% \subsection{Core Host Unit (Raspberry Pi 4)}
-% % - Aufgaben: Hauptanwendung (src.rpi_4.main), Spiellogik, Physik-Ticks, LED-Buffer, 
-% %   Threaded Audio-Mixer, System-Protokollierung.
-% % - Infrastruktur: Docker-Umgebung zur Isolation und Absicherung von Hardware-Zugriffen (GPIO, UART, Audio).
-%
-% \subsection{Input MCU (Raspberry Pi Pico)}
-% % - Aufgaben: MicroPython-Firmware (src.rpi_pico.main), permanentes, latenzfreies Auslesen 
-% %   der analogen Controller (ADCs für Throttle) und digitalen Taster (Lane Change / Start).
-%
-% \subsection{Communication Interface}
-% % - High-Speed-UART-Verbindung zwischen Pico und Pi 4.
-% % - Serialisiertes Datenformat zur Entlastung des Pi 4 Hosts vom Polling-Overhead.
+\subsection{Context and Goals}
+% - Goal: Replacement of the classic analog slot car racing (Carrera GO!) with 
+%   a digital real-time physics simulation featuring immersive lighting and effect systems.
+
+\subsection{Motivation and Contributions}
+% - Why replace classic slot cars with LEDs? (Immersion, flexibility, hardware wear).
+% - What makes LumenTrace special? (true physics model on an LED basis, sound design, immersive lighting effects, expandability).
+% Hero photograph of the full setup (SideView1.jpg) with caption.
+
+\subsection{Document Outline}
+% - Brief overview of the report's structure.
 
 
-% -------------------------------------------------------------------------
-% \section{Software Architecture and Concurrency}
-% -------------------------------------------------------------------------
-% % - OOP-Design der Python-Codebasis.
-%
-% \subsection{Modular Package Design}
-% % - Kurzbeschreibung der Paketstruktur zur Separation of Concerns:
-% %   `Game`, `Simulation`, `Logger`, `Controller`, `Display`, `Sound`.
-%
-% \subsection{Thread Isolation and GIL Mitigations}
-% % - Das Problem des Global Interpreter Locks (GIL) bei rechenintensiven Multithreading-Anwendungen.
-% % - Lösung: Strikte Trennung des zeitkritischen Physik-Schleifen-Threads (`GameTickThread`) 
-% %   von Peripherie-Treiber-Aufrufen und dem Audio-System.
+\section{Related Work}
+
+% - What similar approaches already exist? (e.g., open-source LED strips games, commercial digital slot car systems like Scalextric/Carrera Digital)
+% These sources are provided in the references section. TODO!
 
 
-% -------------------------------------------------------------------------
-% \section{Real-Time Physics and Game Mechanics}
-% -------------------------------------------------------------------------
-% % - Mathematische Modellierung des Rennverhaltens.
-%
-% \subsection{Acceleration, Friction, and Speed Updates}
-% % - Input-Mapping: Skalierung der ADC-Werte [42000, 65536] via linearer Interpolation auf [0, 100].
-% % - Kontinuierliche prozentuale Dämpfung durch Reibung (Friction).
-% % - Geschwindigkeits-Update pro Tick und Clamping auf Max-Speed-Grenzwerte.
-%
-% \subsection{Proportional Lane-Change Trajectories}
-% % - Logik des Spurwechsels über die temporäre Mittellinie auf Kreuzungsmodulen (`lane_change_allowed`).
-% % - Erhaltung des relativen Positionsfortschritts beim Spurwechsel via Verhältnisrechnung:
-% %   progress = source_position / source_line_length
-% %   target_position = progress * target_line_length
-% % - Automatisches Zurückleiten am Modurende via `lane_change_window`.
-%
-% \subsection{Collision Detection and Multi-Stage Respawn Algorithm}
-% % - Kollisionsprüfung über Distanzmatrizen auf derselben Spur (`__vehicle_crash_distance`).
-% % - Algorithmus bei Abflug/Sturz: Inaktivität für `respawn_ticks`.
-% % - Multi-Stage-Verfahren beim Wiederaufsetzen: Schleifenvermeidung (Looping-Modul-Check), 
-% %   Freiprüfung der Zielspuren, stufenweiser Fallback auf vorherige Streckenmodule.
+\section{System Requirements and Architecture}
+
+\subsection{System Requirements}
+% - Initial project requirements
+% - Functional and non-functional system requirements (e.g., real-time capability, 50fps rendering). keep it short.
+
+\subsection{High-Level Architecture}
+% - Overview of the distributed hardware architecture. -> System Architecture Block Diagram
+% - Separation of game logic (RPi), controller inputs and LED rendering (Pico).
+% - Why the separation? (Load balancing, real-time guarantee).
 
 
-% -------------------------------------------------------------------------
-% \section{Hardware Integration and Resource Bottlenecks}
-% -------------------------------------------------------------------------
-% % - Dokumentation von kritischen Systemengpässen während der Entwicklung.
-%
-% \subsection{Initial DMA and Peripheral Conflicts}
-% % - Analyse des Fehlversuchs: 4 separate PixelStrips für Spieler-Matrizen (GPIO 10, 21) und Schienen (GPIO 18, 19).
-% % - Ursache: DMA-Register-Kollisionen (`mmap() failed`) und Treiber-Limitierung des rpi_ws281x C-Treibers auf max. 2 Kanäle.
-%
-% \subsection{Chained Single-Driver Architecture (The Solution)}
-% % - Die Lösung: Physische Verkettung (Data Out der Schienenstreifen an Data In der 8x8-Matrizen).
-% % - Reduzierung der physischen Steuerleitungen auf 2 Kanäle (GPIO 18 & 19).
-% % - Softwareseitiges Mapping durch Adress-Offsetting via `VirtualLedStrip` ohne Hardware-Reinitialisierung.
+\section{Hardware Implementation}
+
+\subsection{Microcontroller Setup}
+% - Raspberry Pi Pico as input MCU: MicroPython firmware, permanent and latency-free reading of analog controllers and digital buttons.
+% - Raspberry Pi 4 as core host: main application, game logic, physics ticks, LED display buffers, threaded audio mixer.
+% -> Hardware diagram
+
+\subsection{Communication Interface}
+% - High-speed UART connection between Pico and Pi 4.
+% - Serialized data format to relieve the Pi 4 host from polling overhead.
+% JSON listing of the sent data structure:
+% {
+%   "controllers": [
+%     {
+%       "controller_id": 1,
+%       "adc_0": 45230,
+%       "dig_0": 1
+%     },
+%     {
+%       "controller_id": 2,
+%       "adc_0": 59150,
+%       "dig_0": 0
+%     }
+%   ]
+% }
 
 
-% -------------------------------------------------------------------------
-% \section{Multimedia Subsystems: LED Control and Audio Engineering}
-% -------------------------------------------------------------------------
-%
-% \subsection{Priority-Based LED Rendering Hierarchy}
-% % - Schichtenmodell des DisplayManagers (Low Priority -> High Priority):
-% %   1. Gleis-Basisbeleuchtung (gedimmt)
-% %   2. Kreuzungsmarkierung (Pink)
-% %   3. Start/Ziellinie
-% %   4. Runden-Blinkeffekte (Yellow/White)
-% %   5. Respawn-Blinken
-% %   6. Aktives Fahrzeug-Sprite (Farbinterpolation nach Geschwindigkeit)
-% %   7. Scheinwerfer (Beschleunigung) / Bremslichter (Verzögerung).
-%
-% \subsection{Vectorized Live Stereo Audio Mixer}
-% % - Low-Level Sound-Manager (`src/sound/sound_manager.py`).
-% % - NumPy-Vektorisierung zur Performance-Optimierung (Vermeidung von Schleifen und np.cumsum, 
-% %   Block-Updates über schnelle Skalar-Operationen).
-% % - Dynamische Echtzeit-Effekte: Pitch-Shifting (Drehzahl) und Stereo-Panning basierend auf Schienen-Positions-Verhältnissen.
-%
-% \subsection{Asynchronous Command Queue for Audio}
-% % - Thread-sichere Entkopplung über `ThreadedSoundManager`.
-% % - Caller-Threads blockieren nicht; Kommandos werden als feuerbereite FIFO-Tuples (mit UUIDs) an einen 
-% %   Hintergrund-`SoundWorkerThread` übergeben.
+\subsection{Physical Design and Controllers}
+% - Mechanical setup: wooden board, vehicles, modified Carrera GO! track modules.
+% - Signal engineering & controller construction.
+% - 3D-printed components: cases for sound boxes, controllers, etc.
 
 
-% -------------------------------------------------------------------------
-% \section{Physical Design and Simulation Environment}
-% -------------------------------------------------------------------------
-%
-% \subsection{Track Design and Aesthetics}
-% % - Mechanischer Aufbau: Schwarze Holzplatte (150cm x 80cm), besprüht mit Neon-Farbeffekten.
-% % - Modifizierte Carrera GO! Schienenmodule. Retro-futuristische Blau-Violett-Ästhetik.
-%
-% \subsection{3D-Printed Components}
-% % - Eigens in Blender/Fusion 360 modellierte Gehäuse zur Integration der Sound-Boxen und optischen Aufwertungen.
-%
-% \subsection{Hardwareless Simulation Dashboard and Unit Testing}
-% % - Der ASCII-basierte Live-Simulator (`src/dev/simulation.py`) zur Telemetrie-Überwachung 
-% %   ohne angeschlossene Hardware-Peripherie. Validierung über automatisierte Unittests.
+\section{Software Implementation and Game Mechanics}
+
+\subsection{Software Architecture}
+% - OOP design of the Python codebase. -> software architecture diagram
+% - Modular package design (`Game`, `Simulation`, `Logger`, `Controller`, `Display`, `Sound`).
+% - Thread isolation and GIL mitigations: Strict separation of the physics loop thread from peripheral driver calls.
+
+\subsection{Controller Inputs and Speed Calculation}
+% - Input mapping: scaling the ADC values [42000, 65536].
+% - Continuous dampening due to friction.
+% - Speed update per tick and clamping to max-speed limits.
+
+\subsection{Physics}
+% - Logic of lane changing over the temporary center line.
+% - Preservation of relative position progress during lane changes.
+% - Collision detection via distance matrices on the same lane.
+% - Multi-stage procedure when resetting after a crash.
+
+\subsection{Deployment}
+% - running on a docker container on the RPi4 for reproducibility and easy deployment.
+
+\subsection{Hardwareless Simulation Interface}
+% - The ASCII-based live simulator (`src/dev/simulation.py`).
+% - Essential logic validation before flashing.
 
 
-% -------------------------------------------------------------------------
-% \section{Conclusion and Future Work}
-% -------------------------------------------------------------------------
-% % - Fazit: Erfolgreiche Umsetzung eines hochperformanten, latenzfreien Simulators. Robustes Hardware-Chaining.
-% % - Ausblick: Integration autonomer KI-Gegner (Ghost Cars), App-Anbindung, drahtlose Controller-Anbindung via ESP32.
+\section{Multimedia Subsystems: LED Control and Audio}
 
-% --- Literaturverzeichnis (References) ---
+\subsection{Hardware Integration and Resource Bottlenecks}
+% - Initial DMA and peripheral conflicts: Analysis of the failed attempt (DMA collisions).
+% - Chained single-driver architecture: Physical daisy-chaining (Data Out to Data In), software-based mapping via `VirtualLedStrip`.
 
-% Der Befehl \balance sorgt dafür, dass die zwei Spalten auf der letzten 
-% Seite sauber auf gleicher Höhe abschließen. Un-kommentieren, sobald der Text fertig ist!
+\subsection{Priority-Based LED Rendering}
+% - Layer model of the DisplayManager (Low Priority -> High Priority).
+
+\subsection{Real-Time Audio Mixer}
+% - Vectorized live stereo audio mixer: NumPy vectorization for performance optimization.
+% - Asynchronous command queue for audio: Thread-safe decoupling via `ThreadedSoundManager`.
+
+
+\section{Project Management}
+
+% - Definition of milestones.
+% - Task distribution in the team (Simon Völkl, Erik Dombrowsky, Simon Frey).
+% - Tools and methods 
+
+
+\section{Evaluation}
+
+\subsection{Performance Analysis}
+% - How fast does the game loop run? (e.g., Python performance on the RPi4).
+% controller inputs: 50Hz, display updates: 33Hz, game and physics ticks: 50Hz. No problems with the GIL.
+% Activating the logging, leads to performance drops when log messages are sent and small lag spikes for the whole process, so this should be
+% disabled in production use. The logging is only used for debugging and development purposes.
+
+\subsection{Latency}
+% - Delay between button press on the controller via Pico to RPi and back to LED update. Can be calculated from the information above. Keep in mind that roughly every 20th to 50th UART controller transmission fails.
+
+\subsection{User Experience and Feedback}
+% - How do the users perceive the game? Very immersive with the styling and sound design. 
+% - Feedback from test players and observers
+% % - The speed limits were too abrupt, so we smoothened them out.
+% % - Some sounds were too loud (e.g. motor sound), so adjustments were made to the volume levels.
+% % - Irregular players could touch the track, so hardware had to be secured and protected better.
+
+\subsection{Challenges and Limitations}
+% TODO!
+
+
+\section{Conclusion and Future Work}
+
+% - Conclusion: Summary of achievements. Successful implementation of a high-performance, latency-free simulator.
+% - Future work: The following enhancements could be implemented in the future:
+% % - Physical controllers with vibration module for haptic feedback
+% % - Display of MQTT telemetry data on web panel
+% % - Special abilities outside overtaking lanes (e.g., nitro, fireball, etc.)
+% % - Collectible coins
+% % - Game modes and environmental effects (storm, rain, etc.)
+% % - AI opponents using reinforcement learning
+% % - Additional ambience effects (3D-printed components, headlights, sound in modules, etc.)
+% % - Custom modules for independence from Carrera track system (branching paths, etc.)
+% % - Smoothed speed limits to prevent abrupt collisions
+% % - Business case development
+
+% --- References ---
+
+% The \balance command ensures that the two columns on the last
+% page end cleanly at the same height. Uncomment as soon as the text is finished!
 % \balance 
 
 \bibliographystyle{IEEEtran}
