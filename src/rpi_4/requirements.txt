@@ -2,9 +2,8 @@ pyserial
 RPi.GPIO
 rpi-ws281x
 pytest
-paho-mqtt
-pytest
 pytest-cov
+paho-mqtt
 numpy
 sounddevice
 soundfile
