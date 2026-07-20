@@ -1,0 +1,25 @@
+@startuml
+'!theme plain
+skinparam componentStyle uml2
+'skinparam linetype ortho
+
+actor "User" as user
+node "Player Controller" as controller
+node "Raspberry Pi Pico" as pico
+node "Raspberry Pi 4" as rpi4
+
+node "Internal Game State" as game
+node "LED Matrizes" as matrices
+node "LED Strips" as leds
+node "Stereo Sound Devices" as speakers
+
+user --> controller : Controlls
+controller --> pico : Connected via cable
+pico --> rpi4 : Sends data
+
+rpi4 --> game : Updates
+rpi4 --> leds : Displays
+rpi4 --> speakers : Plays sounds
+rpi4 --> matrices : Shows rounds
+
+@enduml

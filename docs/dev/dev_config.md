@@ -2,9 +2,9 @@
 
 ## Setup
 
-Python 3.14 empfohlen.
+Python 3.14 is recommended.
 
-Requirements von src/dev/requirements.txt installieren, bestenfalls in eigener virtuellen Umgebung:
+Install dependencies from src/dev/requirements.txt, preferably in a dedicated virtual environment:
 
 ```bash
 python3 -m venv venv
@@ -14,5 +14,5 @@ pip install -r src/dev/requirements.txt
 
 ## HiveMQ Logs
 
-MQTT Logs mit den Nutzerdaten aus src/logger/credentials.json:
+MQTT logs using the credentials from src/logger/credentials.json:
 https://console.hivemq.cloud/clusters/61775de8f674480cae63ae7690a8ffae/web-client

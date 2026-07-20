@@ -1,0 +1,95 @@
+@startuml
+'!theme plain
+'skinparam componentStyle uml2
+
+package "Controller (Transmit)" {
+  [SignalTransmitter]
+  [PhysicalController]
+}
+
+package "Controller (Receive)" {
+  [ISignalReceiver]
+  [SignalReceiver]
+  [PlayerController]
+}
+
+package "Game Engine" {
+  [Game] as GameMain
+  [Settings]
+  [Player]
+  [Vehicle]
+  [TrackModule]
+  [Line]
+  [Lane]
+  [DrivingProfile]
+
+  GameMain *-- [Settings]
+  GameMain *-- [Player]
+  GameMain *-- [TrackModule]
+  [Player] *-- [Vehicle]
+  [TrackModule] *-- [Line]
+  [Line] *-- [DrivingProfile]
+  [Line] o-- [Lane]
+}
+
+package "Display" {
+  [DisplayManager]
+  [LedDisplay]
+  [ColorConstants]
+  [Config]
+  [RoundCounter]
+}
+
+package "Sound" {
+  [ThreadedSoundManager]
+  [SoundManager]
+  [MotorSound]
+}
+
+package "Logger" {
+  [MultiLogger]
+  [PyLogger]
+  [MqttLogger]
+}
+
+package "Simulation" {
+  [Orchestrator]
+  [SignalReceiver] as SimulationSignalReceiver
+  [TerminalRenderer]
+}
+
+package "Entry Point" {
+  [Main]
+}
+
+[Main] --> GameMain : Initializes
+[Main] --> [DisplayManager] : Displays
+[Main] --> [RoundCounter] : Displays
+[Main] --> [ThreadedSoundManager] : Plays sounds
+[Main] --> [MultiLogger] : Logs
+
+[PhysicalController] --> [SignalTransmitter] : ADC / digital inputs
+[SignalTransmitter] --> [SignalReceiver] : UART Signal
+[ISignalReceiver] <|.. [SignalReceiver]
+
+[PlayerController] --> [Vehicle] : Updates state
+
+[DisplayManager] --> [LedDisplay] : Virtual Buffers (RGB)
+[DisplayManager] *-- [Config] : Configurations
+[DisplayManager] *-- [ColorConstants] : Colors
+
+
+[ThreadedSoundManager] *-- [SoundManager]
+[SoundManager] *-- [MotorSound]
+
+[MultiLogger] *-- [PyLogger]
+[MultiLogger] *-- [MqttLogger]
+
+[Orchestrator] --> [TerminalRenderer] : Renders State
+[Orchestrator] *-- SimulationSignalReceiver : Uses
+
+' Layout positioning
+MotorSound -[hidden]down-> Orchestrator
+DrivingProfile -[hidden]down-> PhysicalController
+DrivingProfile-[hidden]down-> PlayerController
+@enduml

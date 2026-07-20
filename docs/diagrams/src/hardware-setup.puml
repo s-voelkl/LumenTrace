@@ -1,0 +1,76 @@
+@startuml
+!theme plain
+'skinparam linetype ortho
+
+node "Player 1 Controller" as P1_Ctrl {
+  port "Throttle (Analog)" as P1_A
+  port "Button (Digital)" as P1_D
+}
+node "Player 2 Controller" as P2_Ctrl {
+  port "Throttle (Analog)" as P2_A
+  port "Button (Digital)" as P2_D
+}
+
+node "Raspberry Pi Pico (Input MCU)" as Pico {
+  port "ADC0 (Pin 26)" as pADC1
+  port "GP21 (IN)" as pD1
+  port "ADC1 (Pin 27)" as pADC2
+  port "GP20 (IN)" as pD2
+  port "UART0 TX (Pin 0)" as pTX
+  port "UART0 RX (Pin 1)" as pRX
+}
+
+node "Raspberry Pi 4 (Core Host)" as RPi4 {
+  port "Audio Out (USB)" as rAudio
+  port "GPIO 18 (PWM0)" as rGPIO18
+  port "GPIO 19 (PWM1)" as rGPIO19
+  port "UART RX" as rRX
+  port "UART TX" as rTX
+}
+
+node "Output Devices" {
+  node "Stereo Speakers" as Speakers
+
+  node "Round Counter 0 (8x8 LED Matrix)" as Matrix0
+  node "Track 0 LED Strip (WS2812B)" as Track0
+  node "Intersection 0 LED Strip (WS2812B)" as Intersection0
+  
+  node "Round Counter 1 (8x8 LED Matrix)" as Matrix1
+  node "Track 1 LED Strip (WS2812B)" as Track1
+  node "Intersection 1 LED Strip (WS2812B)" as Intersection1
+}
+
+' --- Connections ---
+pTX --> rRX : Serial Data
+'pRX <-[norank]- rTX : Unused
+
+P1_A --> pADC1 : Speed Resistor
+P1_D --> pD1 : Special Button
+P2_A --> pADC2 : Speed Resistor
+P2_D --> pD2 : Special Button 
+
+rAudio --> Speakers : Stereo Audio
+rGPIO18 --> Matrix0 : Data In
+rGPIO19 --> Matrix1 : Data In
+
+Matrix0 --> Track0 : DOUT -> DIN
+Track0 --> Intersection0 : Signal
+
+Matrix1 --> Track1 : DOUT -> DIN
+Track1 --> Intersection1 : Signal
+
+' --- Layout Ordering Constraints ---
+'PlayerControllers
+P1_D -[hidden]right-> P2_A
+
+'Pico
+P1_D -[hidden]down-> Pico
+P2_A -[hidden]down-> Pico
+
+'Pi 4
+'Pico -[hidden]down-> RPi4
+pTX -[hidden]down-> rRX
+
+' Output
+RPi4 -[hidden]down-> "Output Devices"
+@enduml
