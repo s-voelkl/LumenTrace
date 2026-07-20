@@ -190,9 +190,79 @@
 
 \section{Project Management}
 
-% - Definition of milestones.
-% - Task distribution in the team (Simon Völkl, Erik Dombrowsky, Simon Frey).
-% - Tools and methods 
+The LumenTrace project was executed by a three-person team, with each member contributing to different aspects of the project. 
+The lead developers for each component are indicated in~\Cref{tab:task_distribution}, while a reviewer was assigned to each task to ensure hardware and software quality. 
+
+The development of LumenTrace followed an incremental path, prioritizing a basic architecture and core functionality before implementing additional features and working on enhancements. 
+The project was structured into four distinct milestones to manage dependencies and verify integration at each phase.
+
+\begin{itemize}
+    \item \textbf{Milestone 1: Proof of Concept (POC):}
+          Establishment of the physical Carrera GO!~\cite{carrera:2026carrera} track, development of Raspberry Pi Pico firmware using MicroPython, implementation of analog controller input reading, establishment of UART serial communication, and design of the JSON-based data serialization and parsing.
+
+    \item \textbf{Milestone 2: Base Game Implementation:}
+          Software architecture with modular packages, core physics engine with acceleration, friction, and speed clamping, vehicle lane management and position tracking, collision detection via distance metrics, multithreaded game loop architecture, LED strip control, display rendering pipeline with priority-based layer system, modular track design with individual driving profiles, settings system, unit testing framework, and centralized logging via file and MQTT interfaces.
+
+    \item \textbf{Milestone 3: Enhancements and Feature Expansion:}
+          Advanced physics for lane changes, respawn system, intersection modules, virtual LED strip abstraction for hardware constraint resolution, round counters, vehicle lighting effects including headlights, rear brake lights, and identification lights, real-time vectorized stereo audio mixer with volume and stereo panning controls, threaded sound manager, per-vehicle engine sounds with speed-responsive pitch, event-driven sound effects, Docker containerization, 3D-printed controller enclosures and component styling, and performance optimization to prevent thread starvation.
+
+    \item \textbf{Milestone 4: Documentation and Finalization:}
+          Comprehensive technical report with architecture diagrams and system analysis, usage guides, technical report documentation, and project preparation for submission.
+\end{itemize}
+
+The division of responsibilities between the three team members is outlined in~\Cref{tab:task_distribution}. In general, Simon Völkl focused on the software implementation, Erik Dombrowsky concentrated on the hardware wiring and physical setup, while Simon Frey contributed mainly to the 3D printing and styling of the components. 
+
+\begin{table*}[htb]
+    \centering
+    \caption{Task Distribution Matrix}
+    \label{tab:task_distribution}
+    \footnotesize
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabularx}{0.68\linewidth}{p{2.5cm} p{4.5cm} c c c}
+        \toprule
+        \textbf{Milestone} & \textbf{Task} & \textbf{S. Völkl} & \textbf{E. Dombrowsky} & \textbf{S. Frey} \\
+        \midrule
+        \multirow{5}{2.5cm}{\textbf{M1: POC}}
+            & Physical Track Setup & Lead & Lead & - \\
+            & Controller Modification & Review & Lead & - \\
+            & Pico Setup & Review & Lead & - \\
+            & JSON Schema Serialization & Lead & Lead & - \\
+            & JSON Schema Parsing & Lead & Review & - \\
+            & Microcontroller Wiring with UART & Review & Lead & - \\
+        \midrule
+        \multirow{11}{2.5cm}{\textbf{M2: Base Game}}
+            & Software Architecture & Lead & Review & - \\
+            & Logging & Lead & Review & - \\
+            & Unit Testing & Lead & - & - \\
+            & Console Simulation & Lead & - & - \\
+            & Physics Engine & Lead & Review & - \\
+            & Track Modules with Driving Profiles & Lead & Lead & Lead \\
+            & Settings System & Lead & Review & - \\
+            & Vehicle Lane Management & Lead & Review & Review \\
+            & Collision Detection & Lead & Review & - \\
+            & Multithreading & Lead & Review & - \\
+            & LED Strip Control & Lead & Lead & Lead \\
+        \midrule
+        \multirow{12}{2.5cm}{\textbf{M3: Enhancements}}
+            & Advanced Physics & Lead & Review & Review \\
+            & Respawn System & Lead & Review & Review \\
+            & Physical Intersection Modules & Review & Lead & - \\
+            & Virtual LED Strips & Lead & Review & - \\
+            & Round Counter Wiring & Review & Lead & Lead \\
+            & Round Counter Logic & Lead & Review & - \\
+            & Vehicle Lighting Effects & Lead & Review & Review \\
+            & Sound Samples & Lead & Lead & Lead \\
+            & Sound Engineering & Lead & Lead & - \\
+            & Docker Containerization & Lead & - & - \\
+            & 3D Printing/Styling & - & Lead & Lead \\
+        \midrule
+        \multirow{2}{2.5cm}{\textbf{M4: Documentation}}
+            & Technical Report & Lead & Review & Review \\
+            & Presentation Preparation & Lead & Lead & Review \\
+            & Usage Guides & Lead & - & - \\
+        \bottomrule
+    \end{tabularx}
+\end{table*}
 
 
 \section{Evaluation}
@@ -212,9 +282,13 @@
 % % - The speed limits were too abrupt, so we smoothened them out.
 % % - Some sounds were too loud (e.g. motor sound), so adjustments were made to the volume levels.
 % % - Irregular players could touch the track, so hardware had to be secured and protected better.
+% % - The current dependence on the Carrera GO! track system is a limitation, so custom modules should be developed.
 
 \subsection{Challenges and Limitations}
-% TODO!
+% if there are any left-over challenges or limitations, they should be mentioned here. 
+
+\subsection{Cost Analysis}
+% - Cost of the hardware components (Raspberry Pi 4, Raspberry Pi Pico, LED strips, Carrera GO! track modules, 3D-printed parts, etc.).
 
 
 \section{Conclusion and Future Work}
