@@ -140,7 +140,7 @@ Initially, the round counters were configured on separate physical control lines
 > [!CAUTION]
 > **Failed Attempt:** This setup failed due to several hardware and library-level constraints:
 >
-> - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping > failures (`mmap() failed`).
+> - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping failures (`mmap() failed`).
 > - **Peripheral Clashes**: The underlying `rpi_ws281x` C driver cannot mix PWM, SPI, and PCM peripherals concurrently in the same process space.
 > - **Channel Caps**: The driver structure is hardware-capped at 2 active physical channels.
 
