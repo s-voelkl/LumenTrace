@@ -334,7 +334,7 @@ Sensor measurement transmission must be trustful [voelkl:2026sensiq] for the sys
 The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components [voelkl:2026bitebound]. In general, the physical design is based on the following components:
 
 - A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with *blue*, *purple* and *white* colors for a visually appealing background. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape for transportability. The loop module was additionally reinforced with fishing line to reduce vibrations and prevent fractures.
-- [Carrera GO!](https://carrera-toys.com/en) track modules for the physical track layout.
+- Carrera GO! [carrera:2026carrera] track modules for the physical track layout.
 - 2 LED Stripes (WS2812B) for the track lighting and visual effects, mainly in light purple and gray.
 - 2 Vehicles in strong blue and purple colors.
 - 2 LED Matrizes for round counting in the colors of the vehicles.
