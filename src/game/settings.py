@@ -10,7 +10,8 @@ class Settings:
         lane_change_window: float = 20.0,
         vehicle_crash_distance: float = 5.0,
         rounds_to_win: int = 20,
-        directional_vehicle_lights: bool = True
+        vehicle_light_front: bool = True,
+        vehicle_light_rear: bool = True,
     ):
         self.__max_speed = max_speed if max_speed > 0 else 100.0
         self.__min_acceleration = min_acceleration if min_acceleration < 0 else -100.0
@@ -27,7 +28,8 @@ class Settings:
             vehicle_crash_distance if vehicle_crash_distance > 0 else 5.0
         )
         self.__rounds_to_win = rounds_to_win if rounds_to_win > 0 else 20
-        self.__directional_vehicle_lights = directional_vehicle_lights
+        self.__vehicle_light_front = vehicle_light_front
+        self.__vehicle_light_rear = vehicle_light_rear
 
     # Getters
     @property
@@ -67,5 +69,9 @@ class Settings:
         return self.__rounds_to_win
     
     @property
-    def directional_vehicle_lights(self) -> bool:
-        return self.__directional_vehicle_lights
+    def vehicle_light_front(self) -> bool:
+        return self.__vehicle_light_front
+    
+    @property
+    def vehicle_light_rear(self) -> bool:
+        return self.__vehicle_light_rear
