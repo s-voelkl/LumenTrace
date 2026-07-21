@@ -61,7 +61,7 @@
 
 \begin{abstract}
     % \textbf{Background:} 
-    Classic slot car systems offer an engaging tactile racing experience, yet they remain bound to physical vehicles on mechanical rails and treat light and sound as secondary embellishments, whereas minimalist LED racers reduce gameplay to button pressing and omit realistic physics, spatial audio and advanced track features.
+    Classic slot car systems offer an engaging tactile racing experience, yet they remain bound to physical vehicles on mechanical rails and treat light and sound as secondary embellishments. Simultaneously, minimalist LED racers reduce gameplay to button pressing and omit realistic physics, spatial audio and advanced track features.
     % \textbf{Objective:} 
     LumenTrace aims to unite the physical realism and playability of slot cars with the mechanical simplicity and immersive, state-driven audiovisual feedback that individually addressable LEDs make possible.
     % \textbf{Methods:} 
@@ -124,12 +124,12 @@ LumenTrace sits at the intersection of two established domains: commercial slot 
 
 Commercial systems have steadily added electronics while keeping physical cars on mechanical rails. Carrera Hybrid~\cite{carrera:2026hybrid} pushes toward a more digitalized and realistic racing simulation with collisions, overtaking, and modular track assembly. Carrera Digital~132~\cite{carrera:2026digital} offers button-triggered lane changes, lap counters, start lights, driver displays, and wireless controllers, but the vehicles remain fully physical rather than simulated. Scalextric ARC~PRO~\cite{scalextric:2026arc} adds an app-based interface with pit stops, lap-time tracking, weather conditions, and multiple race modes, while reducing the controller to a brake and a lane-change button. Anki Overdrive~\cite{anki:2026overdrive} abandons fixed slots in favor of app-controlled autonomous cars on magnetically connectable, modular track segments.
 
-Across these systems, light and sound serve as secondary embellishments rather than integral gameplay elements. Many hobbyist Carrera GO!!!~\cite{carrera:2026carrera} layouts add track-side lighting such as traffic signals, small LCD readouts, or vehicle head- and tail-lights, yet these effects are neither integrated into the race flow nor used to illuminate the lanes themselves. The Carrera GO!!! Light and Sound Looping Set~\cite{carrera:2026light} is representative: roughly 16~LEDs on each side of the loop blink red and white as a car passes, accompanied by a fixed engine sound effect. Both the blinking and the sound are static and remain decoupled from the actual vehicle speed. Even in the most digital products, audio is dominated by the mechanical friction noise of the miniature cars and is limited to short indicator cues at the start and on completing a lap.
+Across these systems, light and sound serve as secondary embellishments rather than integral gameplay elements. Many hobbyist Carrera GO!!!~\cite{carrera:2026carrera} layouts add track-side lighting such as traffic signals, small LCD readouts, or vehicle head- and tail-lights, yet these effects are neither integrated into the race flow nor used to illuminate the lanes themselves. The Carrera GO!!! Light and Sound Looping Set~\cite{carrera:2026light} is representative: roughly 16~LEDs on each side of the looping blink red and white as a car passes, accompanied by a fixed engine sound effect. Both the blinking and the sound are static and remain decoupled from the actual vehicle speed. Even in the most digital products, audio is dominated by the mechanical friction noise of the miniature cars and is limited to short indicator cues at the start and on completing a lap.
 
 \subsection{LED-Based Projects and Racing Games}
 \label{subsec:led-based-projects-and-racing-games}
 
-A parallel line of work explores addressable LED strips as minimalist, one-dimensional game displays driven by simple controllers. Line Wobbler~\cite{baumgarten:2023line} is an award-winning one-dimensional dungeon crawler whose custom controller consists of a spring and a circa \SI{5}{\meter} LED strip; it has been widely exhibited in museums and has inspired follow-up projects such as the Arduino-based crawler TWANG~\cite{critters:2023twang}. These titles demonstrate the appeal of novel input mechanics and physical space, yet they remain single-player experiences without competitive racing elements. 
+A parallel line of work explores addressable LED strips as minimalist, one-dimensional game displays driven by simple controllers. Line Wobbler~\cite{baumgarten:2023line} is an award-winning one-dimensional dungeon crawler whose custom controller consists of a spring and a circa \SI{5}{\meter} LED strip; it has been widely exhibited in museums and has inspired follow-up projects such as the Arduino-based crawler TWANG~\cite{critters:2020twang}. These titles demonstrate the appeal of novel input mechanics and physical space, yet they remain single-player experiences without competitive racing elements. 
 
 The most directly related project is the open-source Open LED Race (OLR) developed since 2019~\cite{pereira:2023applying}. OLR simulates a slot car track on a WS2812/WS2813 strip, representing each player as a colored light that advances by one acceleration pulse per button press, and supports up to four cars with optional slopes and gravity, a pit lane, and an electric-car mode requiring recharging~\cite{openledrace:2023article,openledrace:2025project}. The project has evolved through numerous community forks: extended gravity, sound, and lighting effects~\cite{arminjo:2025open}, a layout with 3D-printed track elements focussing on design~\cite{hackerspace:2024open}, an added 16\,$\times$\,16 LED matrix display~\cite{framboise:2024open}, a TinyGo reimplementation~\cite{esteban:2019ledrace}, and wireless ESP-based remote controllers~\cite{gmag11:2020ledrace}.
 
@@ -147,7 +147,7 @@ The system requirements define both functional capabilities and non-functional p
 
 \subsubsection*{Functional Requirements}
 
-The initial project scope centered on developing a mechanics-free digital slot car racing system with a real-time control system, individually addressable red, green, and blue (RGB) LED strips for track and vehicle visualization, basic sounds, and utilizing the Raspberry Pi Pico \SI{2}{\watt} microcontroller with PIO. Additionally, emphasis on design and playability was laid out to ensure an engaging user experience.
+The initial project scope centered on developing a mechanics-free digital slot car racing system with a real-time control system, individually addressable red, green, and blue (RGB) LED strips for track and vehicle visualization, basic sounds, and utilizing the Raspberry Pi Pico~2W microcontroller with PIO. Additionally, emphasis on design and playability was laid out to ensure an engaging user experience.
 
 \subsubsection*{Non-Functional Requirements}
 
@@ -224,7 +224,7 @@ At an update rate of \SI{50}{\hertz}, the protocol tolerates sporadic transmissi
 \label{subsec:physical-design-and-controllers}
 
 The physical setup is built on a black wooden base plate of \SI{150}{\centi\meter}~$\times$~\SI{80}{\centi\meter}, spray-painted in blue, purple, and white to create a retro-futuristic backdrop. 
-The track layout reuses Carrera~GO!!!~\cite{carrera:2026carrera} track modules, along with two \SI{5}{\meter} highly diffusing LED strips carrying \num{50} LEDs per meter (\num{250} LEDs in total), to visualize the lanes, vehicles and intersections. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape to preserve transportability, and the loop module was additionally reinforced with fishing line to prevent fractures.
+The track layout reuses Carrera~GO!!!~\cite{carrera:2026carrera} track modules, along with two \SI{5}{\meter} highly diffusing LED strips carrying \num{50} LEDs per meter (\num{250} LEDs in total), to visualize the lanes, vehicles and intersections. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape to preserve transportability, and the looping module was additionally reinforced with fishing line to prevent fractures.
 
 The original Carrera~GO!!! hand controllers were modified from their built-in variable resistors into signal sources for the Pico. Each throttle is wired as a voltage divider feeding one of the Pico's ADC channels, yielding the raw analog value transmitted as \texttt{adc\_0}, while an added push button provides the digital lane-change signal (\texttt{dig\_0}). 
 
@@ -256,15 +256,19 @@ The latency-critical physics thread is strictly separated from the peripheral dr
 \subsection{Controller Inputs and Speed Calculation}
 \label{subsec:controller-inputs-and-speed-calculation}
 
-Each \SI{20}{\milli\second}, the raw analog throttle value \texttt{forwardPress} reported by the Pico is mapped to a vehicle acceleration through linear interpolation~\cite{zheng:2018feature}, scaling the input range $[42000, 65536]$ onto the output range $[0, 100]$ of the acceleration \(a\):
-
+Each \SI{20}{\milli\second}, the raw analog throttle value forwardPress reported by the Pico is mapped to a vehicle acceleration through linear interpolation~\cite{zheng:2018feature}, scaling the input range $[42000, 65536]$ onto the output range $[0, 100]$ of the acceleration \(a\):
 \begin{equation}
     a(\text{forwardPress}) = \frac{\text{forwardPress} - 42000}{65536 - 42000} \cdot 100.
 \end{equation}
-
-The speed \(v\) is then integrated per tick as $v \mathrel{+}= a \cdot a_\text{mult}$ and clamped to the range \([-v_\text{max}, +v_\text{max}]\) to prevent unstable values at high update rates, where \(a_\text{mult}\) is a configurable acceleration multiplier, and \(v_\text{max}\) is the maximum speed limit for both driving directions.
-
-To emulate realistic driving behavior, an adjustable \texttt{friction} coefficient~\cite{kane:2022tire} continuously dampens the current speed \(v \mathrel{*}= (1 - \text{friction})\).
+The speed \(v\) is then integrated per tick as 
+\begin{equation}
+    v \mathrel{+}= a \cdot a_\text{mult}
+\end{equation}
+and clamped to the range \([-v_\text{max}, +v_\text{max}]\) to prevent unstable values at high update rates, where \(a_\text{mult}\) is a configurable acceleration multiplier, and \(v_\text{max}\) is the maximum speed limit for both driving directions.
+To emulate realistic driving behavior, an adjustable friction coefficient~\cite{kane:2022tire} continuously dampens the current speed 
+\begin{equation}
+    v \mathrel{*}= (1 - \text{friction}).
+\end{equation}
 
 \subsection{Physics}
 \label{subsec:physics}
@@ -275,7 +279,7 @@ The vehicle position is derived from speed using the active game-tick interval. 
 
 \textit{Lane changing} is realized through a temporary bidirectional center lane introduced by intersection modules. A change is only permitted when the driving profile of the current line allows it, but never within the final \texttt{laneChangeWindow} units before a module ends. A vehicle first switches from an outer lane to the middle lane and, after travelling at least one \texttt{laneChangeWindow}, may manually merge onto the target outer lane; otherwise the vehicle merges automatically before the module ends. During a switch, relative progress within the module is preserved by proportional conversion, where the target position equals the source progress ratio scaled by the target line length, keeping vehicles visually and physically aligned across lanes of differing lengths or radii.
 
-\textit{Falling} is triggered immediately when a vehicle's speed or acceleration violates the driving profile of the active line, whose constraints are subdivided across curve and loop segments so that difficulty scales smoothly rather than abruptly at module entry. \textit{Collision detection} is evaluated per lane using a distance metric: if two vehicles come within a configured crash distance, the leading vehicle loses control and falls while the trailing vehicle continues unharmed, simulating a rear-quarter impact that preserves playability.
+\textit{Falling} is triggered immediately when a vehicle's speed or acceleration violates the driving profile of the active line, whose constraints are subdivided across curve and looping segments so that difficulty scales smoothly rather than abruptly at module entry. \textit{Collision detection} is evaluated per lane using a distance metric: if two vehicles come within a configured crash distance, the leading vehicle loses control and falls while the trailing vehicle continues unharmed, simulating a rear-quarter impact that preserves playability.
 
 After a crash, a multi-stage \textit{respawn} procedure grants a collision-free placement with enough track to rebuild momentum for a possible looping in following modules. Fallen vehicles become inactive for a fixed number of respawn ticks and are ignored by the race. On respawn from a position inside a looping, a step back by one module is performed to avoid an immediate consecutive crash; the vehicle then attempts position zero on its preferred lane, falling back to other unoccupied lanes and, if necessary, to the track start. If no lane is available, the vehicle stays inactive and retries on the next tick until a position is free. Speed, acceleration, and the lane-change state are reset.
 
@@ -324,7 +328,7 @@ To decouple this logic from the constrained hardware, the display layer builds o
 
 
 Audio in LumenTrace is mixed live and played back in stereo so that the soundscape reflects the race state at every moment~\cite{gardenfors:2003designing,gan:2019self}. 
-A low-level sound manager combines sounds through a single output stream, controlling per-sound volume, dynamic pitch, and stereo panning independently~\cite{geier:2024sounddevice,bechtold:2026soundfile}. Each vehicle owns a continuous engine sound whose pitch and loudness follow its speed, gains an additional layer while accelerating, and pans between the speakers according to the current track module's defined stereo ratio, complemented by positional one-shot effects, e.g., for the start sequence, laps, lane changes, crashes, and warnings.
+A low-level sound manager combines sounds through a single output stream, controlling per-sound volume, dynamic pitch, and stereo panning independently~\cite{geier:2024sounddevice,bechtold:2026soundfile,harris:2020array}. Each vehicle owns a continuous engine sound whose pitch and loudness follow its speed, gains an additional layer while accelerating, and pans between the speakers according to the current track module's defined stereo ratio, complemented by positional one-shot effects, e.g., for the start sequence, laps, lane changes, crashes, and warnings~\cite{pixabay:2026pixabay}.
 
 \textit{Problem:} initially, routing audio through the Pi's AUX jack produced significant background noise, which was resolved by switching to a USB audio interface. Moreover, executing the Python audio callbacks synchronously alongside high-frequency game ticks, rendering, and hardware polling caused GIL starvation and lock contention that manifested as severe sound stuttering after just a few seconds running the game. 
 \textit{Solution:} the audio interface is isolated behind a thread-safe asynchronous command queue~\cite{tsigas:2001simple,eggen:2019thread}. A non-blocking sound manager proxy enqueues sound commands as fire-and-forget entries without ever blocking the caller, and a dedicated worker thread applies them to the underlying mixer. Together with minimal \SI{1}{\milli\second} sleep intervals in the display loop that prevent audio-thread starvation, this stabilized the output under concurrent workloads.
@@ -421,7 +425,7 @@ The LumenTrace system achieves real-time performance across all critical subsyst
 
 The system operates three independent processing threads at optimized frequencies: \SI{50}{\hertz} for the game engine physics, \SI{33}{\hertz} for the LED display pipeline, and \SI{50}{\hertz} for controller input polling. These frequencies produce smooth, flicker-free visual output perceived as continuous motion above the human perception threshold of circa \SI{24}{\hertz}~\cite{chen:2007review,pazhoohi:2021effect}.
 
-Controller inputs demonstrate minimal end-to-end latency from physical button press through UART transmission, game logic processing, and LED display update. The system responds immediately to throttle and lane-change commands with no perceptible delay. This responsiveness is maintained even during occasional UART transmission failures (occurring in approximately \SI{5}{\percent} of packets), as the system prioritizes the most recent controller state rather than queuing stale data.
+Controller inputs demonstrate minimal end-to-end latency from physical button press through UART transmission, game logic processing, and LED display update. The system responds in \SI{70}{\milli\second} to \SI{100}{\milli\second} to throttle and lane-change commands with no perceptible delay. This responsiveness is maintained even during occasional UART transmission failures (occurring in approximately \SI{5}{\percent} of packets), as the system prioritizes the most recent controller state rather than queuing stale data.
 
 The optional file and MQTT logging subsystems introduce measurable performance overhead due to I/O blocking and possible network latencies. Logging should remain disabled in production environments, else performance degradation and occasional \SI{50}{\milli\second}--\SI{200}{\milli\second} lag spikes during log message transmission can occur. Deferred asynchronous logging could mitigate this overhead in future iterations.
 
@@ -454,7 +458,7 @@ User testing and informal feedback sessions revealed that the combination of imm
         Carrera GO!!! track module               & 1\,\texteuro             & 20 & 20\,\texteuro \\
         Carrera GO!!! controller                 & 10\,\texteuro            & 2 & 20\,\texteuro \\
         Wooden base plate                        & 10\,\texteuro            & 1 & 10\,\texteuro \\
-        3D-printing PLA fillament                & 12\,\texteuro            & 0.5 & 6\,\texteuro \\
+        3D-printing PLA filament                 & 6\,\texteuro             & 1 & 6\,\texteuro \\
         Wiring and mounting equipment            & 2\,\texteuro             & 3 & 6\,\texteuro \\
         Paint (spray and brush)                  & 8\,\texteuro             & 4 & 32\,\texteuro \\
         \midrule
