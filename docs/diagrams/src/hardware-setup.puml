@@ -1,6 +1,10 @@
 @startuml
-!theme plain
+' !theme plain
 'skinparam linetype ortho
+skinparam componentStyle uml2
+top to bottom direction
+skinparam nodesep 32
+skinparam ranksep 40
 
 node "Player 1 Controller" as P1_Ctrl {
   port "Throttle (Analog)" as P1_A

@@ -2,6 +2,10 @@
 '!theme plain
 skinparam componentStyle uml2
 'skinparam linetype ortho
+top to bottom direction
+skinparam nodesep 20
+skinparam ranksep 30
+
 
 actor "User" as user
 node "Player Controller" as controller
@@ -9,7 +13,7 @@ node "Raspberry Pi Pico" as pico
 node "Raspberry Pi 4" as rpi4
 
 node "Internal Game State" as game
-node "LED Matrizes" as matrices
+node "LED Matrices" as matrices
 node "LED Strips" as leds
 node "Stereo Sound Devices" as speakers
 

@@ -41,7 +41,7 @@ The project is part of the [Physical Computing Course](https://www.oth-aw.de/for
 
 The following represents the original project requirements that evolved and adapted dynamically throughout development:
 
-> Mechanics-free slot car track with: Control system, 3D printing, 3-4 RGB LED strips, sound, based on Raspberry Pi Pico 2W with PIO
+> Mechanics-free slot car track with: Control system, 3D printing, multiple RGB LED strips, sound, based on Raspberry Pi Pico 2W with PIO.
 
 ## Features
 
@@ -333,12 +333,14 @@ Sensor measurement transmission must be trustful [voelkl:2026sensiq] for the sys
 
 The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components [voelkl:2026bitebound]. In general, the physical design is based on the following components:
 
-- A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with *blue*, *purple* and *white* colors for a visually appealing background. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape for transportability. The loop module was additionally reinforced with fishing line to reduce vibrations and prevent fractures.
-- Carrera GO! [carrera:2026carrera] track modules for the physical track layout.
+- A black wooden plate (150cm × 80cm) as the base for the track layout, sprayed with *blue*, *purple*, and *white* colors for a visually appealing background. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape for transportability. The loop module was additionally reinforced with fishing line to reduce vibrations and prevent fractures.
+- Carrera GO!!! [carrera:2026carrera] track modules for the physical track layout.
 - 2 LED Stripes (WS2812B) for the track lighting and visual effects, mainly in light purple and gray.
 - 2 Vehicles in strong blue and purple colors.
 - 2 LED Matrizes for round counting in the colors of the vehicles.
 - 3D-printed objects as visual enhancements, custom towers to conceal the Raspberry Pi 4, Pico, and internal wiring, and custom audio enclosures to stealthily house the stereo speakers and subwoofer (printed in segments) without breaking the sci-fi aesthetic.
+
+**LED Strip Design Rationale:** The LED stripes do not directly illuminate the user but are housed within a translucent plastic channel, further wrapped with a white fabric strip in a cylindrical configuration. This design approach diffuses light in all directions, creating a uniform and pleasant ambient lighting experience throughout the track environment. Standard LED strips would lack the mechanical flexibility required to conform to the track's varying curvatures and would fail to distribute light evenly across all viewing angles. Additionally, power consumption was carefully constrained, as the system is powered directly from the Raspberry Pi; exceeding safe current limits would necessitate thicker cabling and an external high-capacity power supply, both of which would compromise system safety and transportability. The implementation employs two WS2812B addressable LED strips, each equipped with 50 Neopixel LEDs per meter, totaling 250 LEDs across the entire track lighting system.
 
 The resulting design is a **retro-futuristic** blue-purple racing environment with a focus on immersive lighting and sound effects.
 

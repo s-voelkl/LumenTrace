@@ -1,92 +1,97 @@
 @startuml
 '!theme plain
-'skinparam componentStyle uml2
+skinparam componentStyle uml2
+hide members
+top to bottom direction
+' skinparam linetype ortho
+skinparam nodesep 35
+skinparam ranksep 25
 
 package "Controller (Transmit)" {
-  [SignalTransmitter]
-  [PhysicalController]
+  class "SignalTransmitter" as SignalTransmitter
+  class "PhysicalController" as PhysicalController
 }
 
 package "Controller (Receive)" {
-  [ISignalReceiver]
-  [SignalReceiver]
-  [PlayerController]
+  interface "ISignalReceiver" as ISignalReceiver
+  class "SignalReceiver" as SignalReceiver
+  class "PlayerController" as PlayerController
 }
 
 package "Game Engine" {
-  [Game] as GameMain
-  [Settings]
-  [Player]
-  [Vehicle]
-  [TrackModule]
-  [Line]
-  [Lane]
-  [DrivingProfile]
+  class "Game" as GameMain
+  class "Settings" as Settings
+  class "Player" as Player
+  class "Vehicle" as Vehicle
+  class "TrackModule" as TrackModule
+  class "Line" as Line
+  class "Lane" as Lane
+  class "DrivingProfile" as DrivingProfile
 
-  GameMain *-- [Settings]
-  GameMain *-- [Player]
-  GameMain *-- [TrackModule]
-  [Player] *-- [Vehicle]
-  [TrackModule] *-- [Line]
-  [Line] *-- [DrivingProfile]
-  [Line] o-- [Lane]
+  GameMain *-- Settings
+  GameMain *-- Player
+  GameMain *-- TrackModule
+  Player *-- Vehicle
+  TrackModule *-- Line
+  Line *-- DrivingProfile
+  Line o-- Lane
 }
 
 package "Display" {
-  [DisplayManager]
-  [LedDisplay]
-  [ColorConstants]
-  [Config]
-  [RoundCounter]
+  class "DisplayManager" as DisplayManager
+  class "LedDisplay" as LedDisplay
+  class "ColorConstants" as ColorConstants
+  class "Config" as Config
+  class "RoundCounter" as RoundCounter
 }
 
 package "Sound" {
-  [ThreadedSoundManager]
-  [SoundManager]
-  [MotorSound]
+  class "ThreadedSoundManager" as ThreadedSoundManager
+  class "SoundManager" as SoundManager
+  class "MotorSound" as MotorSound
 }
 
 package "Logger" {
-  [MultiLogger]
-  [PyLogger]
-  [MqttLogger]
+  class "MultiLogger" as MultiLogger
+  class "PyLogger" as PyLogger
+  class "MqttLogger" as MqttLogger
 }
 
 package "Simulation" {
-  [Orchestrator]
-  [SignalReceiver] as SimulationSignalReceiver
-  [TerminalRenderer]
+  class "Orchestrator" as Orchestrator
+  class "SignalReceiver" as SimulationSignalReceiver
+  class "TerminalRenderer" as TerminalRenderer
 }
 
 package "Entry Point" {
-  [Main]
+  class "Main" as Main
 }
 
-[Main] --> GameMain : Initializes
-[Main] --> [DisplayManager] : Displays
-[Main] --> [RoundCounter] : Displays
-[Main] --> [ThreadedSoundManager] : Plays sounds
-[Main] --> [MultiLogger] : Logs
+Main --> GameMain : Initializes
+Main --> DisplayManager : Displays
+Main --> RoundCounter : Displays
+Main --> ThreadedSoundManager : Plays sounds
+Main --> MultiLogger : Logs
 
-[PhysicalController] --> [SignalTransmitter] : ADC / digital inputs
-[SignalTransmitter] --> [SignalReceiver] : UART Signal
-[ISignalReceiver] <|.. [SignalReceiver]
+PhysicalController --> SignalTransmitter : ADC / digital inputs
+SignalTransmitter --> SignalReceiver : UART Signal
+ISignalReceiver <|.. SignalReceiver
 
-[PlayerController] --> [Vehicle] : Updates state
+PlayerController --> Vehicle : Updates state
 
-[DisplayManager] --> [LedDisplay] : Virtual Buffers (RGB)
-[DisplayManager] *-- [Config] : Configurations
-[DisplayManager] *-- [ColorConstants] : Colors
+DisplayManager --> LedDisplay : Virtual Buffers (RGB)
+DisplayManager *-- Config : Configurations
+DisplayManager *-- ColorConstants : Colors
 
 
-[ThreadedSoundManager] *-- [SoundManager]
-[SoundManager] *-- [MotorSound]
+ThreadedSoundManager *-- SoundManager
+SoundManager *-- MotorSound
 
-[MultiLogger] *-- [PyLogger]
-[MultiLogger] *-- [MqttLogger]
+MultiLogger *-- PyLogger
+MultiLogger *-- MqttLogger
 
-[Orchestrator] --> [TerminalRenderer] : Renders State
-[Orchestrator] *-- SimulationSignalReceiver : Uses
+Orchestrator --> TerminalRenderer : Renders State
+Orchestrator *-- SimulationSignalReceiver : Uses
 
 ' Layout positioning
 MotorSound -[hidden]down-> Orchestrator
