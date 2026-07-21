@@ -2,6 +2,10 @@
 '!theme plain
 skinparam componentStyle uml2
 'skinparam linetype ortho
+top to bottom direction
+skinparam nodesep 20
+skinparam ranksep 30
+
 
 actor "User" as user
 node "Player Controller" as controller
