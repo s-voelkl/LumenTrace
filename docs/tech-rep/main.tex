@@ -79,21 +79,30 @@
 \label{sec:introduction}
 \IEEEPARstart{T}{his} technical report... 
 % introduction. also states the most relevant abbreviations and acronyms used in the report.
+% used acronyms: Universal Asynchronous Receiver/Transmitter (UART), light-emitting diode (LED), Addressable RGB LED with built-in controller using a one-wire protocol (WS2812B)
 % the repository can be found on github:
 \cite{voelkl:2026lumentrace}
 
-\subsection{Context and Goals}
-\label{subsec:context-and-goals}
-% - Goal: Replacement of the classic analog slot car racing (Carrera GO!!!)~\cite{carrera:2026carrera} with 
-%   a digital real-time physics simulation featuring immersive lighting and effect systems.
+\subsection{Motivation}
+\label{subsec:motivation}
 
-\subsection{Motivation and Contributions}
-\label{subsec:motivation-and-contributions}
-% - Why replace classic slot cars with LEDs? 
-% - What makes LumenTrace special?
-% Hero photograph of the full setup (../assets/SideView1.png) with caption.
-% Motivation: summarizes the missing parts of the existing slot car systems and LED-based games
-% Contributions: summarizes the new features of LumenTrace compared to existing slot car systems and LED-based games
+Classic slot car systems deliver an engaging tactile racing experience, but they remain bound to physical vehicles running on mechanical rails. In these systems, light and sound are treated as peripheral add-ons rather than as core gameplay elements: engine sounds are typically monotone and decoupled from the vehicle's actual speed, and illuminated track sections merely blink in fixed patterns instead of responding to the race state~\cite{carrera:2026light}. Even highly digitalized products such as Carrera Digital~132~\cite{carrera:2026digital}, Anki Overdrive~\cite{anki:2026overdrive} or Scalextric ARC~PRO~\cite{scalextric:2026arc} retain physical cars and use audiovisual feedback only as a secondary layer.
+
+LED-based racing games take the opposite approach and represent each vehicle directly as a moving light on an individually addressable strip~\cite{openledrace:2023article,pereira:2023applying}. This removes all moving parts, yet existing projects stay deliberately minimalistic: gameplay is reduced to button mashing, and features such as a realistic physics model, spatially positioned audio, bidirectional lane changing, collision recovery, and modular track profiles are absent. As detailed in~\Cref{sec:related-work}, no existing system combines the physical realism and playability of slot cars with the mechanical simplicity and immersive, state-driven audiovisual feedback that addressable LEDs make possible. LumenTrace is motivated by closing precisely this gap.
+
+\subsection{Contributions}
+\label{subsec:contributions}
+
+LumenTrace contributes a mechanics-free LED slot car simulator that unifies the strengths of both worlds on a distributed Raspberry~Pi Pico and Raspberry~Pi~4 architecture~\cite{magpi:2024raspberry}. 
+At its core is a real-time physics engine that models acceleration, friction, speed clamping, collision detection, and crash recovery, driven by analog throttle and digital button inputs transmitted over a high-speed UART link~\cite{pena:2020uart}. On top of this, a priority-based LED rendering pipeline paints the track and vehicles with layered, state-dependent effects, including adaptive vehicle colors, headlights, and brake lights that give the driver ambient feedback about speed~\cite{meschtscherjakov:2015chaselight}, together with round counters realized through physically chained WS2812B matrices~\cite{garff:2023rpi}. 
+A vectorized, thread-isolated stereo audio mixer~\cite{harris:2020array} adds per-vehicle engine sounds whose pitch and stereo position follow the car's speed and track position, complemented by positional event sounds. Playability is extended beyond prior LED racers through a temporary bidirectional overtaking lane and modular track modules with individual driving profiles. Finally, the system is packaged for reproducible deployment via Docker~\cite{merkel:2014docker} and ships with a hardwareless simulation interface for development and testing without physical hardware. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{../assets/SideView1.jpg}
+    \caption{LumenTrace LED racing simulator: full-scale setup showing the track, vehicles, controllers, and audiovisual system.}
+    \label{fig:lumentrace-setup}
+\end{figure}
 
 
 \subsection{Document Outline}
@@ -103,98 +112,24 @@
 
 \section{Related Work}
 \label{sec:related-work}
-% - What similar approaches already exist? (e.g., open-source LED strips games, commercial digital slot car systems like Scalextric/Carrera Digital)
-% These sources are provided in the references section. 
+
+LumenTrace sits at the intersection of two established domains: commercial slot car racing systems and open-source LED strip games. This section surveys both landscapes to contextualize the design decisions presented in the remainder of this report.
 
 \subsection{Existing Slot Car Systems}
 \label{subsec:existing-slot-car-systems}
 
------ SLOT CARS -----
-Carrera Hybrid: 
-Evolving slot car racing game with the tendency to more digitalization and more electronic components. 
-More collisions, overtaking, modularer Streckenaufbau
-Ziel: realistische Rennsimulation [carrera:2026hybrid]
+Commercial systems have steadily added electronics while keeping physical cars on mechanical rails. Carrera Hybrid~\cite{carrera:2026hybrid} pushes toward a more digitalized and realistic racing simulation with collisions, overtaking, and modular track assembly. Carrera Digital~132~\cite{carrera:2026digital} offers button-triggered lane changes, lap counters, start lights, driver displays, and wireless controllers, but the vehicles remain fully physical rather than simulated. Scalextric ARC~PRO~\cite{scalextric:2026arc} adds an app-based interface with pit stops, lap-time tracking, weather conditions, and multiple race modes, while reducing the controller to a brake and a lane-change button. Anki Overdrive~\cite{anki:2026overdrive} abandons fixed slots in favor of app-controlled autonomous cars on magnetically connectable, modular track segments.
 
-Mehrere Youtube Modellrennstrecken mit Carrera Elementen benutzen Lichter für die Beleuchtung der Strecke.
-Z.B. Ampellicht, LCD-Screens für textuelle Anzeige, Vorder-/Rücklichter bei Autos
-Jedoch nicht in den Spielfluss integriert, und auch keine Beleuchtung der Spuren selbst.
-
-Es gibt mittlerweile jedoch ein Carrera Go!!!~\cite{carrera:2026carrera} Light and Sound Looping Set. [carrera:2026light]
-"As soon as the slot cars enter the loop, the LED lights along the edge flash and engine sounds play."
-Circa 16 LEDs auf jeder Seite des Loopings blinken in rot-weiß beim Durchfahren. Gleichzeitig wird ein Soundeffekt des Motors abgespielt.
-Problem: Motorgeräusch ist monoton und nicht an die Geschwindigkeit des Autos angepasst. 
-Das Blinken des Loopings ist einfach gehalten und nicht an die Geschwindigkeit des Autos angepasst.
-
-Carrera Digital 132:
-"Lane changes at the touch of a button, individually coded vehicles and numerous digital functions ensure a varied and realistic racing experience - without any modifications to the track." [carrera:2026digital]
-Lane change modules.
-Digitale Elemente, wie Lap Counter, Start Light, Driver Display, Wireless Controller, Bluetooth Connect and more.
-Jedoch wird bei rein physischen Fahrzeugen verblieben, keine reine LED-basierte Simulation.
-Auch die Sounds spielen eine nebensächliche Rolle, da primär die Reibungsgeräusche der kleinen Fahrzeuge zu hören sind.
-Kleine Indikator-Sounds passieren beim Starten, und bei einer neuen Runde.
-
-Scalextric: [scalextric:2026arc]
-User Interface via App, pit stops, lap durations, weather conditions, different race modes
-2 Buttons on controller: brake (instead of accelerate) and lane change.
-
-Anki Overdrive:
-Freie Fahrt auf einer Bahn, App mit Einstellungen und als Controller, modulare Streckenelemente (verbindbar per Magnet).
-Allerdings keine Lichter oder Sounds, die in den Spielfluss integriert sind.
+Across these systems, light and sound serve as secondary embellishments rather than integral gameplay elements. Many hobbyist Carrera GO!!!~\cite{carrera:2026carrera} layouts add track-side lighting such as traffic signals, small LCD readouts, or vehicle head- and tail-lights, yet these effects are neither integrated into the race flow nor used to illuminate the lanes themselves. The Carrera GO!!! Light and Sound Looping Set~\cite{carrera:2026light} is representative: roughly 16~LEDs on each side of the loop blink red and white as a car passes, accompanied by a fixed engine sound effect. Both the blinking and the sound are static and remain decoupled from the actual vehicle speed. Even in the most digital products, audio is dominated by the mechanical friction noise of the miniature cars and is limited to short indicator cues at the start and on completing a lap.
 
 \subsection{LED-Based Projects and Racing Games}
 \label{subsec:led-based-projects-and-racing-games}
 
------ LED Projects -----
-Line Wobbler as an inspiration for led-based games using input from a controller. [baumgarten:2023line]
-""" from the website:
-Line Wobbler is a one-dimensional dungeon crawler with a custom controller made out of a spring and a five meter long LED strip display. It is an award-winning experiment in minimalism in game design, use of novel input mechanics, and the incorporation of physical space.
-"""
+A parallel line of work explores addressable LED strips as minimalist, one-dimensional game displays driven by simple controllers. Line Wobbler~\cite{baumgarten:2023line} is an award-winning one-dimensional dungeon crawler whose custom controller consists of a spring and a circa \SI{5}{\meter} LED strip; it has been widely exhibited in museums and has inspired follow-up projects such as the Arduino-based crawler TWANG~\cite{critters:2023twang}. These titles demonstrate the appeal of novel input mechanics and physical space, yet they remain single-player experiences without competitive racing elements. 
 
-further development was done based on the Line Wobbler project:
-[critters:2023twang] was inspired by the Line Wobbler project. 
-It is a one-dimensional dungeon crawler game.
+The most directly related project is the open-source Open LED Race (OLR) developed since 2019~\cite{pereira:2023applying}. OLR simulates a slot car track on a WS2812/WS2813 strip, representing each player as a colored light that advances by one acceleration pulse per button press, and supports up to four cars with optional slopes and gravity, a pit lane, and an electric-car mode requiring recharging~\cite{openledrace:2023article,openledrace:2025project}. The project has evolved through numerous community forks: extended gravity, sound, and lighting effects~\cite{arminjo:2025open}, a layout with 3D-printed track elements focussing on design~\cite{hackerspace:2024open}, an added 16\,$\times$\,16 LED matrix display~\cite{framboise:2024open}, a TinyGo reimplementation~\cite{esteban:2019ledrace}, and wireless ESP-based remote controllers~\cite{gmag11:2020ledrace}.
 
-A racing game (independent from the line wobbler!):
-Open LED Race (OLR) Project.
-Text from the paper [pereira:2023applying]:
-"""
-The research was inspired by the Open LED Race Project
-(OLR) [1], a game created during Arduino Day Sevilla 2019
-and subsequently developed as an independent open source
-project. The game itself consists of a simulation of a slot car
-track using an individually addressable LED (Light-Emitting
-Diode) strip, a different kind of LED strip where each LED or
-section of LEDs can be individually controlled in aspects such
-as brightness and color. Players are represented by different
-colors that light up on the LED strip, simulating a car moving
-forward and receiving an acceleration pulse each time a button
-connected to the Arduino is pressed. Our motivation with the
-Open LED Race was the lack of prominent materials available
-to promote our computer science course at exhibitions in which
-we frequently participate. This resulted in low interaction with
-the public and thus lower utilization of these events. The Open
-LED Race Project provided an opportunity to develop not
-only the race, but also other games and interactive prototypes
-that conveyed the possibilities of codifying and representing
-our world through technology using simple materials such as
-the individually addressable LED strips.
-"""
-
-Software running on OLR Board (Arduino) implementing a 'Car Race' where a 'car' is a light moving along a LED Strip (WS2812/WS2813).
-Manage up to 4 'cars' and optionals Slope (with gravity effect), Pitlane, Electric cars mode (need to recharge battery in Pitlane), etc
-Players use push-button controllers to move the 'cars' - The quicker you push the button the faster the light (car) moves along the LED Strip.
-Original 2019 version article: [openledrace:2023article]
-Features not included in LumenTrace: gravity effect with a slope, pitlane with battery recharge, electric cars mode, basic sounds.
-Features included in LumenTrace: Physics, lane changing, collision detection, immersive lighting effects, enhanced sound design, modular track design, etc.
-
-Both share: controller inputs, LED strips, microcontroller, {design elements with 3d prints [hackerspace:2024open]}
-
-Many changes since the original 2019 version:
-[arminjo:2025open] Features: gravity enhancements, sound enhancements, better light effects, leap
-[framboise:2024open] added a 16x16 LED matrix display to the Open LED Race project.
-[esteban:2019ledrace] implemented the Open LED Race project in TinyGo, a Go compiler for microcontrollers. 
-[gmag11:2020ledrace] implemented the wireless ESP-based remote controllers for the Open LED Race project.
-[openledrace:2025project] Current project version.
+LumenTrace shares OLR's foundational ingredients of controller input, addressable LED strips, and microcontroller-based execution, but deliberately targets a different point in the design space. It omits OLR features such as gravity slopes, pit-lane recharging, and the electric-car mode, and instead introduces a realistic physics model, bidirectional lane changing, collision detection with crash recovery, priority-based immersive lighting, spatial audio, and modular track profiles. In doing so, LumenTrace bridges the realism and playability of commercial slot car systems with the flexibility and expressive audiovisual potential of LED-based games.
 
 \section{System Requirements and Architecture}
 \label{sec:system-requirements-and-architecture}
