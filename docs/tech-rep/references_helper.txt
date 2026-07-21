@@ -1,0 +1,116 @@
+% =============================================================================
+% IEEEtran BibTeX Vorlagensammlung für references.bib
+% =============================================================================
+
+% 1. PERIODICALS / JOURNALS (Zeitschriften und Magazin-Artikel)
+% Verwende @article für wissenschaftliche Paper aus Journalen.
+% Das Feld "number" steht für die Heftnummer (Issue).
+article{key_journal_example,
+  author    = {John U. Duncombe},
+  title     = {Infrared navigation Part I: An assessment of feasibility},
+  journal   = {IEEE Trans. Electron Devices},
+  volume    = {ED-11},
+  number    = {1},
+  pages     = {34--39},
+  month     = jan,
+  year      = {1959},
+  doi       = {10.1109/TED.2016.2628402}
+}
+
+% 2. BOOKS (Ganze Bücher oder spezifische Kapitel)
+% Für ein ganzes Buch. Wenn du ein Kapitel zitierst, nutzt du zusätzlich "chapter" und "pages".
+book{key_book_example,
+  author    = {Wai-Kai Chen},
+  title     = {Linear Networks and Systems},
+  publisher = {Wadsworth},
+  address   = {Belmont, CA, USA},
+  edition   = {2nd},
+  year      = {1993},
+  pages     = {123--135}
+}
+
+% 3. REPORTS (Technische Berichte, Whitepaper von Firmen oder Universitäten)
+% Perfekt geeignet, um andere universitäre Technical Reports oder Projektarbeiten zu zitieren.
+% Das Feld "institution" gibt die OTH oder Firma an.
+techreport{key_report_example,
+  author      = {Edward E. Reber and R. L. Michell and C. J. Carter},
+  title       = {Oxygen absorption in the earth’s atmosphere},
+  institution = {Aerospace Corp.},
+  address     = {Los Angeles, CA, USA},
+  number      = {TR-0200 (4230-46)-3},
+  month       = nov,
+  year        = {1988}
+}
+
+% 4. HANDBOOKS / MANUALS (Datenblätter, Dokumentationen, Benutzerhandbücher)
+% Ideal für eure Hardware! Nutzt dies für das RP2040-Datenblatt oder Bibliotheks-Dokus.
+% Wenn es keinen eindeutigen Autor gibt, bleibt "author" leer; das System nutzt dann "title".
+manual{key_manual_example,
+  title        = {Motorola Semiconductor Data Manual},
+  organization = {Motorola Semiconductor Products Inc.},
+  address      = {Phoenix, AZ, USA},
+  year         = {1989}
+}
+
+% 5. CONFERENCE PROCEEDINGS (Veröffentlichte Konferenzbeiträge)
+% Für Paper, die auf einer Konferenz oder einem Symposium vorgestellt und gedruckt wurden.
+% "booktitle" ist hierbei der Name der Konferenz (oft mit "Proc. of...").
+inproceedings{key_conference_example,
+  author    = {D. B. Payne and R. J. Stern},
+  title     = {Wavelength-switched passively coupled single-mode optical network},
+  booktitle = {Proc. IOOC-ECOC},
+  address   = {Boston, MA, USA},
+  year      = {1985},
+  pages     = {585--590}
+}
+
+% 6. THESES (Masterarbeiten und Dissertationen)
+% Nutzt @mastersthesis für Master-/Bachelorarbeiten und @phdthesis für Doktorarbeiten.
+phdthesis{key_phd_example,
+  author  = {J. O. Williams},
+  title   = {Narrow-band analyzer},
+  school  = {Harvard Univ.},
+  address = {Cambridge, MA, USA},
+  year    = {1993},
+  department = {Dept. Elect. Eng.}
+}
+
+mastersthesis{key_masters_example,
+  author  = {N. Kawasaki},
+  title   = {Parametric study of thermal and chemical nonequilibrium nozzle flow},
+  school  = {Osaka Univ.},
+  address = {Osaka, Japan},
+  year    = {1993},
+  department = {Dept. Electron. Eng.}
+}
+
+% 7. ONLINE-QUELLEN / WEBSITES / SOFTWARE (Erweiterte elektronische Dokumente)
+% Für Repositories (GitHub), Webseiten oder Online-Tools (wie eure Pixabay-Sound-Attributions).
+% Das "howpublished"-Feld steuert den "[Online]"-Text im IEEE-Stil am elegantesten.
+electronic{key_online_example,
+  author       = {R. J. Hijmans and J. van Etten},
+  title        = {Raster: Geographic analysis and modeling with raster data},
+  howpublished = {[Online]. Available: http://CRAN.R-project.org/package=raster},
+  note         = {R Package Version 2.0-12},
+  year         = {2012}
+}
+
+% 8. STANDARDS (Normen wie DIN, ISO oder IEEE-Standards)
+% Da BibTeX keinen nativen "@standard"-Typ besitzt, fängt man das im IEEE-Stil 
+% über den flexiblen Typ @misc ab.
+misc{key_standard_example,
+  title        = {IEEE Criteria for Class IE Electric Systems},
+  howpublished = {IEEE Standard 308},
+  year         = {1969}
+}
+
+% 9. PATENTS (Patente)
+% Auch für Patente wird im klassischen Verzeichnis-Verband meist @misc genutzt, 
+% wobei das Patent-Land und die Nummer in das "howpublished"-Feld wandern.
+misc{key_patent_example,
+  author       = {G. Brandli and M. Dick},
+  title        = {Alternating current fed power supply},
+  howpublished = {U.S. Patent 4 084 217},
+  month        = nov,
+  year         = {1978}
+}

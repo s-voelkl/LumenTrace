@@ -1,0 +1,137 @@
+\section{Project Management}
+\label{sec:project_management}
+
+% The BiteBound project was executed by a two-person team, with each member contributing to all aspects of the project.
+% The lead developers for each component are indicated in~\Cref{tab:task_distribution}, while a reviewer was assigned to each task to ensure code quality and maintainability, as stated in \Cref{subsec:task_distribution}.
+
+% \subsection{SMART Goals}
+% \label{subsec:smart}
+% The primary objective of this project is defined through the following SMART 
+% (Specific, Measurable, Achievable, Relevant, Time-bound) criteria:
+
+% \begin{description}
+%     \item[Specific:] Develop two interactive 2D games (cookie collectors on a plane and on a maze)
+%     for the Waveshare ESP32-S3 1.69-inch Touch microcontroller using Arduino. 
+%     The games must feature physics-based ball movement controlled via the onboard 
+%     QMI8658 accelerometer (IMU) and integrate bi-directional MQTT communication.
+
+%     \item[Measurable:] Success will be evaluated by meeting the following quantitative 
+%     and functional milestones:
+%     \begin{itemize}
+%         \item Real-time calculation and rendering of a newly generated random maze for 
+%         Game 1 in each run.
+%         \item Continuous transmission of game telemetry (coordinates, remaining cookies, 
+%         round duration, and current score) via HiveMQ MQTT broker at regular intervals.
+%         \item Successful reception of control parameters (player name, cookie count, maze 
+%         wall thickness, and game selection/start commands) from both a Node-RED dashboard 
+%         and a secondary dashboard (Android/Web).
+%     \end{itemize}
+
+%     \item[Achievable:] The project tasks are divided equitably within a two-person team. 
+%     Development will leverage proven frameworks, specifically the designated versions of 
+%     the ESP32 Espressif board manager (v3.3.2) and the recommended hardware libraries.
+
+%     \item[Relevant:] This project directly addresses the core competencies of the 
+%     Mobile \& Ubiquitous Computing curriculum by practicalizing embedded systems 
+%     programming, sensor-based user interfaces, physics simulation, and IoT dashboard communication.
+
+%     \item[Time-bound:] Full implementation, system testing, comprehensive C++ code inline 
+%     documentation, and the final LaTeX-based project report (approximately 10 pages) must be 
+%     finalized and submitted as a structured \texttt{.zip} archive by June 30, 2026, prior to 
+%     the project presentations scheduled for July 1--2, 2026.
+% \end{description}
+
+% \subsection{User Stories (Requirements)}
+% \label{subsec:user_stories}
+% % Detail the requirements and user stories for the project.
+
+% \subsection{MVP}
+% \label{subsec:mvp}
+% % Describe the Minimum Viable Product.
+
+% \subsection{Extensions}
+% \label{subsec:extensions}
+% % Discuss potential extensions or features beyond the MVP.
+
+\subsection{Project Planning}
+\label{subsec:project_planning}
+
+% The development of BiteBound followed an incremental path, prioritizing the definition of interface contracts and network infrastructure before implementing complex local logic such as the physics simulation and graphics rendering. The project was structured into four distinct milestones to manage dependencies and verify integration at each phase.
+
+% \begin{itemize}
+%     \item \textbf{Milestone 1: Architecture and Basic Setup}
+%           This phase focused on creating the repository structure, planning extensive software architecture, establishing development environments, and configuring the basic ESP32-S3 firmware skeleton. Essential network modules (WiFi connectivity, secure MQTT communication via HiveMQ Cloud, NTP-based time synchronization) were implemented. Defining the standard JSON schemas for telemetry and command topics early in the timeline allowed the basic setups of the Android application and Node-RED dashboards to proceed in parallel with the firmware development.
+
+%     \item \textbf{Milestone 2: Hardware Implementation}
+%           During this milestone, the core offline mechanics of the ESP32 firmware were established. The 2D physics engine and cookie collection logic were designed first, followed by the integration of the Sensor Manager and maze generation. The graphics subsystem was then built, including an evaluation of display libraries. Finally, the firmware was fully orchestrated by the combination of the Game Engine for the game modes and the FreeRTOS-based dual-core task management.
+
+%     \item \textbf{Milestone 3: UI Enhancement and Refinement}
+%           This phase concentrated on system integration, user interface polishing, and debugging. The Android application and Node-RED dashboards were updated to support the finalized game orchestration logic, enabling dynamic command and parameter handling. The project's visual identity with the logo, color scheme and assets was finalized, while last tests and bug-fixes were conducted to address firmware issues.
+
+%     \item \textbf{Milestone 4: Documentation}
+%           The final phase was dedicated to finalizing the technical report as documentation, enhancing the usage guide, and preparing the project for submission.
+% \end{itemize}
+
+\subsection{Task Dependencies}
+\label{subsec:task_dependencies}
+
+% The decoupled software architecture introduced several critical dependencies:
+% IMU calibration fed into physics input, JSON schema definitions enabled dashboard integration, and dual-core allocation required thread-safe state protection before merging the network and game codebases. These dependencies ensured that network managers and telemetry contracts were established first, physics and sensor processing were validated before graphics integration, and the multi-core architecture was introduced only after both stacks were independently stable.
+
+\subsection{Task Distribution}
+\label{subsec:task_distribution}
+
+% To coordinate development and ensure progress, tasks were tracked and managed using a GitHub Project board integrated directly with the code repository. This allowed issues to be linked to commits and Pull Requests (PRs).
+
+% To maintain code quality and structural integrity across the shared codebase, the development followed several guidelines:
+
+% \begin{itemize}
+%     \item \textbf{Branch Protection:} Direct commits to the \texttt{main} branch were restricted. All feature updates and bug fixes were developed on separate branches.
+%     \item \textbf{Code Review:} Merging any branch into \texttt{main} required a Pull Request accompanied by the other team member's review and approval.
+%     \item \textbf{CI Pipeline}: A GitHub Actions pipeline was configured to automatically verify the compilation of the ESP32 firmware for both test and production builds (see \texttt{.github/workflows/ci.yaml})
+%     \item \textbf{Code Coverage Targets:} A unit test coverage of about 60\% was targeted for the core ESP32 modules, while the Android application aimed for basic unit tests. Node-RED flows were excluded from automated testing due to their visual nature (see \texttt{esp32/test-coverage.txt}).
+%     \item \textbf{Docstrings:} All public methods and classes were documented with docstrings to enhance code readability and accessibility.
+% \end{itemize}
+
+% Transparency note: The unit test writing and docstring generation were partly assisted by AI, as documented in \texttt{doc/prompts}.
+% The division of responsibilities between the two team members is outlined in~\Cref{tab:task_distribution}.
+
+% \begin{table}[htb]
+%     \centering
+%     \caption{Task Distribution Matrix Grouped}
+%     \label{tab:task_distribution}
+%     \footnotesize
+%     \setlength{\tabcolsep}{5pt}
+%     \begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}X c c}
+%         \toprule
+%         \textbf{Milestone} & \textbf{Task}           & \textbf{Description}                                              & \textbf{S. Völkl} & \textbf{J. Schieder} \\
+%         \midrule
+%         \multirow{4}{2.6cm}{\textbf{Milestone 1: Architecture \& Setup}}
+%                            & Architecture            & Software Architecture, Protocol Definitions, Repository Setup     & Lead              & Lead                 \\
+%                            & Networking              & Implementation of WiFi, MQTT and Time synchronization.            & Lead              & Review               \\
+%                            & Android App             & Basic Android app, MQTT transport via HiveMQ.                     & Review            & Lead                 \\
+%                            & Node-RED                & Basic Node-RED setup, UI-Builder Dashboard.                       & Lead              & Review               \\
+%         \midrule
+%         \multirow{9}{2.6cm}{\textbf{Milestone 2: Hardware Implementation}}
+%                            & Tests                   & Automated AUnit Tests for hardware components.                    & Lead              & Lead                 \\
+%                            & Physics                 & Core 2D physics engine, collisions, and cookies.                  & Review            & Lead                 \\
+%                            & Sensor Manager          & Configuration of QMI8658 IMU, battery and button inputs.          & Lead              & Review               \\
+%                            & Maze                    & Iterative random DFS.                                             & Lead              & Review               \\
+%                            & Graphics                & Library comparison, Driver setup, ST7789 config, rendering.       & Lead              & Review               \\
+%                            & JSON Builder and Parser & JSON serialization of game state and deserialization of commands. & Lead              & Review               \\
+%                            & Concurrency             & FreeRTOS multi-core tasking, queues, and mutex sharing.           & Lead              & Review               \\
+%                            & Game Engine             & Game modes, engine and start.                                     & Review            & Lead                 \\
+%                            & Game Orchestration      & Orchestrated concurrency and game engine in Arduino.              & Lead              & Lead                 \\
+%         \midrule
+%         \multirow{4}{2.6cm}{\textbf{Milestone 3: UI \& Refinement}}
+%                            & Branding                & Designing the logo, color scheme, and visual assets.              & Lead              & Lead                 \\
+%                            & Enhanced Android App    & Updating Android App to support new features and improvements.    & Lead              & Lead                 \\
+%                            & Enhanced Node-RED UI    & Updating Node-RED UI to support new features and improvements.    & Lead              & Review               \\
+%                            & Manual Testing          & Manual code testing and bug fixes.                                & Lead              & Lead                 \\
+%         \midrule
+%         \multirow{2}{2.6cm}{\textbf{Milestone 4: Documentation}}
+%                            & Technical Report        & Finalizing the LaTeX report, code docs, and usage guides.         & Lead              & Review               \\
+%                            & Presentation            & Preparing and delivering the final presentation.                  & Lead              & Lead                 \\
+%         \bottomrule
+%     \end{tabularx}
+% \end{table}

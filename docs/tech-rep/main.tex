@@ -1,249 +1,346 @@
-\documentclass[conference,a4paper,flushend]{cs-techrep} % (based on IEEEtran.cls)
+\documentclass[10pt,journal,final,a4paper]{IEEEtran}
 
-% The class iaria.cls loads biblatex/biber with correct IARIA settings
-% as well as a set of common packages (times, inputenc[utf8], fontenc[T1],
-% graphicx, xcolor, url, orcidlink, hyperref, extdash[shortcuts])
-
-% Packages (self-added, not included in cs-techrep.cls):
-\usepackage[shortlabels]{enumitem} % Verbesserte Einstellungsmöglichkeiten von Listen. Nicht bei Beamer anwendbar
-% \setlist{itemsep=1ex, topsep=1em}
-% \usepackage{graphicx} % Required for inserting images
-\usepackage{csquotes} % Korrekte Anführungszeichen setzen. Sprachspezifisch möglich. mit \setquotestyle{style} und \enquote{}.
-% \usepackage[american]{babel} % Ändert die Darstellung des Datums in amerikanische Darstellung.
-\usepackage{hyperref}
-\usepackage[capitalise,nameinlink,noabbrev]{cleveref} % Referenzen besser machen. z.B. mit \cref{}. needs hyperref defined before it.
-% \usepackage[backend=biber, style=ieee, alldates=iso]{biblatex} % Zitieren
-% \usepackage{array} % Tabellen mit \begin{tabular}
-\usepackage{multirow} % Mehrere Zeilen in eine zusammenfassen. für Spalten einfach \multicolumn benutzen
-\usepackage{booktabs} % Hübschere Tabellen mit \top/mid/cmid/bottomrule
-\usepackage{minted} % Neuere Bibliothek für Code-Blöcke, mit \begin{listing oder minted}
-\usepackage{amsmath} % American Mathematical Society für mathematische Formeln, z.B. mit \begin{equation}
+% --- 1. Mathematik & Symbole ---
+\usepackage{amsmath} 
 \usepackage{amssymb}
 \usepackage{amsfonts}
+
+% --- 2. Code-Blöcke (Zuerst laden wegen fvextra/lineno-Interaktionen) ---
+\usepackage{minted} 
 \usepackage{listings}
+
+% --- 3. Text & Sprache (csquotes MUSS nach minted/fvextra geladen werden) ---
+\usepackage{csquotes} 
+
+% --- 4. Tabellen & Grafiken ---
+\usepackage{color,array}
+\usepackage{graphicx}
+\usepackage{multirow} 
+\usepackage{booktabs} 
 \usepackage{float}
-\usepackage{enumitem}
 \usepackage{siunitx}
-\usepackage{array}
 \usepackage{tabularx}
 
-\addbibresource{references.bib}
-% \addbibresource{xampl.bib} % (xampl file provided by the BibTEX base files)
-% ======================================================================
-% EDIT THESE:
-\cstechrepAuthorListTex{Simon Völkl, Erik Dombrowsky, Simon Frey\,\orcidlink{0000-0002-1175-2668}}
-\cstechrepAuthorListBib{Simon Völkl and Erik Dombrowsky and Simon Frey}
-% Capitalization: https://capitalizemytitle.com/style/Chicago/
-\cstechrepTitleTex{LumenTrace: A high-performance MCU-based LED racing simulator} % TODO: title revision?
- % IF you need manual linebreaks in the title, then clone the title without linebreaks for BibTeX:
-\cstechrepTitleBib{{\cstechrepTitleTex}}
-\cstechrepDepartment{Department of Electrical Engineering, Media, and Computer Science}
-\cstechrepInstitution{Ostbayerische Technische Hochschule Amberg\-/Weiden}
-\cstechrepAddress{Amberg, Germany}
-\cstechrepSeries{Technical Reports}
-\cstechrepYear{2026}
-\cstechrepMonth{7}
-\cstechrepNumber{CL-\cstechrepYear{}-42}
-\cstechrepLang{english}  % en-US
-% ======================================================================
-% DO NOT DELETE AND DO NOT MODIFY THIS:
-\filecontentsForceExpansion|[] % force command expansion inside a filecontents* environment
-\begin{filecontents*}[overwrite]{selfref.bib}
-    @TECHREPORT{selfref,
-        author = {|cstechrepAuthorListBib},
-        title  = {\cstechrepTitleBib},
-        institution = {\cstechrepInstitution, \cstechrepDepartment},
-        series = {\cstechrepSeries},
-        number = {\cstechrepNumber},
-        year   = {|cstechrepYear},
-        month  = {|cstechrepMonth},
-        langid  = {|cstechrepLang},
-    }
-\end{filecontents*}
+% --- 5. IEEEtran Layout-Helfer (algorithmic gelöscht, da nicht vorhanden/benötigt) ---
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{verbatim}
+\usepackage{balance}
+
+% --- 6. Links & Referenzen (Immer ganz ans Ende der Präambel) ---
+\usepackage[colorlinks,urlcolor=blue,linkcolor=blue,citecolor=blue]{hyperref}
+\usepackage{orcidlink} % benötigt hyperref, daher danach laden
+\usepackage[capitalise,nameinlink,noabbrev]{cleveref} % MUSS als letztes geladen werden
+
+% --- IEEEtran spezifische Definitionen ---
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\setcounter{page}{1}
 
 \begin{document}
-\selectlanguage{\cstechrepLang}
-\maketitle
-\begin{abstract}
-    % TODO: abstract
-    Background: tbd
-    Methods: tbd
 
-    Conclusion: tbd
+\title{LumenTrace} 
+
+\author{Simon Völkl\,\orcidlink{0009-0005-5334-9673}, 
+        Erik Dombrowsky, 
+        and Simon Frey%
+\thanks{The authors are with the Department of Electrical Engineering, Media, and Computer Science, Ostbayerische Technische Hochschule Amberg-Weiden, 92224 Amberg, Germany (e-mail: s.voelkl2@oth-aw.de; e.dombrowsky@oth-aw.de; s.frey@oth-aw.de).}%
+}
+
+\markboth{TECHNICAL REPORT, 07 2026}
+{Völkl \MakeLowercase{\textit{et al.}}: LumenTrace}
+
+\maketitle
+
+\begin{abstract}
+    \textbf{Background:} 
+    \textbf{Objective:} 
+    \textbf{Methods:}
+    \textbf{Results:}
+    \textbf{Conclusion:} 
 \end{abstract}
+
+% NOTE: The "IEEEImpStatement" environment was removed because IEEEtran does not support it.
+% If you want to keep the text, just format it as normal text or include it in the Introduction.
+
 \begin{IEEEkeywords}
-    MCU, LED, neonpixel, WS2812, racing simulator, Raspberry Pi % TODO: keywords
+    Enter key words or phrases in alphabetical order, separated by commas.
 \end{IEEEkeywords}
 
-% STRUCTURE OF THE TECHNICAL REPORT:
-% 1. Introduction
-% Motivation: Wieso klassische Slot-Cars durch LEDs ersetzen? (Immersion, Flexibilität, Hardwareverschleiß).
-% Unique Selling Point / Contributions: Was macht LumenTrace besonders? (High-Speed Serial Comms, Echtes Physics-Model auf LED-Basis).
-% Outline: Kurzer Überblick über den Rest des Reports.
 
-% 2. Related Work
-% Welche ähnlichen Ansätze gibt es bereits? (z.B. Open-Source LED Strips Games, kommerzielle digitale Slotcar-Systeme wie Scalextric/Carrera Digital).
+% \tableofcontents
 
-% 3. System Architecture & Requirements
-% (Hierhin wandern die Requirements, aber deutlich technischer formuliert!)
-% Funktionale und nicht-funktionale Systemanforderungen (z.B. Echtzeit-Fähigkeit, 60fps Rendering).
-% High-Level Architektur (ähnlich deinem architecture.drawio und der Grafik im README): Trennung von Game Logic (RPI), Controller-Eingaben und und LED-Rendering (Pico).
+% =========================================================================
+% TECHNICAL REPORT STRUCTURE: LUMENTRACE (IEEEtran Layout)
+% =========================================================================
 
-% 4. Hardware Implementation
-% Microcontroller-Setup: Raspberry Pi (4) als Host, Raspberry Pi Pico als MCU für Hardware-IO.
-% Kommunikation: UART Protocol (Latenzen, Baud-Raten, Datenpakete).
-% Signaltechnik & Controller-Aufbau.
+\section{Introduction}
+\IEEEPARstart{T}{his} technical report... \cite{voelkl:2026lumentrace}
+% introduction. also states the most relevant abbreviations and acronyms used in the report.
 
-% 5. Software Implementation & Game Mechanics (basierend auf README)
-% Core Loop: Game-Tick-Implementierung, Speed Update & Limits.
-% Physics & Lane Handling: Reibung, Beschleunigung, Lane-Hops und Kollisionserkennung.
-% Dev/Simulation Environment: Der Terminal-Emulator in Python (simulation.py), warum er essenziell für die Logik-Validierung war, bevor geflasht wurde.
 
-% 6. Evaluation (Performance & Results)
-% Performance-Auswertung: Wie schnell läuft der Game Loop? (z.B. Python Performance auf dem RPI4).
-% Latenz: Delay zwischen Knopfdruck am Controller über den Pico zum RPI und zurück zur LED-Aktualisierung.
-% Herausforderungen: Reibungsverluste bei schnellen Updates oder Tearing/Timing-Probleme bei WS2812-Ansteuerung.
+\subsection{Context and Goals}
+% - Goal: Replacement of the classic analog slot car racing (Carrera GO!) with 
+%   a digital real-time physics simulation featuring immersive lighting and effect systems.
 
-% 7. Conclusion & Future Work
-% Zusammenfassung des Erreichten.
-% Was steht noch auf der Todo-Liste? (z.B. mehr Track-Module, WiFi/MQTT Leaderboards).
+\subsection{Motivation and Contributions}
+% - Why replace classic slot cars with LEDs? (Immersion, flexibility, hardware wear).
+% - What makes LumenTrace special? (true physics model on an LED basis, sound design, immersive lighting effects, expandability).
+% Hero photograph of the full setup (SideView1.jpg) with caption.
 
-\section{Introduction}\label{sec:introduction}
+\subsection{Document Outline}
+% - Brief overview of the report's structure.
 
-\subsection{Motivation}\label{sec:motivation}
-% Wieso klassische Slot-Cars durch LEDs ersetzen? (Immersion, Flexibilität, Hardwareverschleiß).
-tbd
 
-\subsection{Unique Selling Point \& Contributions}\label{sec:unique_selling_point}
-% Was macht LumenTrace besonders? (High-Speed Serial Comms, Echtes Physics-Model auf LED-Basis).
-tbd
+\section{Related Work}
+% - What similar approaches already exist? (e.g., open-source LED strips games, commercial digital slot car systems like Scalextric/Carrera Digital)
+% These sources are provided in the references section. TODO!
+Carrera Hybrid: 
+Evolving slot car racing game with the tendency to more digitalization and more electronic components. 
+More collisions, overtaking, modularer Streckenaufbau
+Ziel: realistische Rennsimulation [carrera:2026hybrid]
 
-\subsection{Outline}\label{sec:outline}
-% Kurzer Überblick über den Rest des Reports.
-tbd
+Mehrere Youtube Modellrennstrecken mit Carrera Elementen benutzen Lichter für die Beleuchtung der Strecke.
+Z.B. Ampellicht, LCD-Screens für textuelle Anzeige, Vorder-/Rücklichter bei Autos
+Jedoch nicht in den Spielfluss integriert, und auch keine Beleuchtung der Spuren selbst.
 
-\section{Related Work}\label{sec:related_work}
-% Welche ähnlichen Ansätze gibt es bereits? (z.B. Open-Source LED Strips Games, kommerzielle digitale Slotcar-Systeme wie Scalextric/Carrera Digital).
-tbd
+Es gibt mittlerweile jedoch ein Carrera Go Light and Sound Looping Set. [carrera:2026light]
+"As soon as the slot cars enter the loop, the LED lights along the edge flash and engine sounds play."
+Circa 16 LEDs auf jeder Seite des Loopings blinken in rot-weiß beim Durchfahren. Gleichzeitig wird ein Soundeffekt des Motors abgespielt.
+Problem: Motorgeräusch ist monoton und nicht an die Geschwindigkeit des Autos angepasst. 
+Das Blinken des Loopings ist einfach gehalten und nicht an die Geschwindigkeit des Autos angepasst.
 
-\section{System Architecture \& Requirements}\label{sec:system_architecture}
+Carrera Digital 132:
+"Lane changes at the touch of a button, individually coded vehicles and numerous digital functions ensure a varied and realistic racing experience - without any modifications to the track." [carrera:2026digital]
+Lane change modules.
+Digitale Elemente, wie Lap Counter, Start Light, Driver Display, Wireless Controller, Bluetooth Connect and more.
+Jedoch wird bei rein physischen Fahrzeugen verblieben, keine reine LED-basierte Simulation.
+Auch die Sounds spielen eine nebensächliche Rolle, da primär die Reibungsgeräusche der kleinen Fahrzeuge zu hören sind.
+Kleine Indikator-Sounds passieren beim Starten, und bei einer neuen Runde.
 
-\subsection{Functional and Non-Functional Requirements}\label{sec:requirements}
-% Funktionale und nicht-funktionale Systemanforderungen (z.B. Echtzeit-Fähigkeit, 60fps Rendering).
-tbd
+Scalextric: [scalextric:2026arc]
+User Interface via App, pit stops, lap durations, weather conditions, different race modes
+2 Buttons on controller: brake (instead of accelerate) and lane change.
 
-\subsection{High-Level Architecture}\label{sec:architecture}
-% Trennung von Game Logic (RPI), Controller-Eingaben und und LED-Rendering (Pico).
-tbd
+Anki Overdrive:
+Freie Fahrt auf einer Bahn, App mit Einstellungen und als Controller, modulare Streckenelemente (verbindbar per Magnet).
+Allerdings keine Lichter oder Sounds, die in den Spielfluss integriert sind.
 
-\section{Hardware Implementation}\label{sec:hardware_implementation}
+\section{System Requirements and Architecture}
 
-\subsection{Microcontroller Setup}\label{sec:mcu_setup}
-% Raspberry Pi (4) als Host, Raspberry Pi Pico als MCU für Hardware-IO.
-tbd
+\subsection{System Requirements}
+% - Initial project requirements
+% - Functional and non-functional system requirements (e.g., real-time capability, 50fps rendering). keep it short.
 
-\subsection{Communication}\label{sec:communication}
-% UART Protocol (Latenzen, Baud-Raten, Datenpakete).
-tbd
+\subsection{High-Level Architecture}
+% - Overview of the distributed hardware architecture. -> System Architecture Block Diagram
+% - Separation of game logic (RPi), controller inputs and LED rendering (Pico).
+% - Why the separation? (Load balancing, real-time guarantee).
 
-\subsection{Signal Processing \& Controller}\label{sec:signal_processing}
-% Signaltechnik & Controller-Aufbau.
-tbd
 
-\section{Software Implementation \& Game Mechanics}\label{sec:software_implementation}
+\section{Hardware Implementation}
 
-\subsection{Core Loop}\label{sec:core_loop}
-% Game-Tick-Implementierung, Speed Update & Limits.
-tbd
+\subsection{Microcontroller Setup}
+% - Raspberry Pi Pico as input MCU: MicroPython firmware, permanent and latency-free reading of analog controllers and digital buttons.
+% - Raspberry Pi 4 as core host: main application, game logic, physics ticks, LED display buffers, threaded audio mixer.
+% -> Hardware diagram
 
-\subsection{Physics \& Lane Handling}\label{sec:physics}
-% Reibung, Beschleunigung, Lane-Hops und Kollisionserkennung.
-tbd
+\subsection{Communication Interface}
+% - High-speed UART connection between Pico and Pi 4.
+% - Serialized data format to relieve the Pi 4 host from polling overhead.
+% JSON listing of the sent data structure:
+% {
+%   "controllers": [
+%     {
+%       "controller_id": 1,
+%       "adc_0": 45230,
+%       "dig_0": 1
+%     },
+%     {
+%       "controller_id": 2,
+%       "adc_0": 59150,
+%       "dig_0": 0
+%     }
+%   ]
+% }
 
-\subsection{Dev/Simulation Environment}\label{sec:simulation}
-% Der Terminal-Emulator in Python (simulation.py), warum er essenziell für die Logik-Validierung war, bevor geflasht wurde.
-tbd
 
-\section{Evaluation}\label{sec:evaluation}
+\subsection{Physical Design and Controllers}
+% - Mechanical setup: wooden board, vehicles, modified Carrera GO! track modules.
+% - Signal engineering & controller construction.
+% - 3D-printed components: cases for sound boxes, controllers, etc.
 
-\subsection{Performance}\label{sec:performance}
-% Wie schnell läuft der Game Loop? (z.B. Python Performance auf dem RPI4).
-tbd
 
-\subsection{Latency}\label{sec:latency}
-% Delay zwischen Knopfdruck am Controller über den Pico zum RPI und zurück zur LED-Aktualisierung.
-tbd
+\section{Software Implementation and Game Mechanics}
 
-\subsection{Challenges}\label{sec:challenges}
-% Reibungsverluste bei schnellen Updates oder Tearing/Timing-Probleme bei WS2812-Ansteuerung.
-tbd
+\subsection{Software Architecture}
+% - OOP design of the Python codebase. -> software architecture diagram
+% - Modular package design (`Game`, `Simulation`, `Logger`, `Controller`, `Display`, `Sound`).
+% - Thread isolation and GIL mitigations: Strict separation of the physics loop thread from peripheral driver calls.
 
-\section{Conclusion and Future Work}\label{sec:conclusion}
-% Zusammenfassung des Erreichten.
-% Was steht noch auf der Todo-Liste? (z.B. mehr Track-Module, WiFi/MQTT Leaderboards).
-tbd
+\subsection{Controller Inputs and Speed Calculation}
+% - Input mapping: scaling the ADC values [42000, 65536].
+% - Continuous dampening due to friction.
+% - Speed update per tick and clamping to max-speed limits.
 
-% ======================================================================
-% TEMPLATES FÜR LATEX ELEMENTE
-% ======================================================================
-% --- Description Template ---
-% \begin{description}
-%     \item[Item 1] Description 1
-%     \item[Item 2] Description 2
-% \end{description}
-%
-% --- Itemize/List Template ---
-% \begin{itemize}
-%     \item Item 1
-%     \item Item 2
-% \end{itemize}
-%
-% --- Listing/Code Template ---
-% \begin{lstlisting}[language=json, float, caption={example listing}, label={lst:listing}]
-% {}
-% \end{lstlisting}
-%
-% --- Figure Template ---
-% \begin{figure*}[!htb]
-%   \centering
-%   \includegraphics[width=\linewidth]{img}
-%   \caption{caption}
-%   \label{fig:figure}
-% \end{figure*}
-%
-% --- Table Template 1 (Standard with Tabularx) ---
-% \begin{table}[!h]
-%     \centering
-%     \caption{Table Caption}
-%     \label{tab:table_label1}
-%     \begin{tabularx}{0.9\linewidth}{>{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}X}
-%         \toprule
-%         \textbf{Category} & \textbf{Content} \\
-%         \midrule
-%         yada & yada \\
-%         \bottomrule
-%     \end{tabularx}
-% \end{table}
-%
-% --- Table Template 2 (Full Width Costs Table) ---
-% \begin{table*}[!htb]
-%     \centering
-%     \caption{Costs}
-%     \label{tab:costs}
-%     \begin{tabularx}{0.8\textwidth}{>{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}r >{\raggedright\arraybackslash}r}
-%         \toprule
-%         \textbf{Component} & \textbf{Usage/Quantity} & \textbf{A} & \textbf{B} \\
-%         \midrule
-%         Yada & yada & 1 & 2 \\
-%         \midrule
-%         \textbf{Total} & & \textbf{\(\sim\)\$0.00} & \textbf{\(\sim\)\$0.00} \\ 
-%         \bottomrule
-%     \end{tabularx}
-% \end{table*}
+\subsection{Physics}
+% - Logic of lane changing over the temporary center line.
+% - Preservation of relative position progress during lane changes.
+% - Collision detection via distance matrices on the same lane.
+% - Multi-stage procedure when resetting after a crash.
 
-% ======== References =========
-\sloppy
-\printbibliography[notcategory=selfref]
-% \printbibliography
+\subsection{Deployment}
+% - running on a docker container on the RPi4 for reproducibility and easy deployment.
+
+\subsection{Hardwareless Simulation Interface}
+% - The ASCII-based live simulator (`src/dev/simulation.py`).
+% - Essential logic validation before flashing.
+
+
+\section{Multimedia Subsystems: LED Control and Audio}
+
+\subsection{Hardware Integration and Resource Bottlenecks}
+% - Initial DMA and peripheral conflicts: Analysis of the failed attempt (DMA collisions).
+% - Chained single-driver architecture: Physical daisy-chaining (Data Out to Data In), software-based mapping via `VirtualLedStrip`.
+
+\subsection{Priority-Based LED Rendering}
+% - Layer model of the DisplayManager (Low Priority -> High Priority).
+
+\subsection{Real-Time Audio Mixer}
+% - Vectorized live stereo audio mixer: NumPy vectorization for performance optimization.
+% - Asynchronous command queue for audio: Thread-safe decoupling via `ThreadedSoundManager`.
+
+
+\section{Project Management}
+
+The LumenTrace project was executed by a three-person team, with each member contributing to different aspects of the project. 
+The lead developers for each component are indicated in~\Cref{tab:task_distribution}, while a reviewer was assigned to each task to ensure hardware and software quality. 
+
+The development of LumenTrace followed an incremental path, prioritizing a basic architecture and core functionality before implementing additional features and working on enhancements. 
+The project was structured into four distinct milestones to manage dependencies and verify integration at each phase.
+
+\begin{itemize}
+    \item \textbf{Milestone 1: Proof of Concept (POC):}
+          Establishment of the physical Carrera GO!~\cite{carrera:2026carrera} track, development of Raspberry Pi Pico firmware using MicroPython, implementation of analog controller input reading, establishment of UART serial communication, and design of the JSON-based data serialization and parsing.
+
+    \item \textbf{Milestone 2: Base Game Implementation:}
+          Software architecture with modular packages, core physics engine with acceleration, friction, and speed clamping, vehicle lane management and position tracking, collision detection via distance metrics, multithreaded game loop architecture, LED strip control, display rendering pipeline with priority-based layer system, modular track design with individual driving profiles, settings system, unit testing framework, and centralized logging via file and MQTT interfaces.
+
+    \item \textbf{Milestone 3: Enhancements and Feature Expansion:}
+          Advanced physics for lane changes, respawn system, intersection modules, virtual LED strip abstraction for hardware constraint resolution, round counters, vehicle lighting effects including headlights, rear brake lights, and identification lights, real-time vectorized stereo audio mixer with volume and stereo panning controls, threaded sound manager, per-vehicle engine sounds with speed-responsive pitch, event-driven sound effects, Docker containerization, 3D-printed controller enclosures and component styling, and performance optimization to prevent thread starvation.
+
+    \item \textbf{Milestone 4: Documentation and Finalization:}
+          Comprehensive technical report with architecture diagrams and system analysis, usage guides, technical report documentation, and project preparation for submission.
+\end{itemize}
+
+The division of responsibilities between the three team members is outlined in~\Cref{tab:task_distribution}. In general, Simon Völkl focused on the software implementation, Erik Dombrowsky concentrated on the hardware wiring and physical setup, while Simon Frey contributed mainly to the 3D printing and styling of the components. 
+
+\begin{table*}[htb]
+    \centering
+    \caption{Task Distribution Matrix}
+    \label{tab:task_distribution}
+    \footnotesize
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabularx}{0.68\linewidth}{p{2.5cm} p{4.5cm} c c c}
+        \toprule
+        \textbf{Milestone} & \textbf{Task} & \textbf{S. Völkl} & \textbf{E. Dombrowsky} & \textbf{S. Frey} \\
+        \midrule
+        \multirow{5}{2.5cm}{\textbf{M1: POC}}
+            & Physical Track Setup & Lead & Lead & - \\
+            & Controller Modification & Review & Lead & - \\
+            & Pico Setup & Review & Lead & - \\
+            & JSON Schema Serialization & Lead & Lead & - \\
+            & JSON Schema Parsing & Lead & Review & - \\
+            & Microcontroller Wiring with UART & Review & Lead & - \\
+        \midrule
+        \multirow{11}{2.5cm}{\textbf{M2: Base Game}}
+            & Software Architecture & Lead & Review & - \\
+            & Logging & Lead & Review & - \\
+            & Unit Testing & Lead & - & - \\
+            & Console Simulation & Lead & - & - \\
+            & Physics Engine & Lead & Review & - \\
+            & Track Modules with Driving Profiles & Lead & Lead & Lead \\
+            & Settings System & Lead & Review & - \\
+            & Vehicle Lane Management & Lead & Review & Review \\
+            & Collision Detection & Lead & Review & - \\
+            & Multithreading & Lead & Review & - \\
+            & LED Strip Control & Lead & Lead & Lead \\
+        \midrule
+        \multirow{12}{2.5cm}{\textbf{M3: Enhancements}}
+            & Advanced Physics & Lead & Review & Review \\
+            & Respawn System & Lead & Review & Review \\
+            & Physical Intersection Modules & Review & Lead & - \\
+            & Virtual LED Strips & Lead & Review & - \\
+            & Round Counter Wiring & Review & Lead & Lead \\
+            & Round Counter Logic & Lead & Review & - \\
+            & Vehicle Lighting Effects & Lead & Review & Review \\
+            & Sound Samples & Lead & Lead & Lead \\
+            & Sound Engineering & Lead & Lead & - \\
+            & Docker Containerization & Lead & - & - \\
+            & 3D Printing/Styling & Review & Lead & Lead \\
+        \midrule
+        \multirow{2}{2.5cm}{\textbf{M4: Documentation}}
+            & Technical Report & Lead & Review & Review \\
+            & Presentation Preparation & Lead & Lead & Review \\
+            & Usage Guides & Lead & - & - \\
+        \bottomrule
+    \end{tabularx}
+\end{table*}
+
+
+\section{Evaluation}
+
+\subsection{Performance Analysis}
+% - How fast does the game loop run? (e.g., Python performance on the RPi4).
+% controller inputs: 50Hz, display updates: 33Hz, game and physics ticks: 50Hz. No problems with the GIL.
+% Activating the logging, leads to performance drops when log messages are sent and small lag spikes for the whole process, so this should be
+% disabled in production use. The logging is only used for debugging and development purposes.
+
+\subsection{Latency}
+% - Delay between button press on the controller via Pico to RPi and back to LED update. Can be calculated from the information above. Keep in mind that roughly every 20th to 50th UART controller transmission fails.
+
+\subsection{User Experience and Feedback}
+% - How do the users perceive the game? Very immersive with the styling and sound design. 
+% - Feedback from test players and observers
+% % - The speed limits were too abrupt, so we smoothened them out.
+% % - Some sounds were too loud (e.g. motor sound), so adjustments were made to the volume levels.
+% % - Irregular players could touch the track, so hardware had to be secured and protected better.
+% % - The current dependence on the Carrera GO! track system is a limitation, so custom modules should be developed.
+
+\subsection{Challenges and Limitations}
+% if there are any left-over challenges or limitations, they should be mentioned here. 
+
+\subsection{Cost Analysis}
+% - Cost of the hardware components (Raspberry Pi 4, Raspberry Pi Pico, LED strips, Carrera GO! track modules, 3D-printed parts, etc.).
+
+
+\section{Conclusion and Future Work}
+
+% - Conclusion: Summary of achievements. Successful implementation of a high-performance, latency-free simulator.
+% - Future work: The following enhancements could be implemented in the future:
+% % - Physical controllers with vibration module for haptic feedback
+% % - Display of MQTT telemetry data on web/app panel
+% % - Special abilities outside overtaking lanes (e.g., nitro, fireball, etc.)
+% % - Collectible coins
+% % - Game modes and environmental effects (storm, rain, etc.) [like here: scalextric:2026arc]
+% % - AI opponents using reinforcement learning
+% % - Additional ambience effects (3D-printed components, headlights, sound in modules, etc.)
+% % - Custom modules for independence from Carrera track system (branching paths, etc.) [see magnetically connectable modules from Anki Overdrive anki:2026overdrive]
+% % - Smoothed speed limits to prevent abrupt collisions
+% % - Business case development
+
+% --- References ---
+
+% The \balance command ensures that the two columns on the last
+% page end cleanly at the same height. Uncomment as soon as the text is finished!
+% \balance 
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
 
 \end{document}

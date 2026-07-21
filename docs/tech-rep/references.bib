@@ -1,7 +1,310 @@
-@misc{ky026flame,
-  author       = {{ArduinoModules}},
-  title        = {Arduino Flame Sensor KY-026 — Wiring Diagram and Code},
+@comment{GitHub repository for this project.}
+@electronic{voelkl:2026lumentrace,
+  author       = {Simon Völkl and Erik Dombrowsky and Simon Frey},
+  title        = {LumenTrace GitHub Repository},
+  howpublished = {[Online]. Available: https://github.com/s-voelkl/LumenTrace},
+  note         = {GitHub Repository},
+  year         = {2026}
+}
+@comment{PySerial library for python fo accessing the GPIOs.}
+@manual{liechti:2020pyserial,
+  author       = {Chris Liechti},
+  title        = {PySerial Documentation},
+  address      = {Online},
+  year         = {2020},
+  howpublished = {[Online]. Available: https://pyserial.readthedocs.io/en/}
+}
+@comment{Raspberry Pi Usage.}
+@manual{croston:2022raspberry,
+  author       = {Ben Croston},
+  title        = {Raspberry Pi GPIO Python Documentation},
+  address      = {Online},
+  year         = {2022},
+  howpublished = {[Online]. Available: https://pypi.org/project/RPi.GPIO/}
+}
+@comment{rpi-ws281x library for Raspberry Pi to use led light strips with PixelStrip for example.}
+@manual{garff:2023rpi,
+  author       = {Jeremy Garff},
+  title        = {rpi-ws281x Documentation},
+  organization = {Pimoroni Ltd.},
+  address      = {Online},
+  year         = {2023},
+  howpublished = {[Online]. Available: https://github.com/jgarff/rpi_ws281x}
+}
+@comment{pytest framework for testing in Python.}
+@manual{krekel:2026pytest,
+  author       = {Holger Krekel and pytest-dev team},
+  title        = {pytest Documentation},
+  organization = {pytest-dev},
+  address      = {Online},
   year         = {2026},
-  howpublished = {\url{https://arduinomodules.info/ky-026-flame-sensor-module/}},
-  note         = {Accessed: 2026-05-05}
-} 
+  howpublished = {[Online]. Available: https://docs.pytest.org/en/}
+}
+@comment{paho-mqtt library for using the MQTT communication protocol.}
+@manual{light:2026paho,
+  author       = {Roger Light and Eclipse Foundation},
+  title        = {paho-mqtt Documentation},
+  organization = {Eclipse Foundation},
+  address      = {Online},
+  year         = {2026},
+  howpublished = {[Online]. Available: https://pypi.org/project/paho-mqtt/}
+}
+@comment{NumPy library for numerical computing in Python for the sound engineering.}
+@article{harris:2020array,
+ author        = {Harris, C.R. and Millman, K.J. and van der Walt, S.J. and others},
+ title         = {Array programming with {NumPy}},
+ journal       = {Nature},
+ volume        = {585},
+ pages         = {357--362},
+ year          = {2020},
+ doi           = {10.1038/s41586-020-2649-2},
+ url           = {https://doi.org/10.1038/s41586-020-2649-2}
+}
+@comment{Sounddevice library for audio input and output in Python.}
+@manual{geier:2024sounddevice,
+  author       = {spatialaudio and Matthias Geier},
+  title        = {sounddevice Documentation},
+  organization = {Online},
+  year         = {2024},
+  howpublished = {[Online]. Available: https://python-sounddevice.readthedocs.io/en/}
+}
+@comment{Soundfile library for reading and writing sound files in Python.}
+@manual{bechtold:2026soundfile,
+  author       = {Bastian Bechtold and Matthias Geier},
+  title        = {soundfile Documentation},
+  organization = {Online},
+  year         = {2026},
+  howpublished = {[Online]. Available: https://python-soundfile.readthedocs.io/en/}
+}
+@comment{MicroPython programming language for Raspberry Pi Pico programming.}
+@manual{george:2026micropython,
+  author       = {Damien P. George and MicroPython authors and contributors},
+  title        = {MicroPython Documentation},
+  organization = {MicroPython},
+  year         = {2026},
+  howpublished = {[Online]. Available: https://docs.micropython.org/en/}
+}
+@comment{Another project: Sensiq is an end-to-end serverless IoT environmental monitoring platform combining ESP32 sensor nodes with an AWS cloud backend and a React web frontend for real-time and historical data analysis. Uses MQTT connection (!) by using JSON data format for communication.}
+@electronic{voelkl:2026sensiq,
+  author = {Völkl, Simon and Schieder, Johannes and Rosner, Sebastian and Vu, Andre Tien and Neumann, Christoph P.},
+  title  = {Sensiq GitHub Repository},
+  howpublished = {[Online]. Available: https://github.com/s-voelkl/Sensiq},
+  note   = {[GitHub Repository]},
+  year   = {2026}
+}
+@comment{Another project: A tilt-controlled IoT game for the ESP32-S3, featuring real-time physics and dual-dashboard synchronization via MQTT and HiveMQ Cloud. Also styling done in a bakery style, running on a ESP32. Useful for design and MQTT communication!}
+@electronic{voelkl:2026bitebound,
+  author = {Völkl, Simon and Schieder, Johannes},
+  title  = {BiteBound GitHub Repository},
+  howpublished = {[Online]. Available: https://github.com/s-voelkl/BiteBound},
+  note   = {[GitHub Repository]},
+  year   = {2026}
+}
+@comment{MQTT communication protocol.}
+@electronic{mqtt:2026mqtt,
+  author      = {{MQTT.org}},
+  title       = {MQTT: The Standard for IoT Messaging},
+  year        = 2026,
+  url         = {https://mqtt.org/},
+  lastchecked = {28.06.2026}
+}
+@comment{JSON data format for UART data exchange between the Raspberries.}
+@electronic{json:2026introducing,
+  author      = {{JSON.org}},
+  title       = {Introducing JSON},
+  year        = 2026,
+  url         = {https://www.json.org/json-en.html},
+  lastchecked = {28.06.2026}
+}
+@comment{Docker container for automatic startup and isolated behavior.}
+@article{merkel:2014docker,
+  author = {Merkel, Dirk},
+  title = {Docker: lightweight Linux containers for consistent development and deployment},
+  year = {2014},
+  issue_date = {March 2014},
+  publisher = {Belltown Media},
+  address = {Houston, TX},
+  volume = {2014},
+  number = {239},
+  issn = {1075-3583},
+  journal = {Linux J.},
+  month = {march},
+  articleno = {2}
+}
+@comment{Raspberry Pi handbook as a general Raspberry Pi source.}
+@book{magpi:2024raspberry,
+  author    = {{Makers of The MagPi magazine}},
+  title     = {The Official Raspberry Pi Handbook 2025: Astounding projects with Raspberry Pi computers},
+  publisher = {Raspberry Pi Press},
+  year      = {2024},
+  isbn      = {9781916868267},
+  pages     = {200},
+  note      = {Electronic book},
+  url       = {https://search.ebscohost.com/login.aspx?direct=true&scope=site&db=nlebk&AN=3858359},
+  language  = {en}
+}
+@comment{for led stripes in the context of vehicles. The led light provides ambient feedback to the driver about speed. This is also implemented in LumenTrace by adjusting the vehicle colors based on the speed. The study shows that the adaptive condition helps a driver to control driving speed.}
+@inproceedings{meschtscherjakov:2015chaselight,
+  author = {Meschtscherjakov, Alexander and D\"{o}ttlinger, Christine and R\"{o}del, Christina and Tscheligi, Manfred},
+  title = {ChaseLight: ambient LED stripes to control driving speed},
+  year = {2015},
+  isbn = {9781450337366},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/2799250.2799279},
+  doi = {10.1145/2799250.2799279},
+  booktitle = {Proceedings of the 7th International Conference on Automotive User Interfaces and Interactive Vehicular Applications},
+  pages = {212–219},
+  numpages = {8},
+  keywords = {LED, ambient information, automotive, chasing lights, driving speed},
+  location = {Nottingham, United Kingdom},
+  series = {AutomotiveUI '15}
+}
+
+@comment{Sound conveys much information about the physical world around us, for localization (used by us by the stereo sounds) also in poor light conditions. This is also true for stereo sound in real life vehicle movements.}
+@inproceedings{gan:2019self,
+  author = {Gan, Chuang and Zhao, Hang and Chen, Peihao and Cox, David and Torralba, Antonio},
+  title = {Self-Supervised Moving Vehicle Tracking With Stereo Sound},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  month = {October},
+  year = {2019}
+}
+
+@comment{On the design of sound-based computer games.}
+@article{gardenfors:2003designing,
+  author = {Dan Gärdenfors},
+  title = {Designing sound-based computer games},
+  journal = {Digital Creativity},
+  volume = {14},
+  number = {2},
+  pages = {111--114},
+  year = {2003},
+  publisher = {Routledge},
+  doi = {10.1076/digc.14.2.111.27863},
+  URL = {https://doi.org/10.1076/digc.14.2.111.27863},
+  eprint = {https://doi.org/10.1076/digc.14.2.111.27863}
+}
+
+@comment{Forces acting in a slot car, friction, forces, throttle controller, ...}
+@inproceedings{skaar:2025slot,
+  author="Skaar, Sindre L{\o}ining and V{\aa}gsether, H{\aa}kon",
+  editor="Balogh, Richard and Obdr{\v{z}}{\'a}lek, David and Fachantidis, Nikolaos",
+  title="A Slot Car Framework for Software Engineering Education",
+  booktitle="Robotics in Education",
+  year="2025",
+  publisher="Springer Nature Switzerland",
+  address="Cham",
+  pages="380--391",
+  isbn="978-3-031-98762-5"
+}
+
+@comment{Fifo queue for our sound engineering problem.}
+@inproceedings{tsigas:2001simple,
+  title={A simple, fast and scalable non-blocking concurrent fifo queue for shared memory multiprocessor systems},
+  author={Tsigas, Philippas and Zhang, Yi},
+  booktitle={Proceedings of the thirteenth annual ACM symposium on Parallel algorithms and architectures},
+  pages={134--143},
+  year={2001}
+}
+
+@comment{Multiprocessing in Python. Used by us to run the game, display and controllers in parallel.}
+@inproceedings{eggen:2019thread,
+  title={Thread and process efficiency in python},
+  author={Eggen, Roger and Eggen, Maurice},
+  booktitle={Proceedings of the international conference on parallel and distributed processing techniques and applications (PDPTA)},
+  pages={32--36},
+  year={2019},
+  organization={The Steering Committee of The World Congress in Computer Science, Computer~…}
+}
+@comment{For our sound sources.}
+@electronic{pixabay:2026pixabay,
+  author = {Pixabay},
+  title  = {Pixabay: Stunning royalty-free images and royalty-free stock},
+  howpublished = {[Online]. Available: https://pixabay.com/},
+  year   = {2026}
+}
+
+@comment{Feature scaling with linear interpolation for our speed inputs with the controller throttle.}
+@book{zheng:2018feature,
+  title={Feature engineering for machine learning: principles and techniques for data scientists},
+  author={Zheng, Alice and Casari, Amanda},
+  year={2018},
+  publisher={"O'Reilly Media, Inc."}
+}
+
+@comment{For the friction applied to the vehicles based on the current speed.}
+@article{kane:2022tire,
+  title={Tire/road friction prediction: Introduction a simplified numerical tool based on contact modelling},
+  author={Kane, Malal and Edmondson, Vikki},
+  journal={Vehicle system dynamics},
+  volume={60},
+  number={3},
+  pages={770--789},
+  year={2022},
+  publisher={Taylor \& Francis}
+}
+@comment{For the UART communication between the Raspberry Pi 4 and the Raspberry Pi Pico.}
+@article{pena:2020uart,
+  title={Uart: A hardware communication protocol understanding universal asynchronous receiver/transmitter},
+  author={Pe{\~n}a, Eric and Legaspi, Mary Grace},
+  journal={Visit Analog},
+  volume={54},
+  number={4},
+  pages={1--5},
+  year={2020}
+}
+
+@comment{For the Carrera slot car system and physical modules.}
+@electronic{carrera:2026carrera,
+  author = {Carrera Toys GmbH},
+  title  = {Carrera Toys Official Website},
+  howpublished = {[Online]. Available: https://carrera-toys.com/},
+  note  = {Official Website},
+  year   = {2026}
+}
+
+@comment{Carrera Hybrid: Evolving slot car racing game with the tendency to more digitalization and more electronic components.}
+@electronic{carrera:2026hybrid,
+  author = {Carrera Toys GmbH},
+  title  = {Carrera Hybrid Racetrack},
+  howpublished = {[Online]. Available: https://carrera-toys.com/en/pages/overview-page-hybrid-overview},
+  note  = {Official Website},
+  year   = {2026}
+}
+
+@comment{Light and sound looping set for Carrera Go.}
+@electronic{carrera:2026light,
+  author = {Carrera Toys GmbH},
+  title  = {Carrera Go Light and Sound Looping Set},
+  howpublished = {[Online]. Available: https://carrera-toys.com/en/products/20061661-light-and-sound-looping-set},
+  note  = {Official Website},
+  year   = {2026}
+}
+
+@comment{Carrera Digital 132.}
+@electronic{carrera:2026digital,
+  author = {Carrera Toys GmbH},
+  title  = {Carrera Digital 132},
+  howpublished = {[Online]. Available: https://carrera-toys.com/en/collections/landing-page-digital-132-ar-pimcore-import},
+  note  = {Official Website},
+  year   = {2026}
+}
+
+@comment{Scalextric Digital - ARC PRO Platinum GT Race Set.}
+@electronic{scalextric:2026arc,
+  author = {Hornby Hobbies Limited},
+  title  = {Scalextric Digital - ARC PRO Platinum GT Race Set},
+  howpublished = {[Online]. Available: https://uk.scalextric.com/products/scalextric-arc-pro-platinum-gt-set-c1413m},
+  note  = {Official Website},
+  year   = {2026}
+}
+
+@comment{Anki Overdrive Slot Car Racing Game.}
+@electronic{anki:2026overdrive,
+  author = {Anki, Inc.},
+  title  = {Anki Overdrive},
+  howpublished = {[Online]. Available: https://anki.bot/pages/meet-overdrive},
+  note  = {Official Website},
+  year   = {2026}
+}
+

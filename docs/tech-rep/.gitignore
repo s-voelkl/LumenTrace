@@ -28,3 +28,4 @@ _minted/*
 *.upa
 *.upb
 /*selfref.bib
+template/**

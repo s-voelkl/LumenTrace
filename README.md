@@ -4,17 +4,19 @@ A high-performance MCU-based LED racing simulator. Bringing the classic slot car
 
 > [!IMPORTANT]
 >
-> The **source code** for this project is available on **GitHub**: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace)
+> The **source code** for this project is available on **GitHub**: [github.com/s-voelkl/LumenTrace](https://github.com/s-voelkl/LumenTrace) [voelkl:2026lumentrace]
 
 <div align="center">
   <img src="docs/assets/SideView1.jpg" alt="LumenTrace Game" width=1000/>
 </div>
 
+References are provided in the format `[author:yearidentifier]` and are listed in the [Bibliography](docs/tech-rep/references.bib).
+
 ## Used Technologies
 
-- Microcontrollers: Raspberry Pi Pico (Input Controller) and Raspberry Pi 4 (Core Host) with a micro-SD card for data storage.
-- Programming Languages: MicroPython for the microcontroller firmware, Python for OOP design, data processing, led display, sound, testing, simulation and visualization.
-- Communication Protocols: High-Speed serial communication between Pico and Pi 4 with UART, LED control via WS2812.
+- Microcontrollers: Raspberry Pi Pico (Input Controller) and Raspberry Pi 4 (Core Host) [magpi:2024raspberry] with a micro-SD card for data storage.
+- Programming Languages: MicroPython [george:2026micropython] for the microcontroller firmware, Python for OOP design, data processing, led display, sound, testing, simulation and visualization.
+- Communication Protocols: High-Speed serial communication between Pico and Pi 4 with UART [pena:2020uart,liechti:2020pyserial], LED control via WS2812 [garff:2023rpi].
 - Data Storage: Micro-SD card for storing and running the program on the Pi.
 
 <div align="center">
@@ -35,23 +37,29 @@ The contributors and maintainers of this project are:
 
 The project is part of the [Physical Computing Course](https://www.oth-aw.de/forschung/forschungseinrichtungen/labore/fakultaet-elektrotechnik-medien-und-informatik/labor-medieninformatik/physical-computing/) at the [OTH Amberg-Weiden](https://www.oth-aw.de/). The project is supervised by [Prof. Dipl.-Des. Martin Frey](https://www.oth-aw.de/hochschule/ueber-uns/personen/frey-martin/) and [Prof. Dr.-Ing. Ulrich Schäfer](https://www.oth-aw.de/schaefer-ulrich/ueber/).
 
+## Initial Project Requirements
+
+The following represents the original project requirements that evolved and adapted dynamically throughout development:
+
+> Mechanics-free slot car track with: Control system, 3D printing, 3-4 RGB LED strips, sound, based on Raspberry Pi Pico 2W with PIO
+
 ## Features
 
-- Real-time physics simulation for accurate virtual slot car movement, including collision detection, acceleration/deceleration, falling down, recovery, and more.
-- Advanced LED effects for immersive racing experience: Car headlights, rear lights, identification lights with warn indicators; track lighting for start/finish line; lap counter and more.
-- Player controller with buttons for acceleration, braking, and lane switching, providing an interactive racing experience.
-- High-speed communication between the microcontroller and the Raspberry Pi for seamless data exchange and control.
-- Simulation with Python for debugging, testing, and visualization of the program logic and physics.
-- Modular track design with interchangeable modules for different track layouts and configurations.
-- Track modules with individual driving profiles to simulate different track conditions.
-- Settings for customizing the racing experience.
+- **Realistic Physics Engine** – Experience accurate virtual slot car behavior with collision detection, dynamic acceleration/deceleration, and recovery mechanics that respond to your driving style.
+- **Immersive LED Visuals** – Watch your car come alive with adaptive lighting: headlights brighten during acceleration, brake lights glow when decelerating, and dynamic lane indicators guide your racing line.
+- **Live Round Counter** – Real-time LED matrix displays show your lap count instantly, keeping you informed of your progress without missing a beat.
+- **Intuitive Control System** – Simple button-based controls for throttle and lane switching let you focus on racing, not learning complex mechanics.
+- **Spatial Audio Experience** – Engine sounds respond to your speed and acceleration, with stereo positioning that tracks your position on the track for a truly immersive audio environment.
+- **Adaptive Track Modules** – Each track section has unique driving characteristics and speed limits. Master different module types to optimize your performance.
+- **Customizable Racing Experience** – Adjustable difficulty levels and driving profiles let you tailor the challenge to your skill level, from casual fun to competitive intensity.
+- **Multi-Player Racing** – Compete against others in real-time with synchronized physics, collision detection, and dynamic lane management for intense multiplayer action.
 
 ## Usage
 
 > [!NOTE]
 > **Usage instructions:** For general requirements and usage instructions, please refer to the [Raspberry Pi 4](docs/rpi_4/rpi_4_config.md) and [Raspberry Pi Pico](docs/rpi_pico/rpi_pico_config.md) configuration guides.
 
-**Docker** is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO, audio, and UART.
+**Docker** [merkel:2014docker] is used to provide a consistent, isolated environment for running the LumenTrace application on the Raspberry Pi 4. It automatically handles the installation of required system-level libraries and guarantees necessary privileged access for hardware GPIO [croston:2022raspberry], audio, and UART. By using docker, the application starts up automatically on boot and can be easily adjusted in a system-independent manner.
 
 > [!NOTE]
 > **Docker setup:** See the [Docker setup](docs/rpi_4/rpi_4_docker.md) for instructions on how to build and run the Docker container for LumenTrace.
@@ -61,8 +69,8 @@ The project is part of the [Physical Computing Course](https://www.oth-aw.de/for
 The system is built on a distributed hardware architecture combining a Raspberry Pi 4 (Core Host) and a Raspberry Pi Pico (Input MCU).
 
 - **Raspberry Pi 4 (Core Host):** Runs the main Python application (`src.rpi_4.main`), managing the game logic, physics simulation, LED display buffers, sound mixing, and logging.
-- **Raspberry Pi Pico (Input MCU):** Runs MicroPython firmware (`src.rpi_pico.main`) polling inputs from physical controllers (analog throttles via ADCs and digital buttons).
-- **Communication:** The Pico transmits the controller states as a serialized format to the RPi 4 over UART at high speed, removing the polling overhead from the main host.
+- **Raspberry Pi Pico (Input MCU):** Runs MicroPython [george:2026micropython] firmware (`src.rpi_pico.main`) polling inputs from physical controllers (analog throttles via ADCs and digital buttons).
+- **Communication:** The Pico transmits the controller states as a serialized format (JSON [json:2026introducing]) to the RPi 4 over UART [pena:2020uart] at high speed, removing the polling overhead from the main host.
 - **LED Matrices & Strips:** RPi 4 drives WS2812B LEDs using DMA (PWM on GPIO 18/19), where the LED matrices for lap counting are physically chained before the track strips to minimize occupied hardware channels.
 - **Audio:** Real-time engine and event audio is routed out of the Pi to stereo speakers.
 
@@ -76,7 +84,7 @@ The architecture is designed to be modular and extensible, with clear separation
 
 - `Game` package handles the core game logic, including vehicle physics, track management, and players.
 - `Simulation` package provides tools for testing and visualizing the game mechanics in Python.
-- `Logger` package manages logging and debugging output for log files and MQTT.
+- `Logger` package manages logging and debugging output for log files and MQTT [mqtt:2026mqtt] [light:2026paho]. Our approach to MQTT logging was inspired by the projects [voelkl:2026sensiq] and [voelkl:2026bitebound].
 - `Controller` package handles player input and translates it into game actions.
 - `Display` package manages the LED effects and visual feedback for the game.
 - `Sound` package provides a real-time, threaded audio mixer.
@@ -103,14 +111,18 @@ Display hierarchy (applied from low priority -> high priority):
 4. **Start of the track**: The first pixel of every lane is marked as a start/end line (gray).
 5. **Round advance**: When a vehicle completes a lap the start pixel blinks between yellow and white for a configured number of ticks.
 6. **Inactive vehicles (respawn)**: Vehicles that are inactive or respawning blink between their primary color and gray (40% primary + 60% gray).
-7. **Active vehicle**: Final override — vehicle sprite is drawn centered on the vehicle position. Color depends on the driving profile and vehicle speed. Speeds near zero use the vehicle's primary color; values beyond thresholds interpolate toward accelerate/decelerate warning colors.
+7. **Active vehicle**: Final override — vehicle sprite is drawn centered on the vehicle position. Color depends on the driving profile and vehicle speed [meschtscherjakov:2015chaselight]. Speeds near zero use the vehicle's primary color; values beyond thresholds interpolate toward accelerate/decelerate warning colors.
 8. **Vehicle front lights**: Overlay front lighting (light gray) for vehicles that are currently accelerating.
 9. **Vehicle rear lights**: Overlay rear brake lighting (red) for vehicles that are currently decelerating.
 
 How the strips are controlled:
 
-- Physical output uses the `rpi_ws281x` library (`PixelStrip`, `Color`). Two GPIO channels are supported by default: `18` and `19` ([see Library on GitHub](https://github.com/richardghirst/rpi_ws281x))
-- The code uses `VirtualLedStrip` instances to map parts of a physical strip to logical lanes. This allows a single long strip to be split into multiple virtual lanes (useful for intersections or modules that need extra pixels).
+- Physical output uses the `rpi_ws281x` library (`PixelStrip`, `Color`) [garff:2023rpi]. Two GPIO channels are supported by default: `18` and `19` ([see Library on GitHub](https://github.com/richardghirst/rpi_ws281x))
+
+> [!NOTE]
+> **LED Mounting and Physical Chaining:** To map LEDs accurately to the physical track, the main strips were rigidly fastened using zip ties. Because both of the Pi 4's PWM channels were utilized for the primary lanes, the temporary central overtaking lane was physically daisy-chained to the end of a primary lane with connecting wires hidden beneath the track.
+
+- The code uses `VirtualLedStrip` instances to map parts of a physical strip to logical lanes. This abstraction allows the display manager to control each segment (Lap Counter, Main Lane, and Overtaking Lane) independently, resolving the hardware channel constraints and hiding the physical daisy-chain from the game logic.
 - At each game tick `Game.display()` calls `DisplayManager.update(game)`. The display manager updates the virtual buffers by writing RGB tuples. Finally `LedDisplay.render()` translates virtual buffers to the physical `PixelStrip` objects and calls `show()`.
 
 Tuning and configuration:
@@ -123,9 +135,9 @@ A current implementation of the LEDs can be found in `src/rpi_4/main.py`.
 
 ## Round Counter Hardware Integration
 
-To track player progress, the game integrates 8x8 WS2812B LED matrices to display round numbers (00–99) using a 3x5 font mapping.
+To track player progress, the game integrates 8x8 WS2812B LED matrices to display round numbers (00–99) using a 3x5 font mapping. Initial considerations for small LCD screens were discarded as they lacked readability from a 1-meter distance.
 
-### Initial Architecture & Bottlenecks
+### Initial Bottlenecks
 
 Initially, the round counters were configured on separate physical control lines:
 
@@ -136,11 +148,11 @@ Initially, the round counters were configured on separate physical control lines
 > [!CAUTION]
 > **Failed Attempt:** This setup failed due to several hardware and library-level constraints:
 >
-> - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping > failures (`mmap() failed`).
+> - **DMA Conflicts**: Initializing four distinct `PixelStrip` objects on DMA (Direct Memory Access) channel 10 caused register collisions and memory mapping failures (`mmap() failed`).
 > - **Peripheral Clashes**: The underlying `rpi_ws281x` C driver cannot mix PWM, SPI, and PCM peripherals concurrently in the same process space.
 > - **Channel Caps**: The driver structure is hardware-capped at 2 active physical channels.
 
-### Resolved Design (Chaining)
+### Resolved Design
 
 The solution leverages the existing `VirtualLedStrip` concept by chaining the matrices to the end of the track strips:
 
@@ -153,7 +165,7 @@ The solution leverages the existing `VirtualLedStrip` concept by chaining the ma
 
 ## Sound Engineering
 
-LumenTrace features a real-time audio engine that turns the race into an immersive, spatial experience. All sound is mixed live on the Raspberry Pi and played back in stereo, so what you hear reflects what is happening on the track at every moment.
+LumenTrace features a real-time audio engine that turns the race into an immersive, spatial experience [gardenfors:2003designing]. All sound is mixed live on the Raspberry Pi and played back in stereo [geier:2024sounddevice] [bechtold:2026soundfile], so what you hear reflects what is happening on the track at every moment [gan:2019self].
 
 ### Real-time audio mixer
 
@@ -163,7 +175,7 @@ A low-level sound manager (`src/sound/sound_manager.py`) mixes any number of sou
 - **Pitch** – dynamic speed/pitch shifting, used to make the engine rev up and down.
 - **Stereo panning** – independent left/right balance so sounds can be placed on the left or right side of the track.
 
-To maximize execution speed and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using a **block-level updates architecture** powered by NumPy vectorization:
+To maximize execution speed and ensure high real-time performance on constrained hardware (like the Raspberry Pi), the audio engine is strictly optimized using a **block-level updates architecture** powered by NumPy vectorization [harris:2020array]:
 
 - **Single Frame Indexing:** Rather than generating index arrays inside loops, a single frame index array (`np.arange`) is created once per callback block.
 - **No Cumulative Ramping:** Dynamic playback positions are calculated using linear offsets (`arange_frames * pitch`) instead of sequential cumulative sums (`np.cumsum`), bypassing costly sample-by-sample pitch ramping.
@@ -176,12 +188,18 @@ All sounds are referenced through a named catalog (`GameSound`), so each effect 
 
 Because real-time audio relies on extremely strict timing guarantees, executing Python-based audio callback routines synchronously alongside high-frequency game ticks, screen rendering, and hardware fetching can lead to Global Interpreter Lock (GIL) starvation and severe lock contention.
 
-To eliminate these bottlenecks, LumenTrace isolates the audio interface using a **Thread-Safe Asynchronous Command Queue** pattern (`src/sound/threaded_sound_manager.py`):
+> [!CAUTION]
+> **Audio Engineering Challenges:** Initially, transmitting audio via the Pi 4's AUX jack produced significant background noise, which was resolved by switching to a USB audio interface. However, integrating the audio playback into the main game loop still caused heavy sound stuttering after ~2 seconds.
+
+To eliminate these bottlenecks, LumenTrace isolates the audio interface using a **Thread-Safe Asynchronous Command Queue** pattern (`src/sound/threaded_sound_manager.py`) and multiprocessing principles [eggen:2019thread]:
 
 - **Non-blocking Wrapper (`ThreadedSoundManager`):** Acts as a transparent proxy wrapping the low-level `SoundManager`. Calling threads (such as `GameTickThread` or input fetchers) never block or wait on the underlying mixer locks.
-- **FIFO Command Queue:** Methods like `play()`, `update_sound()`, `stop_sound()`, and `stop_all()` immediately enqueue commands as lightweight, fire-and-forget tuples, generating trackable UUIDs instantly on the caller thread.
+- **FIFO Command Queue:** Methods like `play()`, `update_sound()`, `stop_sound()`, and `stop_all()` immediately enqueue commands into a non-blocking queue [tsigas:2001simple] as lightweight, fire-and-forget tuples, generating trackable UUIDs instantly on the caller thread.
 - **Dedicated Sound Worker Thread:** A background worker thread (`SoundWorkerThread`) continuously consumes the command queue and applies state changes to the actual `SoundManager`. This guarantees that high-frequency engine parameter updates do not block or stutter the physics loop.
 - **Persistent Streams across Restarts:** The asynchronous `stop_all` implementation selectively clears active playback instances under lock instead of tearing down the audio stream. This keeps the output stream alive and responsive across multiple game restarts and lobby resets without requiring a full audio stream re-initialization.
+
+> [!TIP]
+> **Stability Fix:** Alongside the dedicated audio thread, introducing 1ms sleep intervals within the display logic prevented audio thread starvation, ultimately stabilizing the sound output across concurrent workloads.
 
 ### Engine sounds
 
@@ -204,7 +222,7 @@ On top of the engine, the game plays positional one-shot effects that respond to
 ### Sound Effects Sources
 
 > [!NOTE]
-> **Sound Attribution:** All sound effects used in LumenTrace are sourced from free, royalty-free libraries and are credited below. Please refer to the original sources for licensing details.
+> **Sound Attribution:** All sound effects used in LumenTrace are sourced from free, royalty-free libraries [pixabay:2026pixabay] and are credited below. Please refer to the original sources for licensing details.
 
 - base-engine-1.wav: Created by ourselves.
 - startup-sound.mp3: <a href="https://pixabay.com/de/users/make_more_sound-35032787/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Jesse Grum</a> from <a href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=145007">Pixabay</a>
@@ -225,13 +243,17 @@ On top of the engine, the game plays positional one-shot effects that respond to
 
 ## Game Mechanics
 
-The game mechanics are implemented in `src/game` and are designed to provide a realistic and engaging racing experience like in the original slot car games.
+The game mechanics are implemented in `src/game` and are designed to provide a realistic and engaging racing experience like in the original slot car games [skaar:2025slot].
 
 ### Acceleration and Friction
 
-- Controller input `forward_press` is mapped to vehicle acceleration each game tick. The mapping is configured as inputs [42000, 65536] to outputs [0, 100] with linear interpolation.
-- Friction is applied continuously and reduces current speed by a configurable percentage.
+- Controller input `forward_press` is mapped to vehicle acceleration each game tick. The mapping is configured as inputs [42000, 65536] to outputs [0, 100] with linear interpolation [zheng:2018feature].
+- Friction is applied continuously and reduces current speed by a configurable percentage [kane:2022tire].
 - Positive and negative movement are supported. If acceleration would invert speed direction in one step, speed is clamped to `0` first to keep transitions stable.
+
+Acceleration mapping formula: $acceleration(forwardPress) = \frac{forwardPress - 42000}{65536 - 42000} * 100$
+
+Sensor measurement transmission must be trustful [voelkl:2026sensiq] for the system handling the incoming data. Although, roughly every 20th controller transmission is lost or unreadable, the game engine is designed to handle this gracefully. Having an update rate of 50Hz, a single lost tick is not critical, the game engine just continues using the last known controller state.
 
 ### Speed Update and Limits
 
@@ -248,6 +270,11 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
 - Reverse movement is also handled, including safe behavior for negative movement near lap boundaries.
 
 ### Lane Change
+
+> [!NOTE]
+> **Overtaking Mechanics Selection:** We evaluated multiple overtaking approaches: intersecting lanes (ruled out by vertical LED height), converging lanes (abrupt gameplay), and a unidirectional overtaking lane (lacked bidirectional switching). We ultimately chose a **temporary bidirectional center lane** because it offered the optimal balance between playability and realism.
+>
+> *Challenges solved:* The temporary lane eventually ends, potentially causing unavoidable out-of-bound crashes. We solved this by restricting lane changes beyond a specific point, forcing an automatic merge back to a main lane. We also implemented a cooldown distance (`lane_change_window`) to prevent rapid, successive lane changes and erratic switching.
 
 - Lane changes are triggered by pressing the `special_1` button.
 - A lane change is only allowed if the `driving_profile` of the current line has `lane_change_allowed = True`. This is typically used for intersection modules.
@@ -270,11 +297,27 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
 - A vehicle falls immediately when its current speed or acceleration violates the driving profile of the active line:
   - `speed` must remain within `[min_speed, max_speed]`
   - `acceleration` must remain within `[min_acceleration, max_acceleration]`
+
+> [!NOTE]
+> **Track Profile Constraints / Subdivided Modules:** To make difficulty scale smoothly without applying constraints too abruptly upon module entry, specific modules were mathematically subdivided. **Curves** have an Entry (slight restriction), Apex (strongest restriction), and Exit (reduced restriction). **Loops** have an Incline Entry (gravity decelerates), Inverted Apex (high minimum speed required to avoid falling), and Decline Exit (gravity accelerates).
+
 - Collision detection is evaluated for vehicles on the same lane.
   - If two vehicles are within collision distance, the vehicle in front falls.
   - The collision happens, if the position distance between the `settings.__vehicle_crash_distance` is violated.
 
+> [!NOTE]
+> **Collision Gameplay Dynamics:** While a real-world collision would likely derail both vehicles, this heavily impacts gameplay negatively. Taking inspiration from other arcade video games, we implemented a system simulating a rear-quarter impact: The leading vehicle loses control and crashes, while the trailing vehicle maintains its trajectory unharmed.
+
 ### Respawn System
+
+> [!NOTE]
+> **Fair Respawn Logic & The Looping Problem:** Several respawn rules were evaluated:
+>
+> 1. *Respawn at Start Line:* Harsh penalty causing players to fall too far behind with no chance to interact.
+> 2. *Respawn at Exact Crash Location:* Too forgiving, and it introduced the "Looping Problem" (respawning at a standstill inside a loop causes an immediate consecutive crash, as vehicles cannot build the needed momentum).
+> 3. *Respawn at Start of Current Module:* Selected for balanced penalization.
+>
+> A dynamic fallback system handles blocked placements: If a respawn spot is occupied (which would cause an immediate collision upon respawn), the game sequentially checks alternative lanes, then falls back purely to previous modules to grant collision-free placement with enough track length to build momentum for upcoming loops.
 
 - Fallen vehicles become inactive and enter a respawn state (`settings.respawn_ticks`, `vehicle.respawn_ticks`, `vehicle.active`).
 - While `vehicle.active` is `False`, vehicles are ignored in the race.
@@ -286,34 +329,16 @@ The game mechanics are implemented in `src/game` and are designed to provide a r
   - If no lane is available across all candidate modules, the vehicle remains inactive and tries again in the next tick.
 - Respawn does not increment `vehicle.round`.
 
-## Local Simulation (Terminal)
-
-> [!NOTE]
-> **Simulation Runner:** For fast manual validation of game logic, a text-based simulation runner is available at `src/dev/simulation.py`.
-> Execution is possible with: `python -m src.dev.main`
-
-The simulation dashboard displays:
-
-- Global settings (`max_speed`, friction, lane-change timing, respawn timing, etc.)
-- Full player and vehicle telemetry (lane, position, speed, acceleration, lap, respawn state)
-- Full track module list including per-lane driving profiles
-- Current player module context (`module_index:track_type@local_position`)
-- ASCII lane visualization with module boundaries and live player markers
-
-<div align="center">
-  <img src="docs/dev/Simulation_Example_1.png" alt="Simulation Example" width=1000/>
-</div>
-
 ## Design
 
-The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components. In general, the physical design is based on the following components:
+The design of the LumenTrace system is modular and extensible, allowing for easy integration of new features and components [voelkl:2026bitebound]. In general, the physical design is based on the following components:
 
-- A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with *blue*, *purple* and *white* colors for a visually appealing background.
-- [Carrera GO!](https://carrera-toys.com/en) track modules for the physical track layout.
+- A black wooden plate (150cm x 80cm) as the base for the track layout, sprayed with *blue*, *purple* and *white* colors for a visually appealing background. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape for transportability. The loop module was additionally reinforced with fishing line to reduce vibrations and prevent fractures.
+- Carrera GO! [carrera:2026carrera] track modules for the physical track layout.
 - 2 LED Stripes (WS2812B) for the track lighting and visual effects, mainly in light purple and gray.
 - 2 Vehicles in strong blue and purple colors.
 - 2 LED Matrizes for round counting in the colors of the vehicles.
-- 3D-printed objects as visual enhancements and better integration of the sound  boxes.
+- 3D-printed objects as visual enhancements, custom towers to conceal the Raspberry Pi 4, Pico, and internal wiring, and custom audio enclosures to stealthily house the stereo speakers and subwoofer (printed in segments) without breaking the sci-fi aesthetic.
 
 The resulting design is a **retro-futuristic** blue-purple racing environment with a focus on immersive lighting and sound effects.
 
@@ -323,4 +348,26 @@ The resulting design is a **retro-futuristic** blue-purple racing environment wi
 
 ### 3D-Printed Objects
 
-All 3D-printed objects were designed in Blender, Fusion 360, TinkerCAD, retrieved from Online Sources, or generated by AI. The files are available in the `3d-models` folder.
+All 3D-printed objects were designed in Blender, Fusion 360, TinkerCAD, retrieved from Online Sources, or generated by AI. The files are available in the `3d-models` folder, see the [documentation file](3d-models/3d-models.md) for details.
+
+## Local Simulation and Unit Tests
+
+> [!NOTE]
+> **Simulation Runner:** For fast manual validation of game logic, a text-based simulation runner is available at `src/dev/simulation.py`.
+> Execution is possible with: `python -m src.dev.main`
+
+A simulation dashboard was developed during the development phase to visualize the game state in real-time without the need for physical hardware. As the code has evolved, the simulation *might not be fully up-to-date* with the current game logic, but it still serves as a useful tool for debugging and understanding the system's behavior.
+
+The simulation dashboard displays:
+
+- Global settings (`max_speed`, friction, lane-change timing, respawn timing, etc.)
+- Full player and vehicle telemetry (lane, position, speed, acceleration, lap, respawn state)
+- Full track module list including per-lane driving profiles
+- Current player module context (`module_index:track_type@local_position`)
+- ASCII lane visualization with module boundaries and live player markers
+
+Additionally, unit tests were created to validate the logic of specific components during the development phase, as described in the [test document](tests/tests.md).
+
+<div align="center">
+  <img src="docs/dev/Simulation_Example_1.png" alt="Simulation Example" width=1000/>
+</div>
