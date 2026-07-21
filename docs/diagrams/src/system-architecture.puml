@@ -13,7 +13,7 @@ node "Raspberry Pi Pico" as pico
 node "Raspberry Pi 4" as rpi4
 
 node "Internal Game State" as game
-node "LED Matrizes" as matrices
+node "LED Matrices" as matrices
 node "LED Strips" as leds
 node "Stereo Sound Devices" as speakers
 

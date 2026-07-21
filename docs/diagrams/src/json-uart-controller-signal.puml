@@ -1,0 +1,16 @@
+@startjson json-uart-controller-signal
+{
+  "controllers": [
+    {
+      "controller_id": 1,
+      "adc_0": 45230,
+      "dig_0": 1
+    },
+    {
+      "controller_id": 2,
+      "adc_0": 59150,
+      "dig_0": 0
+    }
+  ]
+}
+@endjson
