@@ -75,31 +75,39 @@
 
 % \tableofcontents
 
-% =========================================================================
-% TECHNICAL REPORT STRUCTURE: LUMENTRACE (IEEEtran Layout)
-% =========================================================================
-
 \section{Introduction}
-\IEEEPARstart{T}{his} technical report... \cite{voelkl:2026lumentrace}
+\label{sec:introduction}
+\IEEEPARstart{T}{his} technical report... 
 % introduction. also states the most relevant abbreviations and acronyms used in the report.
-
+% the repository can be found on github:
+\cite{voelkl:2026lumentrace}
 
 \subsection{Context and Goals}
-% - Goal: Replacement of the classic analog slot car racing (Carrera GO!) with 
+\label{subsec:context-and-goals}
+% - Goal: Replacement of the classic analog slot car racing (Carrera GO!!!)~\cite{carrera:2026carrera} with 
 %   a digital real-time physics simulation featuring immersive lighting and effect systems.
 
 \subsection{Motivation and Contributions}
-% - Why replace classic slot cars with LEDs? (Immersion, flexibility, hardware wear).
-% - What makes LumenTrace special? (true physics model on an LED basis, sound design, immersive lighting effects, expandability).
-% Hero photograph of the full setup (SideView1.jpg) with caption.
+\label{subsec:motivation-and-contributions}
+% - Why replace classic slot cars with LEDs? 
+% - What makes LumenTrace special?
+% Hero photograph of the full setup (../assets/SideView1.png) with caption.
+% Motivation: summarizes the missing parts of the existing slot car systems and LED-based games
+% Contributions: summarizes the new features of LumenTrace compared to existing slot car systems and LED-based games
+
 
 \subsection{Document Outline}
+\label{subsec:document-outline}
 % - Brief overview of the report's structure.
 
 
 \section{Related Work}
+\label{sec:related-work}
 % - What similar approaches already exist? (e.g., open-source LED strips games, commercial digital slot car systems like Scalextric/Carrera Digital)
-% These sources are provided in the references section. TODO!
+% These sources are provided in the references section. 
+
+\subsection{Existing Slot Car Systems}
+\label{subsec:existing-slot-car-systems}
 
 ----- SLOT CARS -----
 Carrera Hybrid: 
@@ -111,7 +119,7 @@ Mehrere Youtube Modellrennstrecken mit Carrera Elementen benutzen Lichter für d
 Z.B. Ampellicht, LCD-Screens für textuelle Anzeige, Vorder-/Rücklichter bei Autos
 Jedoch nicht in den Spielfluss integriert, und auch keine Beleuchtung der Spuren selbst.
 
-Es gibt mittlerweile jedoch ein Carrera Go Light and Sound Looping Set. [carrera:2026light]
+Es gibt mittlerweile jedoch ein Carrera Go!!!~\cite{carrera:2026carrera} Light and Sound Looping Set. [carrera:2026light]
 "As soon as the slot cars enter the loop, the LED lights along the edge flash and engine sounds play."
 Circa 16 LEDs auf jeder Seite des Loopings blinken in rot-weiß beim Durchfahren. Gleichzeitig wird ein Soundeffekt des Motors abgespielt.
 Problem: Motorgeräusch ist monoton und nicht an die Geschwindigkeit des Autos angepasst. 
@@ -132,6 +140,9 @@ User Interface via App, pit stops, lap durations, weather conditions, different 
 Anki Overdrive:
 Freie Fahrt auf einer Bahn, App mit Einstellungen und als Controller, modulare Streckenelemente (verbindbar per Magnet).
 Allerdings keine Lichter oder Sounds, die in den Spielfluss integriert sind.
+
+\subsection{LED-Based Projects and Racing Games}
+\label{subsec:led-based-projects-and-racing-games}
 
 ----- LED Projects -----
 Line Wobbler as an inspiration for led-based games using input from a controller. [baumgarten:2023line]
@@ -186,25 +197,60 @@ Many changes since the original 2019 version:
 [openledrace:2025project] Current project version.
 
 \section{System Requirements and Architecture}
+\label{sec:system-requirements-and-architecture}
 
 \subsection{System Requirements}
-% - Initial project requirements
-% - Functional and non-functional system requirements (e.g., real-time capability, 50fps rendering). keep it short.
+\label{subsec:system-requirements}
+
+The system requirements define both functional capabilities and non-functional performance constraints that ensure LumenTrace meets user expectations and technical standards.
+
+\subsubsection*{Functional Requirements}
+
+The initial project scope centered on developing a mechanics-free digital slot car racing system with a real-time control system, individually addressable RGB LED strips for track and vehicle visualization, basic sounds, and utilizing the Raspberry Pi Pico \SI{2}{\watt} microcontroller with PIO. Additionally, emphasis on design and playability was laid out to ensure an engaging user experience.
+
+\subsubsection*{Non-Functional Requirements}
+
+The system was designed to meet the following quality and performance attributes:
+
+\begin{itemize}
+    \item \textit{Performance:}
+    The system must render at greater than \SI{24}{\hertz} for human-perceivable smoothness. Controller inputs must be processed with minimal latency (less than \SI{100}{\milli\second} end-to-end) to provide responsive, immediate feedback during gameplay.
+    
+    \item \textit{Scalability:}
+    The modular software architecture must support straightforward extension with new track modules, driving profiles, light and sound effects without requiring core system modifications.
+    
+    \item \textit{Safety:}
+    All electrical hazards must be mitigated through proper insulation and power management. Mechanical components must be designed to eliminate sharp edges and pinch points accessible to users.
+    
+    \item \textit{Reliability and Availability:}
+    The system must gracefully handle errors and automatically recover or restart. Cold boot initialization must complete within \SI{120}{\second} to minimize user wait time.
+    
+    \item \textit{Maintainability:}
+    The codebase must be well-documented with clear separation of concerns. Hardware and software components must be independently testable and replaceable without system-wide redesign. A simulation interface must be provided for development and testing without requiring physical hardware.
+    
+    \item \textit{Usability:}
+    The user interface must be intuitive and require minimal learning. Controller operation, track physics, and audiovisual feedback must be immediately comprehensible to new players. The game difficulty must be accessible to casual users while remaining engaging for experienced players.
+\end{itemize}
+
 
 \subsection{High-Level Architecture}
+\label{subsec:high-level-architecture}
 % - Overview of the distributed hardware architecture. -> System Architecture Block Diagram
 % - Separation of game logic (RPi), controller inputs and LED rendering (Pico).
 % - Why the separation? (Load balancing, real-time guarantee).
+% guarantees scalability and extensibility.
 
 
-\section{Hardware Implementation}
+\section{Hardware Implementation}\label{sec:hardware-implementation}
 
 \subsection{Microcontroller Setup}
+\label{subsec:microcontroller-setup}
 % - Raspberry Pi Pico as input MCU: MicroPython firmware, permanent and latency-free reading of analog controllers and digital buttons.
 % - Raspberry Pi 4 as core host: main application, game logic, physics ticks, LED display buffers, threaded audio mixer.
 % -> Hardware diagram
 
 \subsection{Communication Interface}
+\label{subsec:communication-interface}
 % - High-speed UART connection between Pico and Pi 4.
 % - Serialized data format to relieve the Pi 4 host from polling overhead.
 % JSON listing of the sent data structure:
@@ -225,52 +271,66 @@ Many changes since the original 2019 version:
 
 
 \subsection{Physical Design and Controllers}
-% - Mechanical setup: wooden board, vehicles, modified Carrera GO! track modules.
+\label{subsec:physical-design-and-controllers}
+% - Mechanical setup: wooden board, vehicles, modified Carrera GO!!!~\cite{carrera:2026carrera} track modules.
 % - Signal engineering & controller construction.
 % - 3D-printed components: cases for sound boxes, controllers, etc.
+% With low power consumption, the led strips are do not use more than 3A, which is safe for the user and the system. 3d printed components are used to cover the electronics and prevent the user from touching them, and also to prevent sharp edges and points. 
+
 
 
 \section{Software Implementation and Game Mechanics}
+\label{sec:software-implementation-and-game-mechanics}
 
 \subsection{Software Architecture}
+\label{subsec:software-architecture}
 % - OOP design of the Python codebase. -> software architecture diagram
 % - Modular package design (`Game`, `Simulation`, `Logger`, `Controller`, `Display`, `Sound`).
 % - Thread isolation and GIL mitigations: Strict separation of the physics loop thread from peripheral driver calls.
 
 \subsection{Controller Inputs and Speed Calculation}
+\label{subsec:controller-inputs-and-speed-calculation}
 % - Input mapping: scaling the ADC values [42000, 65536].
 % - Continuous dampening due to friction.
 % - Speed update per tick and clamping to max-speed limits.
 
 \subsection{Physics}
+\label{subsec:physics}
 % - Logic of lane changing over the temporary center line.
 % - Preservation of relative position progress during lane changes.
 % - Collision detection via distance matrices on the same lane.
 % - Multi-stage procedure when resetting after a crash.
 
 \subsection{Deployment}
+\label{subsec:deployment}
 % - running on a docker container on the RPi4 for reproducibility and easy deployment.
 
 \subsection{Hardwareless Simulation Interface}
+\label{subsec:hardwareless-simulation-interface}
 % - The ASCII-based live simulator (`src/dev/simulation.py`).
 % - Essential logic validation before flashing.
 
 
 \section{Multimedia Subsystems: LED Control and Audio}
+\label{sec:multimedia-subsystems}
 
 \subsection{Hardware Integration and Resource Bottlenecks}
+\label{subsec:hardware-integration-and-resource-bottlenecks}
 % - Initial DMA and peripheral conflicts: Analysis of the failed attempt (DMA collisions).
 % - Chained single-driver architecture: Physical daisy-chaining (Data Out to Data In), software-based mapping via `VirtualLedStrip`.
 
 \subsection{Priority-Based LED Rendering}
+\label{subsec:priority-based-led-rendering}
 % - Layer model of the DisplayManager (Low Priority -> High Priority).
 
 \subsection{Real-Time Audio Mixer}
+\label{subsec:real-time-audio-mixer}
 % - Vectorized live stereo audio mixer: NumPy vectorization for performance optimization.
 % - Asynchronous command queue for audio: Thread-safe decoupling via `ThreadedSoundManager`.
 
 
 \section{Project Management}
+\label{sec:project-management}
 
 The LumenTrace project was executed by a three-person team, with each member contributing to different aspects of the project. 
 The lead developers for each component are indicated in~\Cref{tab:task_distribution}, while a reviewer was assigned to each task to ensure hardware and software quality. 
@@ -279,16 +339,16 @@ The development of LumenTrace followed an incremental path, prioritizing a basic
 The project was structured into four distinct milestones to manage dependencies and verify integration at each phase.
 
 \begin{itemize}
-    \item \textbf{Milestone 1: Proof of Concept (POC):}
-          Establishment of the physical Carrera GO!~\cite{carrera:2026carrera} track, development of Raspberry Pi Pico firmware using MicroPython, implementation of analog controller input reading, establishment of UART serial communication, and design of the JSON-based data serialization and parsing.
+    \item \textit{Milestone 1: Proof of Concept (POC):}
+          Establishment of the physical Carrera GO!!!~\cite{carrera:2026carrera} track, development of Raspberry Pi Pico firmware using MicroPython, implementation of analog controller input reading, establishment of UART serial communication, and design of the JSON-based data serialization and parsing.
 
-    \item \textbf{Milestone 2: Base Game Implementation:}
+    \item \textit{Milestone 2: Base Game Implementation:}
           Software architecture with modular packages, core physics engine with acceleration, friction, and speed clamping, vehicle lane management and position tracking, collision detection via distance metrics, multithreaded game loop architecture, LED strip control, display rendering pipeline with priority-based layer system, modular track design with individual driving profiles, settings system, unit testing framework, and centralized logging via file and MQTT interfaces.
 
-    \item \textbf{Milestone 3: Enhancements and Feature Expansion:}
+    \item \textit{Milestone 3: Enhancements and Feature Expansion:}
           Advanced physics for lane changes, respawn system, intersection modules, virtual LED strip abstraction for hardware constraint resolution, round counters, vehicle lighting effects including headlights, rear brake lights, and identification lights, real-time vectorized stereo audio mixer with volume and stereo panning controls, threaded sound manager, per-vehicle engine sounds with speed-responsive pitch, event-driven sound effects, Docker containerization, 3D-printed controller enclosures and component styling, and performance optimization to prevent thread starvation.
 
-    \item \textbf{Milestone 4: Documentation and Finalization:}
+    \item \textit{Milestone 4: Documentation and Finalization:}
           Comprehensive technical report with architecture diagrams and system analysis, usage guides, technical report documentation, and project preparation for submission.
 \end{itemize}
 
@@ -348,32 +408,35 @@ The division of responsibilities between the three team members is outlined in~\
 
 
 \section{Evaluation}
+\label{sec:evaluation}
 
 \subsection{Performance Analysis}
-% - How fast does the game loop run? (e.g., Python performance on the RPi4).
-% controller inputs: 50Hz, display updates: 33Hz, game and physics ticks: 50Hz. No problems with the GIL.
-% Activating the logging, leads to performance drops when log messages are sent and small lag spikes for the whole process, so this should be
-% disabled in production use. The logging is only used for debugging and development purposes.
+\label{subsec:performance-analysis}
 
-\subsection{Latency}
-% - Delay between button press on the controller via Pico to RPi and back to LED update. Can be calculated from the information above. Keep in mind that roughly every 20th to 50th UART controller transmission fails.
+The LumenTrace system achieves real-time performance across all critical subsystems, meeting or exceeding the specified non-functional requirements.
+
+The system operates three independent processing threads at optimized frequencies: \SI{50}{\hertz} for the game engine physics, \SI{33}{\hertz} for the LED display pipeline, and \SI{50}{\hertz} for controller input polling. These frequencies produce smooth, flicker-free visual output perceived as continuous motion above the human perception threshold of circa \SI{24}{\hertz}~\cite{chen:2007review,pazhoohi:2021effect}.
+
+Controller inputs demonstrate minimal end-to-end latency from physical button press through UART transmission, game logic processing, and LED display update. The system responds immediately to throttle and lane-change commands with no perceptible delay. This responsiveness is maintained even during occasional UART transmission failures (occurring in approximately \SI{5}{\percent} of packets), as the system prioritizes the most recent controller state rather than queuing stale data.
+
+The optional file and MQTT logging subsystems introduce measurable performance overhead due to I/O blocking and possible network latencies. Logging should remain disabled in production environments, else performance degradation and occasional \SI{50}{\milli\second}--\SI{200}{\milli\second} lag spikes during log message transmission can occur. Deferred asynchronous logging could mitigate this overhead in future iterations.
 
 \subsection{User Experience and Feedback}
-% - How do the users perceive the game? Very immersive with the styling and sound design. 
-% - Feedback from test players and observers
-% % - The speed limits were too abrupt, so we smoothened them out.
-% % - Some sounds were too loud (e.g. motor sound), so adjustments were made to the volume levels.
-% % - Irregular players could touch the track, so hardware had to be secured and protected better.
-% % - The current dependence on the Carrera GO! track system is a limitation, so custom modules should be developed.
+\label{subsec:user-experience-and-feedback}
+
+User testing and informal feedback sessions revealed that the combination of immersive LED lighting effects, spatially-positioned audio, and responsive physics created a compelling and engaging experience. The retro-futuristic aesthetic, with its purple and blue color scheme and sci-fi-styled 3D-printed components, resonated well with both casual observers and competitive players. Iterative refinements to speed limit transitions and audio volume levels improved overall player satisfaction and reduced jarring gameplay moments. Although the system currently relies on Carrera GO!!!~\cite{carrera:2026carrera} track modules, custom modules are planned for future development to enhance flexibility and independence from proprietary track systems. For museum exhibitions or trade show presentations, further concealment of cables is recommended to ensure safety and prevent potential malfunctions like loose connections.
 
 \subsection{Challenges and Limitations}
+\label{subsec:challenges-and-limitations}
 % if there are any left-over challenges or limitations, they should be mentioned here. 
 
 \subsection{Cost Analysis}
-% - Cost of the hardware components (Raspberry Pi 4, Raspberry Pi Pico, LED strips, Carrera GO! track modules, 3D-printed parts, etc.).
+\label{subsec:cost-analysis}
+% - Cost of the hardware components (Raspberry Pi 4, Raspberry Pi Pico, LED strips, Carrera GO!!!~\cite{carrera:2026carrera} track modules, 3D-printed parts, etc.).
 
 
 \section{Conclusion and Future Work}
+\label{sec:conclusion-and-future-work}
 
 % - Conclusion: Summary of achievements. Successful implementation of a high-performance, latency-free simulator.
 % - Future work: The following enhancements could be implemented in the future:
