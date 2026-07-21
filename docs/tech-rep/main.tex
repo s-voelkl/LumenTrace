@@ -98,10 +98,38 @@
 
 
 \section{Related Work}
-
 % - What similar approaches already exist? (e.g., open-source LED strips games, commercial digital slot car systems like Scalextric/Carrera Digital)
 % These sources are provided in the references section. TODO!
+Carrera Hybrid: 
+Evolving slot car racing game with the tendency to more digitalization and more electronic components. 
+More collisions, overtaking, modularer Streckenaufbau
+Ziel: realistische Rennsimulation [carrera:2026hybrid]
 
+Mehrere Youtube Modellrennstrecken mit Carrera Elementen benutzen Lichter für die Beleuchtung der Strecke.
+Z.B. Ampellicht, LCD-Screens für textuelle Anzeige, Vorder-/Rücklichter bei Autos
+Jedoch nicht in den Spielfluss integriert, und auch keine Beleuchtung der Spuren selbst.
+
+Es gibt mittlerweile jedoch ein Carrera Go Light and Sound Looping Set. [carrera:2026light]
+"As soon as the slot cars enter the loop, the LED lights along the edge flash and engine sounds play."
+Circa 16 LEDs auf jeder Seite des Loopings blinken in rot-weiß beim Durchfahren. Gleichzeitig wird ein Soundeffekt des Motors abgespielt.
+Problem: Motorgeräusch ist monoton und nicht an die Geschwindigkeit des Autos angepasst. 
+Das Blinken des Loopings ist einfach gehalten und nicht an die Geschwindigkeit des Autos angepasst.
+
+Carrera Digital 132:
+"Lane changes at the touch of a button, individually coded vehicles and numerous digital functions ensure a varied and realistic racing experience - without any modifications to the track." [carrera:2026digital]
+Lane change modules.
+Digitale Elemente, wie Lap Counter, Start Light, Driver Display, Wireless Controller, Bluetooth Connect and more.
+Jedoch wird bei rein physischen Fahrzeugen verblieben, keine reine LED-basierte Simulation.
+Auch die Sounds spielen eine nebensächliche Rolle, da primär die Reibungsgeräusche der kleinen Fahrzeuge zu hören sind.
+Kleine Indikator-Sounds passieren beim Starten, und bei einer neuen Runde.
+
+Scalextric: [scalextric:2026arc]
+User Interface via App, pit stops, lap durations, weather conditions, different race modes
+2 Buttons on controller: brake (instead of accelerate) and lane change.
+
+Anki Overdrive:
+Freie Fahrt auf einer Bahn, App mit Einstellungen und als Controller, modulare Streckenelemente (verbindbar per Magnet).
+Allerdings keine Lichter oder Sounds, die in den Spielfluss integriert sind.
 
 \section{System Requirements and Architecture}
 
@@ -254,7 +282,7 @@ The division of responsibilities between the three team members is outlined in~\
             & Sound Samples & Lead & Lead & Lead \\
             & Sound Engineering & Lead & Lead & - \\
             & Docker Containerization & Lead & - & - \\
-            & 3D Printing/Styling & - & Lead & Lead \\
+            & 3D Printing/Styling & Review & Lead & Lead \\
         \midrule
         \multirow{2}{2.5cm}{\textbf{M4: Documentation}}
             & Technical Report & Lead & Review & Review \\
@@ -296,13 +324,13 @@ The division of responsibilities between the three team members is outlined in~\
 % - Conclusion: Summary of achievements. Successful implementation of a high-performance, latency-free simulator.
 % - Future work: The following enhancements could be implemented in the future:
 % % - Physical controllers with vibration module for haptic feedback
-% % - Display of MQTT telemetry data on web panel
+% % - Display of MQTT telemetry data on web/app panel
 % % - Special abilities outside overtaking lanes (e.g., nitro, fireball, etc.)
 % % - Collectible coins
-% % - Game modes and environmental effects (storm, rain, etc.)
+% % - Game modes and environmental effects (storm, rain, etc.) [like here: scalextric:2026arc]
 % % - AI opponents using reinforcement learning
 % % - Additional ambience effects (3D-printed components, headlights, sound in modules, etc.)
-% % - Custom modules for independence from Carrera track system (branching paths, etc.)
+% % - Custom modules for independence from Carrera track system (branching paths, etc.) [see magnetically connectable modules from Anki Overdrive anki:2026overdrive]
 % % - Smoothed speed limits to prevent abrupt collisions
 % % - Business case development
 
