@@ -45,14 +45,14 @@ The following represents the original project requirements that evolved and adap
 
 ## Features
 
-- Real-time physics simulation for accurate virtual slot car movement, including collision detection, acceleration/deceleration, falling down, recovery, and more.
-- Advanced LED effects for immersive racing experience: Car headlights, rear lights, identification lights with warn indicators; track lighting for start/finish line; lap counter and more.
-- Player controller with buttons for acceleration, braking, and lane switching, providing an interactive racing experience.
-- High-speed communication between the microcontroller and the Raspberry Pi for seamless data exchange and control.
-- Simulation with Python for debugging, testing, and visualization of the program logic and physics.
-- Modular track design with interchangeable modules for different track layouts and configurations.
-- Track modules with individual driving profiles to simulate different track conditions.
-- Settings for customizing the racing experience.
+- **Realistic Physics Engine** – Experience accurate virtual slot car behavior with collision detection, dynamic acceleration/deceleration, and recovery mechanics that respond to your driving style.
+- **Immersive LED Visuals** – Watch your car come alive with adaptive lighting: headlights brighten during acceleration, brake lights glow when decelerating, and dynamic lane indicators guide your racing line.
+- **Live Round Counter** – Real-time LED matrix displays show your lap count instantly, keeping you informed of your progress without missing a beat.
+- **Intuitive Control System** – Simple button-based controls for throttle and lane switching let you focus on racing, not learning complex mechanics.
+- **Spatial Audio Experience** – Engine sounds respond to your speed and acceleration, with stereo positioning that tracks your position on the track for a truly immersive audio environment.
+- **Adaptive Track Modules** – Each track section has unique driving characteristics and speed limits. Master different module types to optimize your performance.
+- **Customizable Racing Experience** – Adjustable difficulty levels and driving profiles let you tailor the challenge to your skill level, from casual fun to competitive intensity.
+- **Multi-Player Racing** – Compete against others in real-time with synchronized physics, collision detection, and dynamic lane management for intense multiplayer action.
 
 ## Usage
 
