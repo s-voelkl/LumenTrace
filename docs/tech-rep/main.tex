@@ -6,7 +6,7 @@
 \usepackage{amsfonts}
 
 % --- 2. Code-Blöcke (Zuerst laden wegen fvextra/lineno-Interaktionen) ---
-\usepackage{minted} 
+% \usepackage{minted} 
 \usepackage{listings}
 
 % --- 3. Text & Sprache (csquotes MUSS nach minted/fvextra geladen werden) ---
@@ -79,9 +79,16 @@
 \label{sec:introduction}
 \IEEEPARstart{T}{his} technical report... 
 % introduction. also states the most relevant abbreviations and acronyms used in the report.
-% used acronyms: Universal Asynchronous Receiver/Transmitter (UART), light-emitting diode (LED), Addressable RGB LED with built-in controller using a one-wire protocol (WS2812B)
+% used acronyms: Universal Asynchronous Receiver/Transmitter (UART), light-emitting diode (LED), Addressable RGB LED with built-in controller using a one-wire protocol (WS2812B), General Purpose Input/Output (GPIO), JavaScript Object Notation (JSON), 
 % the repository can be found on github:
 \cite{voelkl:2026lumentrace}
+
+\begin{figure*}[tb]
+    \centering
+    \includegraphics[width=0.9\linewidth]{../assets/SideView1.jpg}
+    \caption{LumenTrace LED racing simulator: full-scale setup showing the track, vehicles, controllers, and audiovisual system.}
+    \label{fig:lumentrace-setup}
+\end{figure*}
 
 \subsection{Motivation}
 \label{subsec:motivation}
@@ -97,18 +104,11 @@ LumenTrace contributes a mechanics-free LED slot car simulator that unifies the 
 At its core is a real-time physics engine that models acceleration, friction, speed clamping, collision detection, and crash recovery, driven by analog throttle and digital button inputs transmitted over a high-speed UART link~\cite{pena:2020uart}. On top of this, a priority-based LED rendering pipeline paints the track and vehicles with layered, state-dependent effects, including adaptive vehicle colors, headlights, and brake lights that give the driver ambient feedback about speed~\cite{meschtscherjakov:2015chaselight}, together with round counters realized through physically chained WS2812B matrices~\cite{garff:2023rpi}. 
 A vectorized, thread-isolated stereo audio mixer~\cite{harris:2020array} adds per-vehicle engine sounds whose pitch and stereo position follow the car's speed and track position, complemented by positional event sounds. Playability is extended beyond prior LED racers through a temporary bidirectional overtaking lane and modular track modules with individual driving profiles. Finally, the system is packaged for reproducible deployment via Docker~\cite{merkel:2014docker} and ships with a hardwareless simulation interface for development and testing without physical hardware. 
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\linewidth]{../assets/SideView1.jpg}
-    \caption{LumenTrace LED racing simulator: full-scale setup showing the track, vehicles, controllers, and audiovisual system.}
-    \label{fig:lumentrace-setup}
-\end{figure}
-
-
 \subsection{Document Outline}
 \label{subsec:document-outline}
-% - Brief overview of the report's structure.
+% TODO FOR PUBLICATION: Remove project management!
 
+The remainder of this report is organized as follows.~\Cref{sec:related-work} surveys commercial slot car systems and open-source LED racing projects.~\Cref{sec:system-requirements-and-architecture} specifies the functional and non-functional requirements and derives the distributed system architecture.~\Cref{sec:hardware-implementation} details the microcontroller setup, the UART communication interface, and the physical design.~\Cref{sec:software-implementation-and-game-mechanics} describes the software architecture and the physics-based game mechanics, while~\Cref{sec:multimedia-subsystems} covers the priority-based LED rendering pipeline and the real-time audio mixer.~\Cref{sec:project-management} reports on the project management and task distribution,~\Cref{sec:evaluation} evaluates the resulting system, and~\Cref{sec:conclusion-and-future-work} concludes and outlines future work.
 
 \section{Related Work}
 \label{sec:related-work}
@@ -133,6 +133,8 @@ LumenTrace shares OLR's foundational ingredients of controller input, addressabl
 
 \section{System Requirements and Architecture}
 \label{sec:system-requirements-and-architecture}
+
+This section defines the functional and non-functional requirements that guided the development of LumenTrace and derives the system architecture that satisfies them.
 
 \subsection{System Requirements}
 \label{subsec:system-requirements}
@@ -167,16 +169,24 @@ The system was designed to meet the following quality and performance attributes
     The user interface must be intuitive and require minimal learning. Controller operation, track physics, and audiovisual feedback must be immediately comprehensible to new players. The game difficulty must be accessible to casual users while remaining engaging for experienced players.
 \end{itemize}
 
-
 \subsection{High-Level Architecture}
 \label{subsec:high-level-architecture}
-% - Overview of the distributed hardware architecture. -> System Architecture Block Diagram
-% - Separation of game logic (RPi), controller inputs and LED rendering (Pico).
-% - Why the separation? (Load balancing, real-time guarantee).
-% guarantees scalability and extensibility.
+
+LumenTrace is built on a distributed two-tier architecture that splits the workload between an input-gathering microcontroller and a central core host~\cite{magpi:2024raspberry}, as depicted in~\Cref{fig:system-architecture}. The input controller captures the physical user commands and streams them over a serial connection to the main processing unit. The core host then executes the central application to resolve the game state and drive the output devices.
+
+This separation of concerns offloads the latency-critical, high-frequency input sampling from the core host, allowing it to dedicate its computational resources to processing game state and real-time feedback without incurring polling overhead. Structuring the system into independent, well-defined subsystems also keeps it modular, maintainable, and scalable.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{../diagrams/out/system-architecture/system-architecture.png}
+    \caption{High-level system architecture of LumenTrace, showing the distributed setup with the Raspberry~Pi Pico as input microcontroller and the Raspberry~Pi~4 as core host.}
+    \label{fig:system-architecture}
+\end{figure}
 
 
 \section{Hardware Implementation}\label{sec:hardware-implementation}
+
+This section describes the hardware realization of LumenTrace, covering the distinct roles of the two microcontrollers, the serial communication interface between them, and the physical construction of the track and controllers.
 
 \subsection{Microcontroller Setup}
 \label{subsec:microcontroller-setup}
@@ -184,35 +194,40 @@ The system was designed to meet the following quality and performance attributes
 % - Raspberry Pi 4 as core host: main application, game logic, physics ticks, LED display buffers, threaded audio mixer.
 % -> Hardware diagram
 
+As illustrated in~\Cref{fig:hardware-setup}, the specific hardware configuration establishes the low-level execution environments for both devices. The Raspberry~Pi Pico acts as the dedicated input microcontroller running MicroPython firmware~\cite{george:2026micropython}. It permanently and latency-free samples the physical controllers, utilizing its internal 12-bit analog-to-digital converters (ADCs) channels to read the analog throttles and its GPIO pins to detect digital button presses.
+
+Conversely, the Raspberry~Pi~4 functions as the core host, booting its operating system and the main Python application from a micro-SD card to enable fully autonomous physical startup. The Pi~4 processes the inputs transmitted by the Pico to maintain the internal game state and execute physics ticks. It translates this game state into audiovisual feedback by actuating the LED strips and matrices~\cite{garff:2023rpi}, and by driving the stereo audio mixer~\cite{geier:2024sounddevice,bechtold:2026soundfile}.
+
+\begin{figure*}[tb]
+    \centering
+    \includegraphics[width=\linewidth]{../diagrams/out/hardware-setup/hardware-setup.png}
+    \caption{Hardware setup of LumenTrace: The Raspberry~Pi Pico handles controller inputs and transmits them to the Raspberry~Pi~4, which drives the output devices.}
+    \label{fig:hardware-setup}
+\end{figure*}
+
 \subsection{Communication Interface}
 \label{subsec:communication-interface}
-% - High-speed UART connection between Pico and Pi 4.
-% - Serialized data format to relieve the Pi 4 host from polling overhead.
-% JSON listing of the sent data structure:
-% {
-%   "controllers": [
-%     {
-%       "controller_id": 1,
-%       "adc_0": 45230,
-%       "dig_0": 1
-%     },
-%     {
-%       "controller_id": 2,
-%       "adc_0": 59150,
-%       "dig_0": 0
-%     }
-%   ]
-% }
 
+The Pico and the Pi~4 communicate over a high-speed UART link~\cite{pena:2020uart,liechti:2020pyserial}. On every polling cycle, the Pico serializes the current state of all connected controllers into a compact JSON structure~\cite{json:2026introducing} and transmits it to the Pi~4. Delegating input acquisition and serialization to the Pico relieves the core host from polling overhead, so that it can consume the most recent controller state directly instead of sampling the hardware itself. As shown in~\Cref{fig:controller-json}, each controller entry reports a unique \texttt{controller\_id}, the raw analog throttle value \texttt{adc\_0}, and the digital button state \texttt{dig\_0}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{../diagrams/out/json-uart-controller-signal/json-uart-controller-signal.png}
+    \caption{Example of the JSON structure transmitted from the Pico to the Pi~4 over UART, containing the current state of two controllers.}
+    \label{fig:controller-json}
+\end{figure}
+
+At an update rate of \SI{50}{\hertz}, the protocol tolerates sporadic transmission losses: roughly every twentieth packet is dropped or unreadable, yet a single missing update is uncritical because the game engine simply continues with the last known controller state until the next valid packet arrives.
 
 \subsection{Physical Design and Controllers}
 \label{subsec:physical-design-and-controllers}
-% - Mechanical setup: wooden board, vehicles, modified Carrera GO!!!~\cite{carrera:2026carrera} track modules.
-% - Signal engineering & controller construction.
-% - 3D-printed components: cases for sound boxes, controllers, etc.
-% With low power consumption, the led strips are do not use more than 3A, which is safe for the user and the system. 3d printed components are used to cover the electronics and prevent the user from touching them, and also to prevent sharp edges and points. 
 
+The physical setup is built on a black wooden base plate of \SI{150}{\centi\meter}~$\times$~\SI{80}{\centi\meter}, spray-painted in blue, purple, and white to create a retro-futuristic backdrop. 
+The track layout reuses Carrera~GO!!!~\cite{carrera:2026carrera} track modules, along with two \SI{5}{\meter} highly diffusing LED strips carrying \num{50} LEDs per meter (\num{250} LEDs in total), to visualize the lanes, vehicles and intersections. All components were rigidly fastened using screws, cyanoacrylate adhesive, and double-sided tape to preserve transportability, and the loop module was additionally reinforced with fishing line to prevent fractures.
 
+The original Carrera~GO!!! hand controllers were modified from their built-in variable resistors into signal sources for the Pico. Each throttle is wired as a voltage divider feeding one of the Pico's ADC channels, yielding the raw analog value transmitted as \texttt{adc\_0}, while an added push button provides the digital lane-change signal (\texttt{dig\_0}). 
+
+Custom 3D-printed enclosures, styled to match the sci-fi aesthetic, conceal the Raspberry~Pi~4, the Pico, the internal wiring, and house the stereo speakers. Beyond their visual role, these enclosures also serve a safety function: together with the only \SI{3}{\ampere} power draw per LED strip, they cover the electronics to prevent user contact and eliminate sharp edges and pinch points.
 
 \section{Software Implementation and Game Mechanics}
 \label{sec:software-implementation-and-game-mechanics}
@@ -264,6 +279,7 @@ The system was designed to meet the following quality and performance attributes
 % - Asynchronous command queue for audio: Thread-safe decoupling via `ThreadedSoundManager`.
 
 
+% TODO FOR PUBLICATION: Remove project management!
 \section{Project Management}
 \label{sec:project-management}
 
