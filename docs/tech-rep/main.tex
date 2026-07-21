@@ -44,7 +44,7 @@
 
 \begin{document}
 
-\title{LumenTrace} 
+\title{LumenTrace: A Mechanics-Free LED Slot Car Racing Game with Real-Time Physics and Immersive Audiovisual Feedback} 
 
 \author{Simon Völkl\,\orcidlink{0009-0005-5334-9673}, 
         Erik Dombrowsky, 
@@ -60,15 +60,20 @@
 \maketitle
 
 \begin{abstract}
-    \textbf{Background:} 
-    \textbf{Objective:} 
-    \textbf{Methods:}
-    \textbf{Results:}
-    \textbf{Conclusion:} 
+    % \textbf{Background:} 
+    Classic slot car systems offer an engaging tactile racing experience, yet they remain bound to physical vehicles on mechanical rails and treat light and sound as secondary embellishments, whereas minimalist LED racers reduce gameplay to button pressing and omit realistic physics, spatial audio and advanced track features.
+    % \textbf{Objective:} 
+    LumenTrace aims to unite the physical realism and playability of slot cars with the mechanical simplicity and immersive, state-driven audiovisual feedback that individually addressable LEDs make possible.
+    % \textbf{Methods:} 
+    The system is built on a distributed Raspberry~Pi Pico and Raspberry~Pi~4 architecture. A real-time physics engine models acceleration, friction, collision detection, and crash recovery from throttle and button inputs transmitted over a high-speed UART link. A priority-based LED rendering pipeline displays adaptive, state-dependent track and vehicle effects, complemented by a stereo audio mixer.
+    % \textbf{Results:} 
+    The system meets its real-time thread budgets and low-latency requirements, resulting in positive user feedback during playtests, though it lacks cost-effectiveness for open-source developers. 
+    % \textbf{Conclusion:} 
+    LumenTrace closes the gap between commercial slot car systems and minimalist LED racers, while providing highly performant, maintainable and safe system architecture. Future work focuses on cost reduction, improved playability, and game extensions.
 \end{abstract}
 
 \begin{IEEEkeywords}
-    Enter key words or phrases in alphabetical order, separated by commas.
+    Distributed Embedded Systems, LED Racing Game, Microcontroller, Real-Time Physics Engine, Slot Car Racing, Spatial Audio, WS2812B
 \end{IEEEkeywords}
 
 
@@ -76,16 +81,16 @@
 
 \section{Introduction}
 \label{sec:introduction}
-\IEEEPARstart{T}{his} technical report... 
-% introduction. also states the most relevant abbreviations and acronyms used in the report.
-% used acronyms: Universal Asynchronous Receiver/Transmitter (UART), light-emitting diode (LED), Addressable RGB LED with built-in controller using a one-wire protocol (WS2812B), General Purpose Input/Output (GPIO), JavaScript Object Notation (JSON), 
-% the repository can be found on github:
-\cite{voelkl:2026lumentrace}
+
+\IEEEPARstart{S}{lot} car racing has entertained enthusiasts for decades, but its classic form ties the experience to physical vehicles running on mechanical rails, where light and sound serve merely as peripheral embellishments. 
+LumenTrace reimagines this concept as a mechanics-free racing simulator in which each vehicle is represented directly as a moving point of light on an individually addressable light-emitting diode (LED) strip. 
+Built on a distributed architecture of a Raspberry~Pi Pico and a Raspberry~Pi~4~\cite{magpi:2024raspberry}, the system couples a real-time physics engine with a priority-based LED rendering pipeline and a spatial audio mixer to deliver an immersive, state-driven racing experience without any moving mechanical parts. 
+The complete source code and documentation are publicly available in the project's GitHub repository~\cite{voelkl:2026lumentrace}.
 
 \begin{figure*}[tb]
     \centering
     \includegraphics[width=0.9\linewidth]{../assets/SideView1.jpg}
-    \caption{LumenTrace LED racing simulator: full-scale setup showing the track, vehicles, controllers, and audiovisual system.}
+    \caption{LumenTrace: at the speed of light. Full-scale setup of the LED racing game showing the track, vehicles, controllers, and audiovisual system.}
     \label{fig:lumentrace-setup}
 \end{figure*}
 
@@ -100,7 +105,7 @@ LED-based racing games take the opposite approach and represent each vehicle dir
 \label{subsec:contributions}
 
 LumenTrace contributes a mechanics-free LED slot car simulator that unifies the strengths of both worlds on a distributed Raspberry~Pi Pico and Raspberry~Pi~4 architecture~\cite{magpi:2024raspberry}. 
-At its core is a real-time physics engine that models acceleration, friction, speed clamping, collision detection, and crash recovery, driven by analog throttle and digital button inputs transmitted over a high-speed UART link~\cite{pena:2020uart}. On top of this, a priority-based LED rendering pipeline paints the track and vehicles with layered, state-dependent effects, including adaptive vehicle colors, headlights, and brake lights that give the driver ambient feedback about speed~\cite{meschtscherjakov:2015chaselight}, together with round counters realized through physically chained WS2812B matrices~\cite{garff:2023rpi}. 
+At its core is a real-time physics engine that models acceleration, friction, speed clamping, collision detection, and crash recovery, driven by analog throttle and digital button inputs transmitted over a high-speed Universal Asynchronous Receiver/Transmitter (UART) link~\cite{pena:2020uart}. On top of this, a priority-based LED rendering pipeline paints the track and vehicles with layered, state-dependent effects, including adaptive vehicle colors, headlights, and brake lights that give the driver ambient feedback about speed~\cite{meschtscherjakov:2015chaselight}, together with round counters realized through physically chained WS2812B matrices~\cite{garff:2023rpi}. 
 A vectorized, thread-isolated stereo audio mixer adds per-vehicle engine sounds whose pitch and stereo position follow the car's speed and track position, complemented by positional event sounds. Playability is extended beyond prior LED racers through a temporary bidirectional overtaking lane and modular track modules with individual driving profiles. Finally, the system is packaged for reproducible deployment via Docker~\cite{merkel:2014docker} and ships with a hardwareless simulation interface for development and testing without physical hardware. 
 
 \subsection{Document Outline}
@@ -142,7 +147,7 @@ The system requirements define both functional capabilities and non-functional p
 
 \subsubsection*{Functional Requirements}
 
-The initial project scope centered on developing a mechanics-free digital slot car racing system with a real-time control system, individually addressable RGB LED strips for track and vehicle visualization, basic sounds, and utilizing the Raspberry Pi Pico \SI{2}{\watt} microcontroller with PIO. Additionally, emphasis on design and playability was laid out to ensure an engaging user experience.
+The initial project scope centered on developing a mechanics-free digital slot car racing system with a real-time control system, individually addressable red, green, and blue (RGB) LED strips for track and vehicle visualization, basic sounds, and utilizing the Raspberry Pi Pico \SI{2}{\watt} microcontroller with PIO. Additionally, emphasis on design and playability was laid out to ensure an engaging user experience.
 
 \subsubsection*{Non-Functional Requirements}
 
@@ -190,7 +195,7 @@ This section describes the hardware realization of LumenTrace, covering the dist
 \subsection{Microcontroller Setup}
 \label{subsec:microcontroller-setup}
 
-As illustrated in~\Cref{fig:hardware-setup}, the specific hardware configuration establishes the low-level execution environments for both devices. The Raspberry~Pi Pico acts as the dedicated input microcontroller running MicroPython firmware~\cite{george:2026micropython}. It permanently and latency-free samples the physical controllers, utilizing its internal 12-bit analog-to-digital converters (ADCs) channels to read the analog throttles and its GPIO pins to detect digital button presses.
+As illustrated in~\Cref{fig:hardware-setup}, the specific hardware configuration establishes the low-level execution environments for both devices. The Raspberry~Pi Pico acts as the dedicated input microcontroller running MicroPython firmware~\cite{george:2026micropython}. It permanently and latency-free samples the physical controllers, utilizing its internal 12-bit analog-to-digital converters (ADCs) channels to read the analog throttles and its General Purpose Input/Output (GPIO) pins to detect digital button presses.
 
 Conversely, the Raspberry~Pi~4 functions as the core host, booting its operating system and the main Python application from a micro-SD card to enable fully autonomous physical startup. The Pi~4 processes the inputs transmitted by the Pico to maintain the internal game state and execute physics ticks. It translates this game state into audiovisual feedback by actuating the LED strips and matrices~\cite{garff:2023rpi}, and by driving the stereo audio mixer.
 
@@ -204,7 +209,7 @@ Conversely, the Raspberry~Pi~4 functions as the core host, booting its operating
 \subsection{Communication Interface}
 \label{subsec:communication-interface}
 
-The Pico and the Pi~4 communicate over a high-speed UART link~\cite{pena:2020uart,liechti:2020pyserial}. On every polling cycle, the Pico serializes the current state of all connected controllers into a compact JSON structure~\cite{json:2026introducing} and transmits it to the Pi~4. Delegating input acquisition and serialization to the Pico relieves the core host from polling overhead, so that it can consume the most recent controller state directly instead of sampling the hardware itself. As shown in~\Cref{fig:controller-json}, each controller entry reports a unique \texttt{controller\_id}, the raw analog throttle value \texttt{adc\_0}, and the digital button state \texttt{dig\_0}.
+The Pico and the Pi~4 communicate over a high-speed UART link~\cite{pena:2020uart,liechti:2020pyserial}. On every polling cycle, the Pico serializes the current state of all connected controllers into a compact JavaScript Object Notation (JSON) structure~\cite{json:2026introducing} and transmits it to the Pi~4. Delegating input acquisition and serialization to the Pico relieves the core host from polling overhead, so that it can consume the most recent controller state directly instead of sampling the hardware itself. As shown in~\Cref{fig:controller-json}, each controller entry reports a unique \texttt{controller\_id}, the raw analog throttle value \texttt{adc\_0}, and the digital button state \texttt{dig\_0}.
 
 \begin{figure}[h]
     \centering
@@ -321,8 +326,6 @@ To decouple this logic from the constrained hardware, the display layer builds o
 Audio in LumenTrace is mixed live and played back in stereo so that the soundscape reflects the race state at every moment~\cite{gardenfors:2003designing,gan:2019self}. 
 A low-level sound manager combines sounds through a single output stream, controlling per-sound volume, dynamic pitch, and stereo panning independently~\cite{geier:2024sounddevice,bechtold:2026soundfile}. Each vehicle owns a continuous engine sound whose pitch and loudness follow its speed, gains an additional layer while accelerating, and pans between the speakers according to the current track module's defined stereo ratio, complemented by positional one-shot effects, e.g., for the start sequence, laps, lane changes, crashes, and warnings.
 
-% To sustain real-time performance on the constrained Raspberry~Pi, the mixer is vectorized with NumPy~\cite{harris:2020array}: a single frame-index array is created once per callback block, playback positions are computed as linear offsets rather than costly cumulative sums, and dynamic parameters are reduced to block-level scalar factors, yielding smooth, click-free transitions while minimizing CPU overhead.
-
 \textit{Problem:} initially, routing audio through the Pi's AUX jack produced significant background noise, which was resolved by switching to a USB audio interface. Moreover, executing the Python audio callbacks synchronously alongside high-frequency game ticks, rendering, and hardware polling caused GIL starvation and lock contention that manifested as severe sound stuttering after just a few seconds running the game. 
 \textit{Solution:} the audio interface is isolated behind a thread-safe asynchronous command queue~\cite{tsigas:2001simple,eggen:2019thread}. A non-blocking sound manager proxy enqueues sound commands as fire-and-forget entries without ever blocking the caller, and a dedicated worker thread applies them to the underlying mixer. Together with minimal \SI{1}{\milli\second} sleep intervals in the display loop that prevent audio-thread starvation, this stabilized the output under concurrent workloads.
 
@@ -429,7 +432,6 @@ User testing and informal feedback sessions revealed that the combination of imm
 
 \subsection{Cost Analysis}
 \label{subsec:cost-analysis}
-% - Cost of the hardware components (Raspberry Pi 4, Raspberry Pi Pico, LED strips, Carrera GO!!!~\cite{carrera:2026carrera} track modules, 3D-printed parts, etc.).
 
 \Cref{tab:cost_analysis} summarizes the approximate hardware cost of the LumenTrace prototype per component. A total cost of \textbf{310\,\texteuro} was calculated, indicating a relatively high-cost prototype. Further cost reductions could be achieved by switching to lower-cost LED strips, creating custom track modules, or sourcing components in bulk.   
 
@@ -478,7 +480,7 @@ Enabling others to participate on the project, as in the OLR project~\cite{openl
 
 LumenTrace demonstrates that the tactile appeal of classic slot car racing can be reproduced without moving parts by representing each vehicle as a light on an addressable LED strip. On a distributed Raspberry~Pi Pico and Raspberry~Pi~4 architecture~\cite{magpi:2024raspberry}, the system unifies a real-time physics engine featuring acceleration, friction, collision detection, and crash recovery, a priority-based LED rendering pipeline with adaptive, state-driven effects~\cite{meschtscherjakov:2015chaselight}, and a vectorized, thread-isolated stereo audio mixer that positions engine and event sounds in space. Packaged for reproducible deployment via Docker~\cite{merkel:2014docker} and validated through a hardwareless simulation interface and unit tests, the prototype meets its performance targets and delivers a smooth, immersive, and low-latency racing experience that closes the gap between commercial slot car systems and minimalist LED racers.
 
-Several extensions could deepen the experience in future work. 
+Besides cost reduction and playability enhancements, future work on the system could focus on additional game features. 
 Physical controllers with vibration modules would add haptic feedback, while the collected MQTT telemetry could be visualized on a companion web or mobile dashboard~\cite{voelkl:2026sensiq,voelkl:2026bitebound}. 
 Gameplay could be enriched with special abilities beyond the overtaking lane, such as nitro boosts or projectiles, collectible coins, and additional game modes with environmental effects like storms or rain~\cite{scalextric:2026arc}. On the technical side, AI opponents trained with reinforcement learning, smoothed speed-limit transitions to prevent abrupt collisions, further ambient enhancements through additional 3D-printed components, and custom, magnetically connectable track modules~\cite{anki:2026overdrive} would extend both playability and independence from proprietary track systems.
 
