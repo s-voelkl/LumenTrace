@@ -100,6 +100,8 @@
 \section{Related Work}
 % - What similar approaches already exist? (e.g., open-source LED strips games, commercial digital slot car systems like Scalextric/Carrera Digital)
 % These sources are provided in the references section. TODO!
+
+----- SLOT CARS -----
 Carrera Hybrid: 
 Evolving slot car racing game with the tendency to more digitalization and more electronic components. 
 More collisions, overtaking, modularer Streckenaufbau
@@ -131,31 +133,57 @@ Anki Overdrive:
 Freie Fahrt auf einer Bahn, App mit Einstellungen und als Controller, modulare Streckenelemente (verbindbar per Magnet).
 Allerdings keine Lichter oder Sounds, die in den Spielfluss integriert sind.
 
-Open LED Race Project.
-Original 2019 version: [openledrace:2023article]
-Current version: [openledrace:2025project]
+----- LED Projects -----
+Line Wobbler as an inspiration for led-based games using input from a controller. [baumgarten:2023line]
+""" from the website:
+Line Wobbler is a one-dimensional dungeon crawler with a custom controller made out of a spring and a five meter long LED strip display. It is an award-winning experiment in minimalism in game design, use of novel input mechanics, and the incorporation of physical space.
+"""
+
+further development was done based on the Line Wobbler project:
+[critters:2023twang] was inspired by the Line Wobbler project. 
+It is a one-dimensional dungeon crawler game.
+
+A racing game (independent from the line wobbler!):
+Open LED Race (OLR) Project.
+Text from the paper [pereira:2023applying]:
+"""
+The research was inspired by the Open LED Race Project
+(OLR) [1], a game created during Arduino Day Sevilla 2019
+and subsequently developed as an independent open source
+project. The game itself consists of a simulation of a slot car
+track using an individually addressable LED (Light-Emitting
+Diode) strip, a different kind of LED strip where each LED or
+section of LEDs can be individually controlled in aspects such
+as brightness and color. Players are represented by different
+colors that light up on the LED strip, simulating a car moving
+forward and receiving an acceleration pulse each time a button
+connected to the Arduino is pressed. Our motivation with the
+Open LED Race was the lack of prominent materials available
+to promote our computer science course at exhibitions in which
+we frequently participate. This resulted in low interaction with
+the public and thus lower utilization of these events. The Open
+LED Race Project provided an opportunity to develop not
+only the race, but also other games and interactive prototypes
+that conveyed the possibilities of codifying and representing
+our world through technology using simple materials such as
+the individually addressable LED strips.
+"""
+
 Software running on OLR Board (Arduino) implementing a 'Car Race' where a 'car' is a light moving along a LED Strip (WS2812/WS2813).
 Manage up to 4 'cars' and optionals Slope (with gravity effect), Pitlane, Electric cars mode (need to recharge battery in Pitlane), etc
 Players use push-button controllers to move the 'cars' - The quicker you push the button the faster the light (car) moves along the LED Strip.
+Original 2019 version article: [openledrace:2023article]
 Features not included in LumenTrace: gravity effect with a slope, pitlane with battery recharge, electric cars mode, basic sounds.
 Features included in LumenTrace: Physics, lane changing, collision detection, immersive lighting effects, enhanced sound design, modular track design, etc.
-Both share: controller inputs, LED strips, microcontroller, design elements with 3d prints [hackerspace:2024open]
 
-An extended version was published in 2025.
-Features: gravity enhancements, sound enhancements, better light effects, leap
-[arminjo:2025open]
+Both share: controller inputs, LED strips, microcontroller, {design elements with 3d prints [hackerspace:2024open]}
 
-Input from MPU6050 Accelerometer.
-Classes for Car, Bridge, Ramp and Loop with natural gravity.
-Light effects by NeoPattern library.
-Tone generation without dropouts by use of hardware timer output.
-2004 LCD for instructions and leap counter.
-Input feedback by an 8 pixel Neopixel bar.
-Winner melody by PlayRTTTL library.
-Compensation for blocked millis() timer during draw.
-Checks for RAM availability.
-Overlapping of cars is handled by using addPixelColor() for drawing.
-Development mode, where Gravity, Friction and Drag can be set by potentiometers.
+Many changes since the original 2019 version:
+[arminjo:2025open] Features: gravity enhancements, sound enhancements, better light effects, leap
+[framboise:2024open] added a 16x16 LED matrix display to the Open LED Race project.
+[esteban:2019ledrace] implemented the Open LED Race project in TinyGo, a Go compiler for microcontrollers. 
+[gmag11:2020ledrace] implemented the wireless ESP-based remote controllers for the Open LED Race project.
+[openledrace:2025project] Current project version.
 
 \section{System Requirements and Architecture}
 
