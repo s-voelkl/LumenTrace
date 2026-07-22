@@ -90,7 +90,7 @@ The complete source code and documentation are publicly available in the project
 
 \begin{figure*}[tb]
     \centering
-    \includegraphics[width=0.9\linewidth]{../assets/SideView1.jpg}
+    \includegraphics[width=0.9\linewidth]{../assets/SideView1.png}
     \caption{LumenTrace: at the speed of light. Full-scale setup of the LED racing game showing the track, vehicles, controllers, and audiovisual system.}
     \label{fig:lumentrace-setup}
 \end{figure*}
@@ -235,7 +235,14 @@ The track layout reuses Carrera~GO!!!~\cite{carrera:2026carrera} track modules, 
 
 The original Carrera~GO!!! hand controllers were modified from their built-in variable resistors into signal sources for the Pico. Each throttle is wired as a voltage divider feeding one of the Pico's ADC channels, yielding the raw analog value transmitted as \texttt{adc\_0}, while an added push button provides the digital lane-change signal (\texttt{dig\_0}). 
 
-Custom 3D-printed enclosures, styled to match the sci-fi aesthetic, conceal the Raspberry~Pi~4, the Pico, the internal wiring, and house the stereo speakers. Beyond their visual role, these enclosures also serve a safety function: together with the only \SI{3}{\ampere} power draw per LED strip, they cover the electronics to prevent user contact and eliminate sharp edges and pinch points.
+Custom 3D-printed enclosures, styled to match the sci-fi aesthetic, conceal the Raspberry~Pi~4, the Pico, the internal wiring, and house the stereo speakers. Beyond their visual role, these enclosures also serve a safety function: together with the only \SI{3}{\ampere} power draw per LED strip, they cover the electronics to prevent user contact and eliminate sharp edges and pinch points. The full physical design of the system is shown in~\Cref{fig:physical-design}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{../assets/SideView2Raw.png}
+    \caption{Full physical design of the LumenTrace system in a properly lighted environment.}
+    \label{fig:physical-design}
+\end{figure}
 
 \section{Software Implementation and Game Mechanics}
 \label{sec:software-implementation-and-game-mechanics}
