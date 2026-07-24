@@ -1,4 +1,4 @@
-@startuml
+@startuml game-engine
 '!theme plain
 skinparam componentStyle uml2
 hide members
@@ -6,6 +6,7 @@ top to bottom direction
 ' skinparam linetype ortho
 skinparam nodesep 35
 skinparam ranksep 25
+skinparam defaultFontSize 18
 
 package "Controller (Transmit)" {
   class "SignalTransmitter" as SignalTransmitter

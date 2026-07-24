@@ -1,10 +1,11 @@
-@startuml
+@startuml hardware-setup
 ' !theme plain
 'skinparam linetype ortho
 skinparam componentStyle uml2
 top to bottom direction
-skinparam nodesep 32
-skinparam ranksep 40
+skinparam nodesep 35
+skinparam ranksep 45
+skinparam defaultFontSize 20
 
 node "Player 1 Controller" as P1_Ctrl {
   port "Throttle (Analog)" as P1_A
